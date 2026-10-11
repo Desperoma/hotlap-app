@@ -65,7 +65,14 @@ export default function MapScreen() {
     if (perm === 'foreground') {
       Alert.alert('Arrière-plan', 'Sans « Toujours », le tracé s’arrête quand l’écran se verrouille.');
     }
-    await recorder.start();
+    try {
+      await recorder.start();
+    } catch {
+      Alert.alert(
+        'Enregistrement impossible',
+        'La localisation en arrière-plan n’est pas disponible ici (Expo Go). Utilise l’app de test HotLap compilée par EAS.',
+      );
+    }
   };
 
   const stop = async () => {

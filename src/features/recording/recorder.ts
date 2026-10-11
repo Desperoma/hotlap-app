@@ -62,15 +62,36 @@ export const recorder = {
   },
 
   async requestPermissions() {
-    const fg = await Location.requestForegroundPermissionsAsync();
-    if (fg.status !== 'granted') return 'denied' as const;
-    const bg = await Location.requestBackgroundPermissionsAsync();
-    return bg.status === 'granted' ? ('always' as const) : ('foreground' as const);
+    try {
+      const fg = await Location.requestForegroundPermissionsAsync();
+      if (fg.status !== 'granted') return 'denied' as const;
+    } catch {
+      return 'denied' as const;
+    }
+    try {
+      const bg = await Location.requestBackgroundPermissionsAsync();
+      return bg.status === 'granted' ? ('always' as const) : ('foreground' as const);
+    } catch {
+      // iOS refuse la demande si l'app ne déclare pas l'usage « Toujours » dans son Info.plist :
+      // c'est le cas dans Expo Go (ERR_LOCATION_INFO_PLIST). L'app de développement EAS le déclare.
+      return 'foreground' as const;
+    }
   },
 
   async start() {
     state = { status: 'recording', startedAt: Date.now(), points: [] };
     emit();
+    try {
+      await this.startUpdates();
+    } catch (e) {
+      // Ex. Expo Go sur iOS : pas de localisation en arrière-plan. On revient à l'état initial.
+      state = { status: 'idle', startedAt: null, points: [] };
+      emit();
+      throw e;
+    }
+  },
+
+  async startUpdates() {
     await Location.startLocationUpdatesAsync(LOCATION_TASK, {
       accuracy: Location.Accuracy.BestForNavigation,
       timeInterval: 1000,
