@@ -5,11 +5,12 @@ import type { ExpoConfig } from "expo/config";
 // GOOGLE_MAPS_ANDROID_API_KEY : nécessaire pour afficher la carte sur Android.
 
 // Identifiant du projet EAS, affiché par `npx eas-cli@latest init` (pas un secret).
-const EAS_PROJECT_ID = '';
+const EAS_PROJECT_ID = '2917e236-175f-4b58-a141-f86c1179dd06'; // @hotlaphar/hotlap
 
 const config: ExpoConfig = {
   "name": "HotLap",
   "slug": "hotlap",
+  "owner": "hotlaphar",
   "scheme": "hotlap",
   "version": "0.1.0",
   "orientation": "portrait",
