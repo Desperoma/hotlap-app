@@ -1,7 +1,12 @@
 import type { ExpoConfig } from "expo/config";
 
-// Config Expo. Les secrets viennent de .env.local (jamais commité).
+// Config Expo. En local, les variables viennent de .env.local (jamais commité) ;
+// sur EAS Build, des variables d'environnement EAS (eas env:set), car .env.local n'est pas envoyé.
 // GOOGLE_MAPS_ANDROID_API_KEY : nécessaire pour afficher la carte sur Android.
+
+// Identifiant du projet EAS, affiché par `npx eas-cli@latest init` (pas un secret).
+const EAS_PROJECT_ID = '';
+
 const config: ExpoConfig = {
   "name": "HotLap",
   "slug": "hotlap",
@@ -63,5 +68,9 @@ const config: ExpoConfig = {
     "typedRoutes": true
   }
 };
+
+if (EAS_PROJECT_ID) {
+  config.extra = { ...config.extra, eas: { projectId: EAS_PROJECT_ID } };
+}
 
 export default config;

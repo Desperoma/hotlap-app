@@ -31,6 +31,23 @@ sans Mac pour iOS).
 identifiant permet de se connecter, les écrans sont alimentés par `src/data/mock.ts` et l'enregistrement
 d'un drive fonctionne sans être sauvegardé en ligne.
 
+## Tester sur un téléphone (EAS Build)
+
+Le GPS en arrière-plan et les cartes natives demandent une app de développement (*development build*) :
+Expo Go ne suffit pas. Elle est compilée dans le cloud par EAS (gratuit), sans Android Studio ni Xcode.
+
+```bash
+npx eas-cli@latest login                 # compte Expo
+npx eas-cli@latest init                  # crée le projet EAS, copier l'ID dans EAS_PROJECT_ID (app.config.ts)
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL --value https://xxx.supabase.co --environment development --visibility plaintext
+npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <clé anon> --environment development --visibility sensitive
+npm run build:dev:android                # ~15 min, donne un lien d'installation (APK)
+npm start                                # sur le PC ; l'app installée se connecte au serveur de dev
+```
+
+Les variables de `.env.local` ne partent pas sur EAS : celles de l'app compilée viennent de `eas env`.
+L'app de développement ne se recompile que si une dépendance native change ; le reste se recharge à chaud.
+
 ## Brancher Supabase
 
 1. Créer un projet sur supabase.com, récupérer l'URL et la clé `anon` (Project Settings > API) dans `.env.local`.
