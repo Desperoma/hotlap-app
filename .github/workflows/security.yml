@@ -19,13 +19,31 @@ jobs:
     name: Secrets (gitleaks)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      # Empreinte officielle (gitleaks_8.30.1_checksums.txt) : le binaire est vérifié avant exécution.
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # tout l'historique : un secret supprimé reste dans les anciens commits
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # gitleaks lancé directement plutôt que via gitleaks-action, qui plante (code 1) sur le
+      # premier push d'un dépôt : il scanne « parent du premier commit .. HEAD » et le commit
+      # racine n'a pas de parent.
+      - name: Installer gitleaks
+        run: |
+          curl -sSfL -o gitleaks.tgz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks && rm gitleaks.tgz
+      - name: Scanner tout l'historique git
+        run: ./gitleaks git . --redact --verbose --report-format sarif --report-path gitleaks.sarif
+      - name: Rapport en cas de fuite
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks.sarif
 
   code:
     name: Code (Semgrep)
