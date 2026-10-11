@@ -1,0 +1,76 @@
+-- Petit catalogue de démarrage (même liste que src/data/vehicles.ts), source 'import'.
+-- Le vrai catalogue vient de Wikidata : npm run catalog:import (voir scripts/import-wikidata.ts).
+insert into public.vehicle_makes (name, source)
+select v.name, 'import'::public.catalog_source from (values
+  ('Alpine'),
+  ('Audi'),
+  ('BMW'),
+  ('Ferrari'),
+  ('Honda'),
+  ('Mazda'),
+  ('Mercedes'),
+  ('Peugeot'),
+  ('Porsche'),
+  ('Renault'),
+  ('Tesla'),
+  ('Toyota'),
+  ('Volkswagen')
+) as v(name)
+on conflict do nothing;
+
+insert into public.vehicle_models (make_id, name, source)
+select m.id, v.model, 'import'::public.catalog_source from (values
+  ('Alpine', 'A110'),
+  ('Alpine', 'A110 S'),
+  ('Alpine', 'A290'),
+  ('Audi', 'A1'),
+  ('Audi', 'A3'),
+  ('Audi', 'A3 e-tron'),
+  ('Audi', 'A4'),
+  ('Audi', 'A5'),
+  ('Audi', 'RS3'),
+  ('Audi', 'RS6'),
+  ('Audi', 'S3'),
+  ('Audi', 'TT'),
+  ('Audi', 'R8'),
+  ('BMW', 'Série 1'),
+  ('BMW', 'Série 3'),
+  ('BMW', 'M2'),
+  ('BMW', 'M3'),
+  ('BMW', 'M4'),
+  ('BMW', 'Z4'),
+  ('Ferrari', '296 GTB'),
+  ('Ferrari', 'F8 Tributo'),
+  ('Ferrari', 'Roma'),
+  ('Ferrari', 'SF90'),
+  ('Honda', 'Civic Type R'),
+  ('Honda', 'S2000'),
+  ('Honda', 'NSX'),
+  ('Mazda', 'MX-5'),
+  ('Mazda', 'RX-7'),
+  ('Mazda', 'RX-8'),
+  ('Mercedes', 'Classe A'),
+  ('Mercedes', 'A45 AMG'),
+  ('Mercedes', 'C63 AMG'),
+  ('Mercedes', 'AMG GT'),
+  ('Peugeot', '208 GTi'),
+  ('Peugeot', '308 GTi'),
+  ('Peugeot', 'RCZ'),
+  ('Porsche', '718 Cayman'),
+  ('Porsche', '911 Carrera'),
+  ('Porsche', '911 GT3'),
+  ('Porsche', 'Taycan'),
+  ('Renault', 'Clio RS'),
+  ('Renault', 'Mégane RS'),
+  ('Tesla', 'Model 3'),
+  ('Tesla', 'Model S'),
+  ('Tesla', 'Model Y'),
+  ('Toyota', 'GR86'),
+  ('Toyota', 'GR Yaris'),
+  ('Toyota', 'Supra'),
+  ('Volkswagen', 'Golf GTI'),
+  ('Volkswagen', 'Golf R'),
+  ('Volkswagen', 'Polo GTI')
+) as v(make, model)
+join public.vehicle_makes m on m.name = v.make
+on conflict do nothing;

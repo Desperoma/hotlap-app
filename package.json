@@ -1,22 +1,47 @@
 {
   "name": "hotlap",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/michroma": "^0.4.2",
+    "@expo/vector-icons": "^15.1.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.117.3",
     "expo": "~57.0.27",
+    "expo-constants": "~57.0.21",
+    "expo-font": "~57.0.4",
+    "expo-image-picker": "~57.0.20",
+    "expo-linking": "~57.0.12",
+    "expo-location": "~57.0.20",
+    "expo-router": "~57.0.25",
+    "expo-sensors": "~57.0.3",
+    "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
+    "expo-task-manager": "~57.0.21",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-native": "0.86.3",
+    "react-native-maps": "1.27.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
+    "lint": "expo lint",
+    "score:check": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/score-scenarios.ts",
+    "catalog:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-wikidata.ts",
+    "catalog:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/catalog.test.ts"
   },
   "private": true
 }

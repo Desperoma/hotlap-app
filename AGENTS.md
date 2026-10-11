@@ -1,3 +1,41 @@
+# HotLap — contexte pour les assistants de code
+
+HotLap est un « Strava de la voiture » : l'utilisateur enregistre des drives (tracé GPS, stats, G-force,
+photos/vidéos), les publie et interagit avec ceux des autres (likes, commentaires, fil Following,
+Local Discover, Clubs). App mobile Expo + backend Supabase. Lire README.md pour l'arborescence.
+
+## Vocabulaire du domaine
+
+- **Drive** : un enregistrement, une session GPS d'un conducteur avec un véhicule (table `drives`).
+- **Route** : tronçon de route ouverte, réutilisable par plusieurs drives pour les comparer (table `routes`).
+- **Circuit** : circuit réel ou route fermée, utilisable par des drives, avec chrono (table `circuits`).
+- **Post** : un drive publié dans le fil.
+- **Garage / Machine** : les véhicules de l'utilisateur (table `vehicles`, un seul `is_primary`).
+- **Crew** : abonnés ; **Following** : abonnements (table `follows`).
+
+## Règles produit à respecter
+
+- Score (`src/features/scoring`) : sur route ouverte, distance + dénivelé + virages, sans chrono.
+  Formule en discussion : `npm run score:check` compare les variantes sur des tracés simulés.
+  Le chrono n'entre dans le score que sur circuit, ou sur une Route avec `timing_enabled` (ex. autobahn
+  sans limitation), drapeau géré côté admin. La base refuse un `lap_time_ms` ailleurs. Priorité : passer
+  la revue App Store et Google Play.
+- `max_speed_kmh` n'est jamais affichée publiquement.
+- Le profil complet (nom, date de naissance, téléphone) n'est lisible que par son propriétaire ;
+  les autres passent par la vue `public_profiles`.
+- Catalogue véhicules : Wikidata (`npm run catalog:import`) + saisie manuelle via `propose_vehicle`, qui
+  dédoublonne (nom normalisé `catalog_key`, alias, proximité pg_trgm). Jamais d'insertion directe dans le catalogue.
+- Onboarding en 5 étapes : 20 % compte (Register + code reçu par email),
+  40 % identité, 60 % localisation, 80 % véhicule, 100 % GPS. `profiles.onboarded_at` non nul = terminé.
+- Email obligatoire et vérifié par code ; téléphone facultatif, NON vérifié (pas de SMS : payant), privé.
+- Enregistrer un drive exige l'âge minimum du pays où se trouve l'utilisateur, selon le lieu (route ouverte
+  ou circuit) : table `country_rules`, fonction `recording_context`, côté app `features/recording/authorization.ts`.
+  La date de naissance est verrouillée une fois saisie. Ne jamais contourner ce contrôle.
+- Routes chronométrées : choisies par l'équipe, `timing_enabled` exige `legal_basis` + `legal_checked_at`.
+- Drives privés par défaut ; la visibilité (`private`, `followers`, `public`) est appliquée par la RLS.
+- Aucune interaction requise pendant la conduite : gros boutons, pas de saisie pendant l'enregistrement.
+- Design : thème sombre unique, accent vert citron `colors.accent`, titres en Michroma, texte en Inter.
+
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
 ## Expo has changed — do not trust your training data

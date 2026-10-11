@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, tests, audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: TypeScript (app + scripts)
+        run: npm run typecheck
+      - name: Tests du catalogue
+        run: npm run catalog:test
+      - name: Audit des dépendances livrées dans l'app (bloquant si critique)
+        run: npm audit --omit=dev --audit-level=critical
+      - name: Rapport d'audit complet (non bloquant)
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo "## npm audit (dépendances de production)"
+            echo '```'
+            npm audit --omit=dev || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

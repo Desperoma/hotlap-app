@@ -1,0 +1,96 @@
+# HotLap
+
+Réseau social pour passionnés d'automobile : enregistre tes drives (tracé GPS, stats, G-force, médias),
+retrouve-les sur ton profil et partage-les avec tes amis, ta région ou le monde.
+
+> Cadrage complet (vision, écrans, périmètre MVP, modèle de données, roadmap) : doc « HotLap — Cadrage du projet ».
+
+## Stack
+
+| Couche | Choix |
+| --- | --- |
+| App mobile | Expo SDK 57 (React Native 0.86), TypeScript, Expo Router |
+| Backend | Supabase : Auth, Postgres + PostGIS, Storage, Row Level Security |
+| Carte | react-native-maps (Apple Maps sur iOS, Google Maps sur Android) |
+| GPS | expo-location + expo-task-manager (enregistrement écran verrouillé) |
+| Capteurs | expo-sensors (G-force) |
+
+## Démarrer
+
+```bash
+npm install
+cp .env.example .env.local       # puis remplir les clés (facultatif, voir mode démo)
+npx expo run:android             # ou npx expo run:ios (Mac + Xcode)
+```
+
+L'app utilise du GPS en arrière-plan et des cartes natives : **Expo Go ne suffit pas**, il faut un
+*development build* (`npx expo run:*` en local, ou `npx eas-cli@latest build --profile development` dans le cloud,
+sans Mac pour iOS).
+
+**Mode démo.** Tant que `.env.local` n'a pas de clés Supabase, l'app démarre en mode démo : n'importe quel
+identifiant permet de se connecter, les écrans sont alimentés par `src/data/mock.ts` et l'enregistrement
+d'un drive fonctionne sans être sauvegardé en ligne.
+
+## Brancher Supabase
+
+1. Créer un projet sur supabase.com, récupérer l'URL et la clé `anon` (Project Settings > API) dans `.env.local`.
+2. Appliquer le schéma : coller `supabase/migrations/0001_init.sql` puis `supabase/seed.sql` dans le SQL Editor,
+   ou `npx supabase link` puis `npx supabase db push`.
+3. Générer les types : `npx supabase gen types typescript --project-id <id> > src/lib/database.types.ts`.
+
+## Arborescence
+
+```
+src/
+  app/                    écrans (Expo Router : chaque fichier = une route)
+    _layout.tsx           polices, AuthProvider, aiguillage auth / onboarding / app
+    (auth)/index.tsx      Login + Register
+    (auth)/verify-email   saisie du code reçu par email
+    onboarding/index.tsx  Account Setup : identité, localisation, véhicule, GPS (40 → 100 %)
+    (tabs)/               Discover, Community, Record (+), Map, Profile
+    drive/[id].tsx        détail d'un drive
+  components/             TabBar, DriveCard, GForceCard, Picker, ui/ (Button, Card, TextField…)
+  features/
+    auth/                 AuthProvider (session, profil, véhicule principal)
+    recording/            tâche GPS d'arrière-plan, filtre GPS, stats, G-force, autorisation d'enregistrer
+    drives/               sauvegarde d'un drive dans Supabase
+    onboarding/           étapes de l'onboarding et validation (âge minimum dans src/config.ts)
+    scoring/              score d'un drive : distance, sinuosité, dénivelé, chrono si autorisé
+  lib/                    client Supabase, types de la base
+  theme/                  couleurs, typo, espacements, style de carte
+  data/                   données factices et catalogue véhicules
+supabase/
+  migrations/0001_init.sql  15 tables, RLS, fil, autour de moi, profils publics, règles d'âge, catalogue dédoublonné
+  seed.sql                  catalogue marques et modèles
+scripts/
+  score-scenarios.ts        compare les formules de score (npm run score:check)
+  import-wikidata.ts        importe le catalogue depuis Wikidata (npm run catalog:import -- --dry-run)
+  catalog.test.ts           tests hors ligne du dédoublonnage (npm run catalog:test)
+```
+
+### Réglages Supabase nécessaires
+
+- Auth > Providers > Email : « Confirm email » activé ; le modèle « Confirm signup » doit contenir `{{ .Token }}`
+  (l'app demande un code à 6 chiffres, pas un lien).
+- Catalogue : `SUPABASE_SERVICE_ROLE_KEY` dans `.env.local` pour l'import Wikidata (jamais dans l'app),
+  puis traiter la vue `catalog_review_queue` (valider, ou fusionner avec `merge_vehicle_model`).
+- Table `country_rules` : une ligne par pays de lancement, âges vérifiés légalement (sinon défaut 18 ans).
+
+## Sécurité
+
+Dépôt GitHub privé `Desperoma/hotlap-app`. Dependabot, la CI et les scans gitleaks / Semgrep sont décrits
+dans [SECURITY.md](SECURITY.md), avec la liste des vulnérabilités connues acceptées.
+
+## Conventions
+
+- Couleurs, typo et espacements uniquement via `@/theme` ; pas de valeur en dur dans les écrans.
+- Imports avec l'alias `@/` (= `src/`).
+- Les règles d'accès vivent dans la base (RLS), jamais seulement dans l'app.
+- `npx expo install <paquet>` pour ajouter une dépendance (versions compatibles avec le SDK).
+- Avant de pousser : `npm run typecheck`.
+
+## État
+
+Phase 1 (fondations) faite : navigation, thème, écrans de la maquette, enregistrement GPS, onboarding en
+5 étapes, premier calcul de score, schéma de base.
+Les écrans Discover, Community et Drive utilisent encore des données factices (phases 2 à 4 du cadrage).

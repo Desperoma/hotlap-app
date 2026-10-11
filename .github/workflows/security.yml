@@ -1,0 +1,46 @@
+# Scans de sécurité gratuits pour un dépôt privé sur un compte personnel :
+# GitHub ne fournit CodeQL et la détection de secrets qu'aux dépôts publics
+# (ou aux offres Team / Enterprise), d'où gitleaks et Semgrep ici.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # chaque lundi, pour les nouvelles règles et vulnérabilités
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # tout l'historique : un secret supprimé reste dans les anciens commits
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  code:
+    name: Code (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v5
+      # Règles de sécurité JS/TS/React + secrets. Les règles de traduction (i18n) et de style
+      # sont exclues : elles ne signalent pas de vulnérabilité et noient les vrais résultats.
+      - run: >
+          semgrep scan --metrics=off --error
+          --config p/javascript --config p/typescript --config p/react --config p/secrets
+          --exclude-rule javascript.lang.correctness.missing-template-string-indicator
+          --exclude-rule typescript.react.best-practice.react-props-spreading
+          --exclude-rule typescript.react.portability.i18next.jsx-not-internationalized
+          --exclude-rule typescript.react.portability.i18next.jsx-label-not-i18n

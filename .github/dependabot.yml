@@ -1,0 +1,43 @@
+# Dependabot : mises à jour de sécurité et de versions.
+# Les alertes et les correctifs de sécurité s'activent aussi dans
+# Settings > Code security (gratuit sur un dépôt privé).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    groups:
+      # Expo, React Native et React avancent ensemble : une seule PR pour les mises à jour mineures.
+      expo-sdk:
+        patterns: ["expo", "expo-*", "@expo/*", "react", "react-dom", "react-native", "react-native-*", "@react-native-async-storage/*"]
+        update-types: [minor, patch]
+      autres:
+        patterns: ["*"]
+        exclude-patterns: ["expo", "expo-*", "@expo/*", "react", "react-dom", "react-native", "react-native-*", "@react-native-async-storage/*"]
+        update-types: [minor, patch]
+    ignore:
+      # Changement de SDK Expo = migration manuelle (npx expo install expo@^XX puis npx expo install --fix).
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@expo/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    labels: [dependencies]

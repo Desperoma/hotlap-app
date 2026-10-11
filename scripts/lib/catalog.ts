@@ -1,0 +1,83 @@
+/**
+ * Transformation Wikidata -> lignes du catalogue, sans accès réseau (testable).
+ * Même normalisation que la fonction SQL public.catalog_key.
+ */
+export const catalogKey = (t: string) =>
+  t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+export type WdModelBinding = {
+  model: { value: string };
+  modelLabel?: { value: string };
+  alts?: { value: string };
+  from?: { value: string };
+  to?: { value: string };
+};
+
+export type CatalogModel = {
+  qid: string;
+  name: string;
+  key: string;
+  yearFrom: number | null;
+  yearTo: number | null;
+  aliases: string[];
+};
+
+const qidOf = (uri: string) => uri.split('/').pop()!;
+const isQid = (s: string) => /^Q\d+$/.test(s);
+const thisYear = new Date().getFullYear();
+const year = (v?: { value: string }) => {
+  const n = v ? parseInt(v.value, 10) : NaN;
+  return Number.isFinite(n) && n >= 1885 && n <= thisYear + 2 ? n : null;
+};
+
+/** Retire le nom de la marque en tête : « Peugeot 208 » -> « 208 ». */
+export function stripMake(label: string, makeName: string) {
+  const l = label.trim();
+  if (l.toLowerCase().startsWith(makeName.toLowerCase())) {
+    const rest = l.slice(makeName.length);
+    // n'enlève la marque que si elle est suivie d'un espace ou d'un tiret (« Peugeot 208 », pas « Peugeotte »)
+    if (/^[\s-]+\S/.test(rest)) return rest.replace(/^[\s-]+/, '');
+  }
+  return l;
+}
+
+/**
+ * Construit les modèles d'une marque et fusionne les doublons (même clé normalisée) :
+ * on garde l'entrée la plus complète, les autres noms deviennent des alias.
+ */
+export function buildModels(bindings: WdModelBinding[], makeName: string) {
+  const byKey = new Map<string, CatalogModel>();
+  let skipped = 0;
+  let merged = 0;
+
+  for (const b of bindings) {
+    const rawLabel = b.modelLabel?.value?.trim() ?? '';
+    if (!rawLabel || isQid(rawLabel)) { skipped++; continue; } // pas de libellé fr/en
+    const name = stripMake(rawLabel, makeName);
+    const key = catalogKey(name);
+    if (!key) { skipped++; continue; }
+
+    const aliases = new Set<string>();
+    if (rawLabel !== name) aliases.add(rawLabel);
+    for (const a of (b.alts?.value ?? '').split('|').map((s) => s.trim()).filter(Boolean)) {
+      const short = stripMake(a, makeName);
+      if (catalogKey(short) !== key) aliases.add(short);
+    }
+    let yearFrom = year(b.from);
+    let yearTo = year(b.to);
+    if (yearFrom && yearTo && yearTo < yearFrom) yearTo = null;
+
+    const entry: CatalogModel = { qid: qidOf(b.model.value), name, key, yearFrom, yearTo, aliases: [...aliases] };
+    const existing = byKey.get(key);
+    if (!existing) { byKey.set(key, entry); continue; }
+
+    merged++;
+    const score = (m: CatalogModel) => (m.yearFrom ? 2 : 0) + (m.yearTo ? 1 : 0) + m.aliases.length / 100;
+    const [keep, drop] = score(entry) > score(existing) ? [entry, existing] : [existing, entry];
+    keep.aliases = [...new Set([...keep.aliases, ...drop.aliases, drop.name])].filter((a) => catalogKey(a) !== keep.key);
+    keep.yearFrom = keep.yearFrom ?? drop.yearFrom;
+    keep.yearTo = keep.yearTo ?? drop.yearTo;
+    byKey.set(key, keep);
+  }
+  return { models: [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name)), skipped, merged };
+}
