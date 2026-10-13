@@ -116,7 +116,9 @@ export default function CommunityScreen() {
           )
         }
         ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} /> : null}
-        renderItem={({ item }) => <DriveCard drive={item} />}
+        renderItem={({ item }) => (
+          <DriveCard drive={item} onBlocked={(uid) => setItems((list) => list?.filter((d) => d.owner_id !== uid) ?? null)} />
+        )}
         ItemSeparatorComponent={() => <View style={{ height: spacing.lg }} />}
       />
     </SafeAreaView>

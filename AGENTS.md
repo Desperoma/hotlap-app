@@ -38,6 +38,9 @@ Local Discover, Clubs). App mobile Expo + backend Supabase. Lire README.md pour 
   La date de naissance est verrouillée une fois saisie. Ne jamais contourner ce contrôle.
 - Routes chronométrées : choisies par l'équipe, `timing_enabled` exige `legal_basis` + `legal_checked_at`.
 - Drives privés par défaut ; la visibilité (`private`, `followers`, `public`) est appliquée par la RLS.
+- Modération (exigée par les stores) : tout contenu d'un autre utilisateur (drive, commentaire, profil) doit
+  offrir « Signaler » et « Bloquer » (`ModerationSheet`, table `reports`, table `blocks`). Le blocage est
+  appliqué par `can_see_drive` et la RLS des commentaires. Suppression du compte : `delete_my_account`.
 - Aucune interaction requise pendant la conduite : gros boutons, pas de saisie pendant l'enregistrement.
 - Design : thème sombre unique, accent vert citron `colors.accent`, titres en Michroma, texte en Inter.
 

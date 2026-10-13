@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Card } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatKm } from '@/features/recording/geo';
@@ -11,13 +12,15 @@ import type { DriveFeedItem } from '@/lib/database.types';
 import { colors, fonts, radius, type } from '@/theme';
 
 /** Post du fil Community. */
-export function DriveCard({ drive }: { drive: DriveFeedItem }) {
+export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocked?: (userId: string) => void }) {
   const { session } = useAuth();
   const [liked, setLiked] = useState(drive.liked_by_me);
   const likes = drive.like_count + (liked === drive.liked_by_me ? 0 : liked ? 1 : -1);
   const name = displayName(drive.author);
   const initials = toInitials(name);
   const openAuthor = () => router.push(`/user/${drive.owner_id}`);
+  const [menu, setMenu] = useState<ModerationTarget | null>(null);
+  const isMine = session?.user.id === drive.owner_id;
 
   // Optimiste : on bascule tout de suite, on revient en arrière si la base refuse.
   const toggleLike = async () => {
@@ -42,7 +45,15 @@ export function DriveCard({ drive }: { drive: DriveFeedItem }) {
             <Text style={styles.time}>{timeAgo(drive.created_at)}</Text>
           </View>
         </Pressable>
-        <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+        {!isMine && (
+          <Pressable
+            onPress={() => setMenu({ type: 'drive', id: drive.id, userId: drive.owner_id, userName: name })}
+            hitSlop={12}
+            accessibilityLabel="More options"
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
+          </Pressable>
+        )}
       </View>
 
       {drive.vehicle && (
@@ -75,6 +86,7 @@ export function DriveCard({ drive }: { drive: DriveFeedItem }) {
         </Pressable>
         <Ionicons name="paper-plane-outline" size={18} color={colors.textMuted} />
       </View>
+      <ModerationSheet target={menu} onClose={() => setMenu(null)} onBlocked={onBlocked} />
     </Card>
   );
 }

@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { DriveMap } from '@/components/DriveMap';
 import { DriveSocial } from '@/components/DriveSocial';
+import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
 import { Button, Card, Screen, SegmentedControl } from '@/components/ui';
@@ -28,6 +29,7 @@ export default function DriveDetailScreen() {
   const [drive, setDrive] = useState<DriveDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [menu, setMenu] = useState<ModerationTarget | null>(null);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -95,9 +97,22 @@ export default function DriveDetailScreen() {
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
-      <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={styles.backBtn}>
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </Pressable>
+      <View style={styles.topBar}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </Pressable>
+        {!drive.isMine && (
+          <Pressable
+            onPress={() => setMenu({ type: 'drive', id: drive.id, userId: drive.ownerId, userName: author })}
+            hitSlop={12}
+            accessibilityLabel="More options"
+            style={styles.backBtn}
+          >
+            <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
+          </Pressable>
+        )}
+      </View>
+      <ModerationSheet target={menu} onClose={() => setMenu(null)} onBlocked={back} />
 
       <View style={{ gap: 4 }}>
         <Text style={styles.overline}>
@@ -179,7 +194,8 @@ function formatLap(ms: number) {
 
 const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
-  backBtn: { alignSelf: 'flex-start', padding: 4 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  backBtn: { padding: 4 },
   overline: { ...type.overline, color: colors.accent },
   title: { ...type.h1, color: colors.text },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, textAlign: 'left' },

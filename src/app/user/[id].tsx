@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DriveLogRow } from '@/components/DriveLogRow';
+import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { block, isBlocked, unblock } from '@/features/moderation/api';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { displayName, getPublicProfile, initials, isFollowing, setFollow } from '@/features/social/api';
 import type { PublicProfile } from '@/lib/database.types';
@@ -21,6 +23,8 @@ export default function UserProfileScreen() {
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [menu, setMenu] = useState<ModerationTarget | null>(null);
 
   // Mon propre profil : l'onglet Profile.
   useEffect(() => {
@@ -33,6 +37,7 @@ export default function UserProfileScreen() {
     getCounters(id).then(setCounters).catch(() => {});
     listDrives(id).then(setDrives).catch(() => setDrives([]));
     isFollowing(me, id).then(setFollowing).catch(() => {});
+    isBlocked(me, id).then(setBlocked).catch(() => {});
   }, [id, me]);
 
   useEffect(load, [load]);
@@ -71,11 +76,37 @@ export default function UserProfileScreen() {
     }
   };
 
+  const toggleBlock = () => {
+    if (blocked) {
+      unblock(me, id).then(() => { setBlocked(false); load(); })
+        .catch((e) => Alert.alert('Unblock failed', e instanceof Error ? e.message : String(e)));
+      return;
+    }
+    Alert.alert(`Block ${name}?`, 'You won’t see each other’s drives or comments, and follows between you are removed.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Block',
+        style: 'destructive',
+        onPress: () =>
+          block(me, id)
+            .then(() => { setBlocked(true); setFollowing(false); setDrives([]); getCounters(id).then(setCounters).catch(() => {}); })
+            .catch((e) => Alert.alert('Block failed', e instanceof Error ? e.message : String(e))),
+      },
+    ]);
+  };
+
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
-      <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ alignSelf: 'flex-start', padding: 4 }}>
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </Pressable>
+      <View style={styles.topBar}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </Pressable>
+        <Pressable onPress={() => setMenu({ type: 'user', id, userId: id, userName: name })} hitSlop={12}
+          accessibilityLabel="Report this driver" style={{ padding: 4 }}>
+          <Ionicons name="flag-outline" size={20} color={colors.text} />
+        </Pressable>
+      </View>
+      <ModerationSheet target={menu} onClose={() => setMenu(null)} />
 
       <Card style={{ gap: spacing.lg }}>
         <View style={styles.identity}>
@@ -88,13 +119,17 @@ export default function UserProfileScreen() {
           </View>
         </View>
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-        <Button
-          title={following ? 'Following' : 'Follow'}
-          icon={following ? 'checkmark' : 'person-add-outline'}
-          variant={following ? 'secondary' : 'primary'}
-          onPress={toggleFollow}
-          disabled={busy}
-        />
+        {!blocked && (
+          <Button
+            title={following ? 'Following' : 'Follow'}
+            icon={following ? 'checkmark' : 'person-add-outline'}
+            variant={following ? 'secondary' : 'primary'}
+            onPress={toggleFollow}
+            disabled={busy}
+          />
+        )}
+        <Button title={blocked ? `Unblock ${name}` : `Block ${name}`} variant="ghost"
+          icon={blocked ? 'lock-open-outline' : 'ban-outline'} onPress={toggleBlock} />
       </Card>
 
       <Card style={styles.counters}>
@@ -125,6 +160,7 @@ function Counter({ value, label }: { value: number; label: string }) {
 }
 
 const styles = StyleSheet.create({
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   avatar: {

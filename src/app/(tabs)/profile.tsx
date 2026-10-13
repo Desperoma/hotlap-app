@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { deleteAccount } from '@/features/moderation/api';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
@@ -16,6 +17,37 @@ export default function ProfileScreen() {
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const userId = session?.user.id;
+
+  const [deleting, setDeleting] = useState(false);
+
+  // Double confirmation : la suppression est définitive.
+  const askDelete = () =>
+    Alert.alert('Delete your account?', 'Your profile, drives, photos, comments and follows will be deleted for good.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Continue',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('This can’t be undone', 'Delete your HotLap account now?', [
+            { text: 'Keep my account', style: 'cancel' },
+            {
+              text: 'Delete account',
+              style: 'destructive',
+              onPress: async () => {
+                if (!userId) return;
+                setDeleting(true);
+                try {
+                  await deleteAccount(userId);
+                  await signOut();
+                } catch (e) {
+                  setDeleting(false);
+                  Alert.alert('Deletion failed', e instanceof Error ? e.message : String(e));
+                }
+              },
+            },
+          ]),
+      },
+    ]);
 
   // Rechargé à chaque retour sur l'onglet (ex. après avoir sauvegardé un drive).
   useFocusEffect(
@@ -116,6 +148,8 @@ export default function ProfileScreen() {
           )}
         </View>
       )}
+
+      <Button title="Delete account" variant="ghost" icon="trash-outline" onPress={askDelete} loading={deleting} />
     </Screen>
   );
 }

@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
   addComment, deleteComment, displayName, initials, isLiked, listComments, setLike, type Comment,
@@ -18,6 +19,7 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [menu, setMenu] = useState<ModerationTarget | null>(null);
 
   const loadComments = useCallback(() => {
     if (!me) return;
@@ -97,7 +99,12 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
         comments.map((c) => {
           const name = displayName(c.author);
           return (
-            <View key={c.id} style={styles.comment}>
+            <Pressable
+              key={c.id}
+              style={styles.comment}
+              onLongPress={() => !c.isMine && c.author && setMenu({ type: 'comment', id: c.id, userId: c.author.id, userName: name })}
+              accessibilityHint={c.isMine ? undefined : 'Long press to report or block'}
+            >
               <Pressable onPress={() => c.author && router.push(`/user/${c.author.id}`)} style={styles.avatar}
                 accessibilityLabel={`Open ${name}'s profile`}>
                 <Text style={styles.initials}>{initials(name)}</Text>
@@ -106,15 +113,25 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
                 <Text style={styles.author}>{name}</Text>
                 <Text style={styles.body}>{c.body}</Text>
               </View>
+              {!c.isMine && c.author && (
+                <Pressable
+                  onPress={() => c.author && setMenu({ type: 'comment', id: c.id, userId: c.author.id, userName: name })}
+                  hitSlop={8}
+                  accessibilityLabel="Report or block"
+                >
+                  <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
+                </Pressable>
+              )}
               {(c.isMine || isOwner) && (
                 <Pressable onPress={() => remove(c)} hitSlop={8} accessibilityLabel="Delete comment">
                   <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
                 </Pressable>
               )}
-            </View>
+            </Pressable>
           );
         })
       )}
+      <ModerationSheet target={menu} onClose={() => setMenu(null)} onBlocked={loadComments} />
 
       <View style={styles.composer}>
         <TextInput
