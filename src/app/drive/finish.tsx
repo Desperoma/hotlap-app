@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
+import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
 import { Button, Card, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { saveDrive } from '@/features/drives/api';
+import { MAX_PHOTOS, pickPhotos, uploadDrivePhotos } from '@/features/drives/media';
 import { clearPendingDrive, getPendingDrive, type PendingDrive } from '@/features/drives/pending';
 import { computeStats, formatDuration, formatKm } from '@/features/recording/geo';
 import { computeScore } from '@/features/scoring/score';
@@ -35,6 +37,7 @@ export default function FinishDriveScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('private');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -85,12 +88,29 @@ export default function FinishDriveScreen() {
         points: drive.points,
       });
       await clearPendingDrive();
+      if (photos.length) {
+        try {
+          await uploadDrivePhotos(session.user.id, id, photos);
+        } catch (e) {
+          // Le drive est sauvegardé ; seules les photos ont échoué.
+          Alert.alert('Photos not uploaded', e instanceof Error ? e.message : String(e));
+        }
+      }
       router.replace(`/drive/${id}`);
     } catch (e) {
       // Le drive reste en attente sur le téléphone : on peut réessayer plus tard.
       Alert.alert('Save failed', `${e instanceof Error ? e.message : String(e)}\n\nYour drive is kept on this phone. Try again when you have network.`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addPhotos = async () => {
+    try {
+      const picked = await pickPhotos(MAX_PHOTOS - photos.length);
+      setPhotos((p) => [...p, ...picked].slice(0, MAX_PHOTOS));
+    } catch (e) {
+      Alert.alert('Photos unavailable', e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -130,6 +150,15 @@ export default function FinishDriveScreen() {
         autoCapitalize="sentences" />
       <TextField label="Description" icon="create-outline" value={description} onChangeText={setDescription}
         placeholder="Roads, weather, the car… (optional)" maxLength={2000} multiline autoCapitalize="sentences" />
+
+      <View style={{ gap: spacing.sm }}>
+        <Text style={styles.label}>Photos ({photos.length}/{MAX_PHOTOS})</Text>
+        <PhotoStrip
+          uris={photos}
+          onAdd={photos.length < MAX_PHOTOS ? addPhotos : undefined}
+          onRemove={(i) => setPhotos((p) => p.filter((_, j) => j !== i))}
+        />
+      </View>
 
       <View style={{ gap: spacing.sm }}>
         <Text style={styles.label}>Who can see it</Text>

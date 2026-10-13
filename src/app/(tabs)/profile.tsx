@@ -1,16 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
+import { formatDuration, formatKm } from '@/features/recording/geo';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
 /** Driver Profile : identité, compteurs, raccourcis, My Garage / Drive Log. */
 export default function ProfileScreen() {
-  const { profile, primaryVehicle, signOut } = useAuth();
+  const { session, profile, primaryVehicle, signOut } = useAuth();
   const [tab, setTab] = useState<'garage' | 'log'>('garage');
+  const [counters, setCounters] = useState<ProfileCounters | null>(null);
+  const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
+  const userId = session?.user.id;
+
+  // Rechargé à chaque retour sur l'onglet (ex. après avoir sauvegardé un drive).
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      getCounters(userId).then(setCounters).catch(() => {});
+      listDrives(userId).then(setDrives).catch(() => setDrives([]));
+    }, [userId]),
+  );
   const name = profile?.display_name ?? profile?.username ?? 'Driver';
   // Onboarding fait = 4 éléments sur 6 ; la bio et la photo complètent le profil.
   const completion = [profile?.username, profile?.first_name, profile?.home_city, primaryVehicle, profile?.bio, profile?.avatar_url]
@@ -56,9 +70,9 @@ export default function ProfileScreen() {
       </Card>
 
       <Card style={styles.counters}>
-        <Counter value={0} label="DRIVES" />
-        <Counter value={0} label="CREW" />
-        <Counter value={0} label="FOLLOWING" />
+        <Counter value={counters?.drives ?? 0} label="DRIVES" />
+        <Counter value={counters?.crew ?? 0} label="CREW" />
+        <Counter value={counters?.following ?? 0} label="FOLLOWING" />
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
@@ -85,15 +99,41 @@ export default function ProfileScreen() {
       ) : (
         <View style={{ gap: spacing.md }}>
           <Text style={styles.section}>RECENT DRIVES</Text>
-          <Card style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl }}>
-            <Ionicons name="flag-outline" size={28} color={colors.textMuted} />
-            <Text style={styles.name}>No drives logged yet</Text>
-            <Text style={[styles.bio, { textAlign: 'center' }]}>Start recording to build your personal road history.</Text>
-            <Button title="Record your first drive" trailingIcon="arrow-forward" onPress={() => router.push('/record')} />
-          </Card>
+          {counters?.bestScore != null && (
+            <Text style={styles.bio}>Best score: <Text style={{ color: colors.accent }}>{counters.bestScore}</Text></Text>
+          )}
+          {drives === null ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : drives.length === 0 ? (
+            <Card style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl }}>
+              <Ionicons name="flag-outline" size={28} color={colors.textMuted} />
+              <Text style={styles.name}>No drives logged yet</Text>
+              <Text style={[styles.bio, { textAlign: 'center' }]}>Start recording to build your personal road history.</Text>
+              <Button title="Record your first drive" trailingIcon="arrow-forward" onPress={() => router.push('/record')} />
+            </Card>
+          ) : (
+            drives.map((d) => <DriveLogRow key={d.id} drive={d} />)
+          )}
         </View>
       )}
     </Screen>
+  );
+}
+
+function DriveLogRow({ drive }: { drive: DriveLogItem }) {
+  const date = new Date(drive.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return (
+    <Card onPress={() => router.push(`/drive/${drive.id}`)} style={styles.logRow}>
+      <Ionicons name={drive.circuitId ? 'flag' : 'git-network-outline'} size={22} color={colors.accent} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={styles.logTitle} numberOfLines={1}>{drive.title}</Text>
+        <Text style={styles.bio}>
+          {date} · {formatKm(drive.distanceM)} km · {formatDuration(drive.durationS)}
+          {drive.visibility === 'private' ? ' · Only me' : ''}
+        </Text>
+      </View>
+      <Text style={styles.logScore}>{drive.score ?? '–'}</Text>
+    </Card>
   );
 }
 
@@ -166,5 +206,8 @@ const styles = StyleSheet.create({
   year: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 11 },
   make: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 13, letterSpacing: 1 },
   model: { ...type.h1, color: colors.text, fontSize: 28 },
+  logRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  logTitle: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
+  logScore: { ...type.stat, color: colors.text, fontSize: 16 },
   edit: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 12, marginTop: 6 },
 });

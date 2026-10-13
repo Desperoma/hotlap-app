@@ -2,6 +2,7 @@ import { FEED } from '@/data/mock';
 import type { TrackPoint } from '@/features/recording/geo';
 import { computeStats } from '@/features/recording/geo';
 import { computeScore, SCORE_VERSION } from '@/features/scoring/score';
+import { removeDrivePhotos } from './media';
 import type { PublicProfile, ScoreBreakdown, Vehicle, Visibility } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
@@ -196,6 +197,7 @@ export async function deleteDrive(id: string) {
     demoDrives.delete(id);
     return;
   }
+  await removeDrivePhotos(id);
   const { error } = await supabase.from('drives').delete().eq('id', id);
   if (error) throw error;
 }

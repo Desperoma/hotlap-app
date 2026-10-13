@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
+import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
 import { Button, Card, Screen, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { deleteDrive, getDrive, updateDrive, type DriveDetail } from '@/features/drives/api';
+import { listDrivePhotos } from '@/features/drives/media';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -24,6 +26,7 @@ export default function DriveDetailScreen() {
   const { session } = useAuth();
   const [drive, setDrive] = useState<DriveDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -31,6 +34,7 @@ export default function DriveDetailScreen() {
     getDrive(id, session?.user.id)
       .then(setDrive)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    listDrivePhotos(id).then(setPhotos).catch(() => setPhotos([]));
   }, [id, session?.user.id]);
 
   useEffect(load, [load]);
@@ -106,6 +110,8 @@ export default function DriveDetailScreen() {
         path={drive.path}
         emptyLabel={drive.isMine ? 'No route recorded' : 'Route hidden (too short to share)'}
       />
+
+      <PhotoStrip uris={photos} size={140} />
 
       <Card style={styles.stats}>
         <Stat label="DISTANCE" value={`${formatKm(drive.distanceM)} km`} />
