@@ -3,10 +3,10 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
-import { formatDuration, formatKm } from '@/features/recording/geo';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
 /** Driver Profile : identité, compteurs, raccourcis, My Garage / Drive Log. */
@@ -120,23 +120,6 @@ export default function ProfileScreen() {
   );
 }
 
-function DriveLogRow({ drive }: { drive: DriveLogItem }) {
-  const date = new Date(drive.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  return (
-    <Card onPress={() => router.push(`/drive/${drive.id}`)} style={styles.logRow}>
-      <Ionicons name={drive.circuitId ? 'flag' : 'git-network-outline'} size={22} color={colors.accent} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.logTitle} numberOfLines={1}>{drive.title}</Text>
-        <Text style={styles.bio}>
-          {date} · {formatKm(drive.distanceM)} km · {formatDuration(drive.durationS)}
-          {drive.visibility === 'private' ? ' · Only me' : ''}
-        </Text>
-      </View>
-      <Text style={styles.logScore}>{drive.score ?? '–'}</Text>
-    </Card>
-  );
-}
-
 function Counter({ value, label }: { value: number; label: string }) {
   return (
     <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
@@ -206,8 +189,5 @@ const styles = StyleSheet.create({
   year: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 11 },
   make: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 13, letterSpacing: 1 },
   model: { ...type.h1, color: colors.text, fontSize: 28 },
-  logRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  logTitle: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
-  logScore: { ...type.stat, color: colors.text, fontSize: 16 },
   edit: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 12, marginTop: 6 },
 });

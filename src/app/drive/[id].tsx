@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
+import { DriveSocial } from '@/components/DriveSocial';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
 import { Button, Card, Screen, SegmentedControl } from '@/components/ui';
@@ -103,7 +104,15 @@ export default function DriveDetailScreen() {
           {formatDate(drive.startedAt)}{drive.circuitName ? ` · ${drive.circuitName.toUpperCase()}` : ' · OPEN ROAD'}
         </Text>
         <Text style={styles.title}>{drive.title}</Text>
-        <Text style={styles.muted}>{[author, vehicle].filter(Boolean).join(' · ')}</Text>
+        <Text style={styles.muted}>
+          <Text
+            style={drive.isMine ? undefined : styles.link}
+            onPress={drive.isMine ? undefined : () => router.push(`/user/${drive.ownerId}`)}
+          >
+            {author}
+          </Text>
+          {vehicle ? ` · ${vehicle}` : ''}
+        </Text>
       </View>
 
       <DriveMap
@@ -126,6 +135,10 @@ export default function DriveDetailScreen() {
       <ScoreCard score={drive.score} breakdown={drive.scoreBreakdown} />
 
       {drive.description ? <Text style={styles.desc}>{drive.description}</Text> : null}
+
+      {drive.visibility !== 'private' || !drive.isMine ? (
+        <DriveSocial driveId={drive.id} likeCount={drive.likeCount} isOwner={drive.isMine} />
+      ) : null}
 
       {drive.isMine && (
         <View style={{ gap: spacing.md }}>
@@ -174,5 +187,6 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row' },
   statValue: { ...type.stat, color: colors.text, fontSize: 18 },
   statLabel: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 10, letterSpacing: 0.5 },
+  link: { color: colors.text, fontFamily: fonts.semibold },
   desc: { color: colors.text, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
 });

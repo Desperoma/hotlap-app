@@ -1,28 +1,47 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { formatKm } from '@/features/recording/geo';
+import { displayName, initials as toInitials, setLike } from '@/features/social/api';
 import type { DriveFeedItem } from '@/lib/database.types';
 import { colors, fonts, radius, type } from '@/theme';
 
 /** Post du fil Community. */
 export function DriveCard({ drive }: { drive: DriveFeedItem }) {
+  const { session } = useAuth();
   const [liked, setLiked] = useState(drive.liked_by_me);
   const likes = drive.like_count + (liked === drive.liked_by_me ? 0 : liked ? 1 : -1);
-  const name = drive.author.display_name ?? drive.author.username;
-  const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  const name = displayName(drive.author);
+  const initials = toInitials(name);
+  const openAuthor = () => router.push(`/user/${drive.owner_id}`);
+
+  // Optimiste : on bascule tout de suite, on revient en arrière si la base refuse.
+  const toggleLike = async () => {
+    if (!session) return;
+    const next = !liked;
+    setLiked(next);
+    try {
+      await setLike(drive.id, session.user.id, next);
+    } catch (e) {
+      setLiked(!next);
+      Alert.alert('Like failed', e instanceof Error ? e.message : String(e));
+    }
+  };
 
   return (
     <Card onPress={() => router.push(`/drive/${drive.id}`)} style={{ gap: 12 }}>
       <View style={styles.header}>
-        <View style={styles.avatar}><Text style={styles.initials}>{initials}</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.author}>{name}</Text>
-          <Text style={styles.time}>{timeAgo(drive.created_at)}</Text>
-        </View>
+        <Pressable onPress={openAuthor} style={styles.authorLink} accessibilityLabel={`Open ${name}'s profile`}>
+          <View style={styles.avatar}><Text style={styles.initials}>{initials}</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.author}>{name}</Text>
+            <Text style={styles.time}>{timeAgo(drive.created_at)}</Text>
+          </View>
+        </Pressable>
         <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
       </View>
 
@@ -46,14 +65,14 @@ export function DriveCard({ drive }: { drive: DriveFeedItem }) {
       </View>
 
       <View style={styles.actions}>
-        <Pressable style={styles.action} onPress={() => setLiked((l) => !l)} hitSlop={8}>
+        <Pressable style={styles.action} onPress={toggleLike} hitSlop={8} accessibilityLabel={liked ? 'Unlike' : 'Like'}>
           <Ionicons name={liked ? 'heart' : 'heart-outline'} size={20} color={liked ? colors.like : colors.textMuted} />
           <Text style={[styles.actionText, liked && { color: colors.like }]}>{likes}</Text>
         </Pressable>
-        <View style={styles.action}>
+        <Pressable style={styles.action} onPress={() => router.push(`/drive/${drive.id}`)} hitSlop={8} accessibilityLabel="Comments">
           <Ionicons name="chatbubble-outline" size={18} color={colors.textMuted} />
           <Text style={styles.actionText}>{drive.comment_count}</Text>
-        </View>
+        </Pressable>
         <Ionicons name="paper-plane-outline" size={18} color={colors.textMuted} />
       </View>
     </Card>
@@ -72,12 +91,13 @@ function Stat({ value, label }: { value: string; label: string }) {
 function timeAgo(iso: string) {
   const h = Math.round((Date.now() - new Date(iso).getTime()) / 3600_000);
   if (h < 1) return 'just now';
-  if (h < 24) return `${h} hours ago`;
+  if (h < 24) return h === 1 ? '1 hour ago' : `${h} hours ago`;
   return `${Math.round(h / 24)} days ago`;
 }
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  authorLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bgElevated,
     borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
