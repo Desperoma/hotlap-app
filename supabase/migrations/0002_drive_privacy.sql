@@ -86,7 +86,7 @@ $$;
 -- Zone de confidentialité : longueur masquée au départ et à l'arrivée pour les autres
 -- utilisateurs. Le propriétaire voit son tracé complet.
 create or replace function public.privacy_zone_m()
-returns int language sql immutable set search_path = '' as $$ select 300 $$;
+returns int language sql immutable set search_path = '' as $$ select 1600 $$;
 
 create or replace function public.drive_path_public(p_drive_id uuid)
 returns json
