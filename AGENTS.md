@@ -23,7 +23,7 @@ Local Discover, Clubs). App mobile Expo + backend Supabase. Lire README.md pour 
 - `max_speed_kmh` n'est jamais affichée publiquement. Depuis la migration 0002, `max_speed_kmh`, `path` et
   `start_point` ne sont pas lisibles directement (privilèges par colonne) : ne jamais faire `select('*')` sur
   `drives`, utiliser `DRIVE_COLUMNS` (`features/drives/api.ts`). Le tracé s'obtient par `drive_path_public`
-  (complet pour le propriétaire, sans 300 m au départ et à l'arrivée pour les autres), la vitesse max du
+  (complet pour le propriétaire, sans 1,6 km au départ et à l'arrivée pour les autres), la vitesse max du
   propriétaire par `my_drive_private`. Les points bruts (`drive_points`) ne sont lisibles que par le propriétaire.
 - Un drive terminé est gardé sur le téléphone (`features/drives/pending.ts`) jusqu'à sa sauvegarde ou son abandon.
 - Le profil complet (nom, date de naissance, téléphone) n'est lisible que par son propriétaire ;
