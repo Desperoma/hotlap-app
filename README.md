@@ -51,7 +51,7 @@ L'app de développement ne se recompile que si une dépendance native change ; l
 ## Brancher Supabase
 
 1. Créer un projet sur supabase.com, récupérer l'URL et la clé `anon` (Project Settings > API) dans `.env.local`.
-2. Appliquer le schéma : coller `supabase/migrations/0001_init.sql` puis `supabase/seed.sql` dans le SQL Editor,
+2. Appliquer le schéma : coller dans l'ordre les fichiers de `supabase/migrations/` (0001, 0002…) puis `supabase/seed.sql` dans le SQL Editor,
    ou `npx supabase link` puis `npx supabase db push`.
 3. Générer les types : `npx supabase gen types typescript --project-id <id> > src/lib/database.types.ts`.
 

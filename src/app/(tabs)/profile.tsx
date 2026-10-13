@@ -1,16 +1,62 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { deleteAccount } from '@/features/moderation/api';
+import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
 /** Driver Profile : identité, compteurs, raccourcis, My Garage / Drive Log. */
 export default function ProfileScreen() {
-  const { profile, primaryVehicle, signOut } = useAuth();
+  const { session, profile, primaryVehicle, signOut } = useAuth();
   const [tab, setTab] = useState<'garage' | 'log'>('garage');
+  const [counters, setCounters] = useState<ProfileCounters | null>(null);
+  const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
+  const userId = session?.user.id;
+
+  const [deleting, setDeleting] = useState(false);
+
+  // Double confirmation : la suppression est définitive.
+  const askDelete = () =>
+    Alert.alert('Delete your account?', 'Your profile, drives, photos, comments and follows will be deleted for good.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Continue',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('This can’t be undone', 'Delete your HotLap account now?', [
+            { text: 'Keep my account', style: 'cancel' },
+            {
+              text: 'Delete account',
+              style: 'destructive',
+              onPress: async () => {
+                if (!userId) return;
+                setDeleting(true);
+                try {
+                  await deleteAccount(userId);
+                  await signOut();
+                } catch (e) {
+                  setDeleting(false);
+                  Alert.alert('Deletion failed', e instanceof Error ? e.message : String(e));
+                }
+              },
+            },
+          ]),
+      },
+    ]);
+
+  // Rechargé à chaque retour sur l'onglet (ex. après avoir sauvegardé un drive).
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      getCounters(userId).then(setCounters).catch(() => {});
+      listDrives(userId).then(setDrives).catch(() => setDrives([]));
+    }, [userId]),
+  );
   const name = profile?.display_name ?? profile?.username ?? 'Driver';
   // Onboarding fait = 4 éléments sur 6 ; la bio et la photo complètent le profil.
   const completion = [profile?.username, profile?.first_name, profile?.home_city, primaryVehicle, profile?.bio, profile?.avatar_url]
@@ -56,9 +102,9 @@ export default function ProfileScreen() {
       </Card>
 
       <Card style={styles.counters}>
-        <Counter value={0} label="DRIVES" />
-        <Counter value={0} label="CREW" />
-        <Counter value={0} label="FOLLOWING" />
+        <Counter value={counters?.drives ?? 0} label="DRIVES" />
+        <Counter value={counters?.crew ?? 0} label="CREW" />
+        <Counter value={counters?.following ?? 0} label="FOLLOWING" />
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
@@ -85,14 +131,25 @@ export default function ProfileScreen() {
       ) : (
         <View style={{ gap: spacing.md }}>
           <Text style={styles.section}>RECENT DRIVES</Text>
-          <Card style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl }}>
-            <Ionicons name="flag-outline" size={28} color={colors.textMuted} />
-            <Text style={styles.name}>No drives logged yet</Text>
-            <Text style={[styles.bio, { textAlign: 'center' }]}>Start recording to build your personal road history.</Text>
-            <Button title="Record your first drive" trailingIcon="arrow-forward" onPress={() => router.push('/record')} />
-          </Card>
+          {counters?.bestScore != null && (
+            <Text style={styles.bio}>Best score: <Text style={{ color: colors.accent }}>{counters.bestScore}</Text></Text>
+          )}
+          {drives === null ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : drives.length === 0 ? (
+            <Card style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl }}>
+              <Ionicons name="flag-outline" size={28} color={colors.textMuted} />
+              <Text style={styles.name}>No drives logged yet</Text>
+              <Text style={[styles.bio, { textAlign: 'center' }]}>Start recording to build your personal road history.</Text>
+              <Button title="Record your first drive" trailingIcon="arrow-forward" onPress={() => router.push('/record')} />
+            </Card>
+          ) : (
+            drives.map((d) => <DriveLogRow key={d.id} drive={d} />)
+          )}
         </View>
       )}
+
+      <Button title="Delete account" variant="ghost" icon="trash-outline" onPress={askDelete} loading={deleting} />
     </Screen>
   );
 }

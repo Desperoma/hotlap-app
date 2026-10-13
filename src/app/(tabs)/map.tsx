@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -7,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { saveDrive } from '@/features/drives/api';
+import { getPendingDrive, setPendingDrive } from '@/features/drives/pending';
 import { checkRecording, refusalMessage, type RecordingContext } from '@/features/recording/authorization';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import { useRecorder } from '@/features/recording/useRecorder';
@@ -16,7 +17,7 @@ import { darkMapStyle } from '@/theme/mapStyle';
 
 /** Live Drive Map : carte, démarrage, stats live, arrêt et sauvegarde du drive. */
 export default function MapScreen() {
-  const { session, profile, primaryVehicle } = useAuth();
+  const { profile } = useAuth();
   const { status, points, stats, recorder } = useRecorder();
   const mapRef = useRef<MapView>(null);
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
@@ -75,25 +76,33 @@ export default function MapScreen() {
     }
   };
 
+  // Un drive terminé mais pas sauvegardé (app fermée, échec réseau) : on propose de le reprendre.
+  useEffect(() => {
+    if (status !== 'idle') return;
+    getPendingDrive().then((p) => {
+      if (!p) return;
+      Alert.alert('Unsaved drive', 'You have a finished drive that isn’t saved yet.', [
+        { text: 'Later', style: 'cancel' },
+        { text: 'Review', onPress: () => router.push('/drive/finish') },
+      ]);
+    });
+    // Seulement à l'ouverture de l'écran.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const stop = async () => {
     const endedAt = Date.now();
     const finished = await recorder.stop();
-    if (!finished.startedAt || !session) return;
-    try {
-      const { stats: s, score } = await saveDrive({
-        ownerId: session.user.id,
-        vehicleId: primaryVehicle?.id ?? null,
-        circuitId: where?.circuitId ?? null,
-        title: defaultTitle(finished.startedAt),
-        visibility: 'private',
-        startedAt: finished.startedAt,
-        endedAt,
-        points: finished.points,
-      });
-      Alert.alert('Drive enregistré', `${formatKm(s.distanceM)} km en ${formatDuration(s.durationS)} · score ${score}`);
-    } catch (e) {
-      Alert.alert('Échec de la sauvegarde', e instanceof Error ? e.message : String(e));
-    }
+    if (!finished.startedAt) return;
+    // Le drive est d'abord gardé sur le téléphone, puis résumé et publié sur l'écran suivant.
+    await setPendingDrive({
+      startedAt: finished.startedAt,
+      endedAt,
+      points: finished.points,
+      circuitId: where?.circuitId ?? null,
+      circuitName: where?.circuitName ?? null,
+    });
+    router.push('/drive/finish');
   };
 
   const recording = status !== 'idle';
@@ -206,12 +215,6 @@ function Stat({ label, value }: { label: string; value: string }) {
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
-}
-
-function defaultTitle(ts: number) {
-  const h = new Date(ts).getHours();
-  const moment = h < 6 ? 'Night' : h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening';
-  return `${moment} Drive`;
 }
 
 const glass = { backgroundColor: 'rgba(22,25,22,0.92)', borderWidth: 1, borderColor: colors.border };
