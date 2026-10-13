@@ -55,8 +55,8 @@ export default function AuthScreen() {
 
           {mode === 'login' ? (
             <>
-              <TextField label="Email or Username" icon="mail-outline" placeholder="Enter your email or username"
-                value={identifier} onChangeText={setIdentifier} />
+              <TextField label="Email" icon="mail-outline" placeholder="Enter your email" keyboardType="email-address"
+                autoComplete="email" value={identifier} onChangeText={setIdentifier} />
               <TextField label="Password" icon="lock-closed-outline" placeholder="Enter your password" secure
                 value={password} onChangeText={setPassword} />
               <Pressable style={{ alignSelf: 'flex-end' }}>

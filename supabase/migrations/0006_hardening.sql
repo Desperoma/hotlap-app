@@ -21,3 +21,7 @@ revoke execute on function public.can_see_drive(uuid, public.visibility) from pu
 revoke execute on function public.propose_vehicle(text, text) from public, anon;
 grant execute on function public.can_see_drive(uuid, public.visibility) to authenticated;
 grant execute on function public.propose_vehicle(text, text) to authenticated;
+
+-- Connexion par pseudo supprimée : cette fonction renvoyait l'email de n'importe quel
+-- utilisateur à partir de son pseudo (public), même sans être connecté.
+drop function if exists public.email_for_username(text);

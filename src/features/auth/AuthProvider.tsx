@@ -89,12 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(DEMO_SESSION);
       return;
     }
-    let email = identifier.trim();
-    if (!email.includes('@')) {
-      const { data, error } = await supabase.rpc('email_for_username', { p_username: email });
-      if (error || !data) throw new Error('Utilisateur introuvable');
-      email = data as string;
-    }
+    // Connexion par email uniquement : retrouver l'email depuis un pseudo public l'exposerait à tous.
+    const email = identifier.trim();
+    if (!email.includes('@')) throw new Error('Connecte-toi avec ton adresse email.');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       if (error.message.toLowerCase().includes('not confirmed')) throw new Error('Email non vérifié : utilise le code reçu par email.');
