@@ -48,7 +48,8 @@
     "catalog:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-wikidata.ts",
     "catalog:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/catalog.test.ts",
     "build:dev:android": "npx eas-cli@latest build --profile development --platform android",
-    "build:dev:ios": "npx eas-cli@latest build --profile development --platform ios"
+    "build:dev:ios": "npx eas-cli@latest build --profile development --platform ios",
+    "build:preview:android": "npx eas-cli@latest build --profile preview --platform android"
   },
   "private": true
 }

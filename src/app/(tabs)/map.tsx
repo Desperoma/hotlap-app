@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getPendingDrive, setPendingDrive } from '@/features/drives/pending';
+import { simulatedDrive, TEST_TOOLS } from '@/features/drives/simulate';
 import { checkRecording, refusalMessage, type RecordingContext } from '@/features/recording/authorization';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import { useRecorder } from '@/features/recording/useRecorder';
@@ -89,6 +90,14 @@ export default function MapScreen() {
     // Seulement à l'ouverture de l'écran.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const simulate = async () => {
+    const pos = await Location.getLastKnownPositionAsync().catch(() => null);
+    // À défaut de position : départ de la route du col de Turini.
+    const origin = pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : { lat: 43.991, lng: 7.336 };
+    await setPendingDrive(simulatedDrive(origin));
+    router.push('/drive/finish');
+  };
 
   const stop = async () => {
     const endedAt = Date.now();
@@ -190,6 +199,11 @@ export default function MapScreen() {
             <Button title="START DRIVE" icon="radio-button-on" trailingIcon="arrow-forward" onPress={start}
               disabled={gps === 'denied'} loading={checking} />
             <Text style={styles.footnote}>Precise GPS · Live route · Private by default</Text>
+            {/* Tests sans rouler : versions de développement et builds « preview » uniquement,
+                jamais dans l'app publiée (voir TEST_TOOLS). */}
+            {TEST_TOOLS && (
+              <Button title="Simulate a drive (test)" variant="ghost" icon="flask-outline" onPress={simulate} />
+            )}
           </>
         )}
       </View>
