@@ -12,7 +12,7 @@ export type VehicleInput = { make: string; model: string; year: number | null; m
 
 /**
  * Vérifications (voir « Onboarding » dans le doc de cadrage) :
- * - l'email est obligatoire et vérifié par un code à 6 chiffres reçu par email avant toute connexion ;
+ * - l'email est obligatoire et vérifié par un code (6 à 10 chiffres) reçu par email avant toute connexion ;
  * - le téléphone est facultatif et NON vérifié : la vérification SMS est payante (fournisseur tiers),
  *   donc abandonnée. Il reste privé et ne sert pas à se connecter.
  * Côté Supabase : Auth > Providers > Email > « Confirm email » activé, et le modèle d'email
@@ -37,7 +37,7 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 const DEMO_SESSION = { user: { id: 'demo-user' } } as unknown as Session;
-const isCode = (c: string) => /^\d{6}$/.test(c.trim());
+const isCode = (c: string) => /^\d{6,10}$/.test(c.trim());
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -51,8 +51,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       return;
     }
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    // Une session n'est acceptée que si l'email a été confirmé par le code reçu.
+    // Garde-fou côté app : « Confirm email » doit aussi être activé dans Supabase.
+    const accept = (s: Session | null) => {
+      if (s && !s.user.email_confirmed_at) {
+        supabase.auth.signOut({ scope: 'local' });
+        setSession(null);
+        return;
+      }
+      setSession(s);
+    };
+    supabase.auth.getSession().then(({ data }) => accept(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => accept(s));
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -110,12 +120,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // lus par le trigger handle_new_user (supabase/migrations/0001_init.sql)
       options: { data: { username: username.trim(), phone: phone?.trim() || '' } },
     });
-    if (error) throw error;
-    return !data.session; // pas de session = « Confirm email » actif, un code a été envoyé
+    if (error) {
+      if (/duplicate key|profiles_username_key|database error saving new user/i.test(error.message)) {
+        throw new Error('Ce pseudo est déjà pris.');
+      }
+      throw error;
+    }
+    if (data.session) {
+      // « Confirm email » désactivé dans Supabase : le compte serait ouvert sans vérification.
+      await supabase.auth.signOut({ scope: 'local' });
+      throw new Error('La vérification par email est désactivée côté serveur. Inscription impossible pour le moment.');
+    }
+    return true; // un code a été envoyé par email
   }, []);
 
   const verifyEmail = useCallback<AuthState['verifyEmail']>(async (email, code) => {
-    if (!isCode(code)) throw new Error('Le code fait 6 chiffres.');
+    if (!isCode(code)) throw new Error('Saisis le code complet reçu par email.');
     if (!isSupabaseConfigured) {
       setProfile({ ...demoProfile(demoSignup?.username ?? 'driver'), phone: demoSignup?.phone ?? null });
       setPrimaryVehicle(null);
