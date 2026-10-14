@@ -21,6 +21,10 @@ export const MY_ROUTES: RouteSummary[] = [
 
 const base = { vehicle_id: null, route_id: null, circuit_id: null, lap_time_ms: null } as const;
 
+/** Petit tracé sinueux autour d'un point, pour la carte des posts en mode démo. */
+const squiggle = (lat: number, lng: number) =>
+  Array.from({ length: 40 }, (_, i) => ({ latitude: lat + i * 0.0012, longitude: lng + Math.sin(i / 3) * 0.004 }));
+
 const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
 
 export const FEED: DriveFeedItem[] = [
@@ -35,6 +39,7 @@ export const FEED: DriveFeedItem[] = [
     author: { id: 'u1', username: 'nabil', display_name: 'Nabil Chebbane', avatar_url: null },
     vehicle: { make: 'Audi', model: 'A3 e-tron', year: 2017 },
     liked_by_me: true,
+    path_preview: squiggle(51.9, 4.4),
   },
   {
     ...base, id: 'd2', owner_id: 'u2',
@@ -47,5 +52,6 @@ export const FEED: DriveFeedItem[] = [
     author: { id: 'u2', username: 'mitchell', display_name: 'Mitchell Van der Berg', avatar_url: null },
     vehicle: { make: 'Porsche', model: '911 GT3', year: 2022 },
     liked_by_me: false,
+    path_preview: squiggle(50.2, 5.6),
   },
 ];

@@ -8,20 +8,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DriveCard } from '@/components/DriveCard';
 import { Chip } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { feedFollowing, feedNearby, feedWorld } from '@/features/social/api';
+import { feedCrews, feedFollowing, feedNearby, feedWorld } from '@/features/social/api';
 import type { DriveFeedItem } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
-type Filter = 'following' | 'local' | 'world' | 'clubs';
+type Filter = 'following' | 'local' | 'world' | 'crews';
 
 const EMPTY: Record<Filter, string> = {
-  following: 'Nothing here yet. Follow drivers or share a drive with your crew.',
+  following: 'Nothing here yet. Follow drivers to see their drives here.',
   local: 'No public drives near you yet.',
   world: 'No public drives yet. Be the first to share one.',
-  clubs: 'Clubs are coming soon.',
+  crews: 'No drives from your crews yet. Join a crew from your profile.',
 };
 
-/** Fil social : Following (comptes suivis + moi), Local Discover (50 km), World (tous les drives publics). */
+/** Fil social : Following (comptes suivis + moi), Local Discover (50 km), World (tous les drives publics), Crews (membres de mes crews). */
 export default function CommunityScreen() {
   const { session } = useAuth();
   const me = session?.user.id;
@@ -33,7 +33,8 @@ export default function CommunityScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPage = useCallback(async (f: Filter, before?: string): Promise<DriveFeedItem[]> => {
-    if (!me || f === 'clubs') return [];
+    if (!me) return [];
+    if (f === 'crews') return feedCrews(me, before);
     if (f === 'following') return feedFollowing(me, before);
     if (f === 'world') return feedWorld(me, before);
     // Local : position approximative suffisante, et pas de pagination (rayon fixe).
@@ -94,6 +95,10 @@ export default function CommunityScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.accent} />}
         onEndReached={more}
         onEndReachedThreshold={0.5}
+        // Une carte par post : on garde peu de posts montés à la fois.
+        initialNumToRender={4}
+        windowSize={5}
+        removeClippedSubviews
         ListHeaderComponent={
           <View style={{ gap: spacing.lg, marginBottom: spacing.sm }}>
             <View style={styles.header}>
@@ -104,7 +109,7 @@ export default function CommunityScreen() {
               <Chip label="Following" active={filter === 'following'} onPress={() => choose('following')} />
               <Chip label="Local Discover" active={filter === 'local'} onPress={() => choose('local')} />
               <Chip label="World" active={filter === 'world'} onPress={() => choose('world')} />
-              <Chip label="Clubs" active={filter === 'clubs'} onPress={() => choose('clubs')} />
+              <Chip label="Crews" active={filter === 'crews'} onPress={() => choose('crews')} />
             </View>
           </View>
         }

@@ -1,20 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { Picker } from '@/components/Picker';
-import { Button, Card, Chip, TextField } from '@/components/ui';
+import { Button, Card, TextField } from '@/components/ui';
 import { COUNTRIES } from '@/config';
-import { YEARS } from '@/data/vehicles';
-import { fetchMakes, fetchModels, proposeVehicle, suggestModels, type CatalogItem } from '@/features/catalog/api';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { VehicleForm } from '@/features/garage/VehicleForm';
 import { recorder } from '@/features/recording/recorder';
 import { colors, fonts, spacing, type } from '@/theme';
 
 import { birthDateError, isoToDisplay, maskBirthDate, parseBirthDate } from './validation';
 
 type StepProps = { onNext: () => void };
-const MANUAL = 'Autre (saisie manuelle)';
 
 /** Petit wrapper qui gère l'état « en cours » et les erreurs d'enregistrement. */
 function useSubmit(fn: () => Promise<void>, onNext: () => void) {
@@ -100,96 +98,20 @@ export function LocationStep({ onNext }: StepProps) {
   );
 }
 
-// --- 80 % : véhicule (catalogue Wikidata ou saisie manuelle dédoublonnée) ---
+// --- 80 % : véhicule favori (catalogue Wikidata ou saisie manuelle dédoublonnée) ---
 export function VehicleStep({ onNext }: StepProps) {
   const { primaryVehicle, saveVehicle } = useAuth();
-  const [makes, setMakes] = useState<CatalogItem[]>([]);
-  const [models, setModels] = useState<CatalogItem[]>([]);
-  const [make, setMake] = useState<CatalogItem | null>(null);
-  const [model, setModel] = useState<CatalogItem | null>(null);
-  const [manualMake, setManualMake] = useState(false);
-  const [manualModel, setManualModel] = useState(false);
-  const [typedMake, setTypedMake] = useState(primaryVehicle?.make ?? '');
-  const [typedModel, setTypedModel] = useState(primaryVehicle?.model ?? '');
-  const [suggestions, setSuggestions] = useState<CatalogItem[]>([]);
-  const [year, setYear] = useState<string | null>(primaryVehicle?.year ? String(primaryVehicle.year) : null);
-
-  useEffect(() => {
-    fetchMakes().then(setMakes).catch(() => setMakes([]));
-  }, []);
-
-  useEffect(() => {
-    if (!make || manualMake) return setModels([]);
-    fetchModels(make).then(setModels).catch(() => setModels([]));
-  }, [make, manualMake]);
-
-  // « Tu voulais dire… ? » pendant la saisie manuelle du modèle.
-  useEffect(() => {
-    if (!manualModel || manualMake) return setSuggestions([]);
-    const t = setTimeout(() => suggestModels(make, typedModel).then(setSuggestions).catch(() => setSuggestions([])), 300);
-    return () => clearTimeout(t);
-  }, [typedModel, manualModel, manualMake, make]);
-
-  const makeName = manualMake ? typedMake.trim() : make?.name ?? '';
-  const modelName = manualMake || manualModel ? typedModel.trim() : model?.name ?? '';
-
-  const { busy, run } = useSubmit(async () => {
-    const manual = manualMake || manualModel;
-    const { modelId } = manual ? await proposeVehicle(makeName, modelName) : { modelId: model?.id ?? null };
-    await saveVehicle({ make: makeName, model: modelName, year: year ? Number(year) : null, modelId });
-  }, onNext);
-
-  const submit = () => {
-    if (!makeName || !modelName) return Alert.alert('Presque', 'Choisis ou saisis la marque et le modèle.');
-    run();
-  };
-
-  const pickSuggestion = (s: CatalogItem) => {
-    setModel(s);
-    setManualModel(false);
-    setSuggestions([]);
-  };
-
   return (
     <>
-      <StepTitle title="Your Ride" subtitle="Select your vehicle setup." />
-      {manualMake ? (
-        <TextField label="Brand" icon="car-sport-outline" placeholder="ex. Lancia" autoCapitalize="words"
-          value={typedMake} onChangeText={setTypedMake} />
-      ) : (
-        <Picker label="Brand" placeholder="Select Brand" value={make?.name ?? null}
-          options={[...makes.map((m) => m.name), MANUAL]}
-          onChange={(name) => {
-            setModel(null);
-            setManualModel(false);
-            if (name === MANUAL) { setManualMake(true); setMake(null); }
-            else setMake(makes.find((m) => m.name === name) ?? null);
-          }} />
-      )}
-      {manualMake || manualModel ? (
-        <TextField label="Model" icon="car-outline" placeholder="ex. Delta HF Integrale"
-          value={typedModel} onChangeText={setTypedModel} />
-      ) : (
-        <Picker label="Model" placeholder="Select Model" value={model?.name ?? null}
-          options={[...models.map((m) => m.name), MANUAL]} disabled={!make}
-          onChange={(name) => {
-            if (name === MANUAL) { setManualModel(true); setModel(null); setTypedModel(''); }
-            else setModel(models.find((m) => m.name === name) ?? null);
-          }} />
-      )}
-      {suggestions.length > 0 && (
-        <View style={{ gap: 8 }}>
-          <Text style={styles.hint}>Tu voulais dire :</Text>
-          <View style={styles.chips}>
-            {suggestions.map((s) => <Chip key={`${s.id}-${s.name}`} label={`${make?.name} ${s.name}`} onPress={() => pickSuggestion(s)} />)}
-          </View>
-        </View>
-      )}
-      {(manualMake || manualModel) && (
-        <Text style={styles.hint}>Si ta voiture n'existe pas encore, elle sera ajoutée au catalogue après vérification par l'équipe.</Text>
-      )}
-      <Picker label="Year" placeholder="Select Year (e.g. 2016)" value={year} options={YEARS.map(String)} onChange={setYear} />
-      <Button title="Continue" onPress={submit} loading={busy} />
+      <StepTitle title="Your Ride" subtitle="Ton véhicule favori. Tu pourras en ajouter d'autres dans ton garage." />
+      <VehicleForm
+        initial={primaryVehicle}
+        submitLabel="Continue"
+        onSubmit={async (v) => {
+          await saveVehicle(v);
+          onNext();
+        }}
+      />
     </>
   );
 }
@@ -257,6 +179,5 @@ const styles = StyleSheet.create({
   error: { color: colors.danger, fontFamily: fonts.medium, fontSize: 13 },
   hint: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   rowText: { color: colors.text, fontFamily: fonts.regular, fontSize: 14, flex: 1 },
 });

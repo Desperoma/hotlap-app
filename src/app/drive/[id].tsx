@@ -8,6 +8,7 @@ import { DriveSocial } from '@/components/DriveSocial';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
+import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Card, Screen, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { deleteDrive, getDrive, updateDrive, type DriveDetail } from '@/features/drives/api';
@@ -18,14 +19,14 @@ import { colors, fonts, spacing, type } from '@/theme';
 
 const VISIBILITY: { value: Visibility; label: string }[] = [
   { value: 'private', label: 'Only me' },
-  { value: 'followers', label: 'Crew' },
+  { value: 'followers', label: 'Followers' },
   { value: 'public', label: 'Everyone' },
 ];
 
 /** Détail d'un drive : tracé, stats, score détaillé ; visibilité et suppression pour le propriétaire. */
 export default function DriveDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { session } = useAuth();
+  const { session, vehicles } = useAuth();
   const [drive, setDrive] = useState<DriveDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -71,6 +72,18 @@ export default function DriveDetailScreen() {
       await updateDrive(drive.id, { visibility: v });
     } catch (e) {
       setDrive({ ...drive, visibility: previous });
+      Alert.alert('Update failed', e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const changeVehicle = async (vehicleId: string | null) => {
+    const previous = drive;
+    const v = vehicles?.find((x) => x.id === vehicleId);
+    setDrive({ ...drive, vehicleId, vehicle: v ? { make: v.make, model: v.model, year: v.year } : null });
+    try {
+      await updateDrive(drive.id, { vehicle_id: vehicleId });
+    } catch (e) {
+      setDrive(previous);
       Alert.alert('Update failed', e instanceof Error ? e.message : String(e));
     }
   };
@@ -161,6 +174,7 @@ export default function DriveDetailScreen() {
           <Card style={styles.stats}>
             <Stat label="AVG SPEED · PRIVATE" value={drive.avgSpeedKmh != null ? `${Math.round(drive.avgSpeedKmh)} km/h` : '–'} />
           </Card>
+          <VehicleSelect label="Car" value={drive.vehicleId} onChange={changeVehicle} />
           <Text style={styles.label}>Who can see it</Text>
           <SegmentedControl options={VISIBILITY} value={drive.visibility} onChange={changeVisibility} />
           <Button title="Delete drive" variant="ghost" icon="trash-outline" onPress={remove} />

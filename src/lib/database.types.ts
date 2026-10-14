@@ -109,4 +109,6 @@ export interface DriveFeedItem extends Drive {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url'>;
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
   liked_by_me: boolean;
+  /** Aperçu du tracé (simplifié, sans les zones de confidentialité pour les autres). Vide si masqué. */
+  path_preview: { latitude: number; longitude: number }[];
 }

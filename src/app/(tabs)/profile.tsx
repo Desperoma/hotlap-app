@@ -3,19 +3,23 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { listMyCrews, type MyCrew } from '@/features/crews/api';
+import { vehicleLabel } from '@/features/garage/VehicleForm';
 import { deleteAccount } from '@/features/moderation/api';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
 /** Driver Profile : identité, compteurs, raccourcis, My Garage / Drive Log. */
 export default function ProfileScreen() {
-  const { session, profile, primaryVehicle, signOut } = useAuth();
+  const { session, profile, vehicles, primaryVehicle, signOut } = useAuth();
   const [tab, setTab] = useState<'garage' | 'log'>('garage');
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
+  const [crews, setCrews] = useState<MyCrew[]>([]);
   const userId = session?.user.id;
 
   const [deleting, setDeleting] = useState(false);
@@ -55,6 +59,7 @@ export default function ProfileScreen() {
       if (!userId) return;
       getCounters(userId).then(setCounters).catch(() => {});
       listDrives(userId).then(setDrives).catch(() => setDrives([]));
+      listMyCrews(userId).then((c) => setCrews(c.filter((x) => x.myStatus === 'active'))).catch(() => {});
     }, [userId]),
   );
   const name = profile?.display_name ?? profile?.username ?? 'Driver';
@@ -76,20 +81,22 @@ export default function ProfileScreen() {
 
       <Card style={{ gap: spacing.lg }}>
         <View style={styles.identity}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>{name[0]?.toUpperCase()}</Text></View>
+          <Avatar url={profile?.avatar_url} name={name} size={72} ring />
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={styles.name}>{name}</Text>
-            <View style={styles.badge}>
-              <Ionicons name="car-sport-outline" size={12} color={colors.accent} />
-              <Text style={styles.badgeText}>ROAD CREW MEMBER</Text>
-            </View>
+            <Pressable style={styles.badge} onPress={() => router.push(crews.length === 1 ? `/crews/${crews[0].id}` : '/crews')}>
+              <Ionicons name="people-outline" size={12} color={colors.accent} />
+              <Text style={styles.badgeText} numberOfLines={1}>
+                {crews.length === 0 ? 'NO CREW YET' : crews.length === 1 ? crews[0].name.toUpperCase() : `${crews.length} CREWS`}
+              </Text>
+            </Pressable>
           </View>
         </View>
         <Text style={styles.bio}>
           {profile?.bio ?? 'Your road story starts here. Add a bio and let the crew know what you drive.'}
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Button title="Edit profile" icon="create-outline" style={{ flex: 1 }} />
+          <Button title="Edit profile" icon="create-outline" style={{ flex: 1 }} onPress={() => router.push('/edit-profile')} />
           <Pressable style={styles.shareBtn}><Ionicons name="share-outline" size={20} color={colors.text} /></Pressable>
         </View>
         <View style={{ gap: 6 }}>
@@ -103,13 +110,14 @@ export default function ProfileScreen() {
 
       <Card style={styles.counters}>
         <Counter value={counters?.drives ?? 0} label="DRIVES" />
-        <Counter value={counters?.crew ?? 0} label="CREW" />
+        <Counter value={counters?.followers ?? 0} label="FOLLOWERS" />
         <Counter value={counters?.following ?? 0} label="FOLLOWING" />
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
         <Shortcut icon="radio-button-on" title="Record a drive" text="Log a new road session" onPress={() => router.push('/record')} />
         <Shortcut icon="map-outline" title="Explore the map" text="Find roads and drivers nearby" onPress={() => router.push('/map')} />
+        <Shortcut icon="people-outline" title="Crews" text="Create, join or manage your crews" onPress={() => router.push('/crews')} />
       </Card>
 
       <View style={styles.tabs}>
@@ -119,14 +127,35 @@ export default function ProfileScreen() {
 
       {tab === 'garage' ? (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.section}>YOUR MACHINE</Text>
-          <Card style={{ gap: 6 }}>
-            <Ionicons name="car-sport" size={44} color={colors.accent} style={{ alignSelf: 'flex-end' }} />
-            {primaryVehicle?.year ? <Text style={styles.year}>{primaryVehicle.year}</Text> : null}
-            <Text style={styles.make}>{primaryVehicle?.make.toUpperCase()}</Text>
-            <Text style={styles.model}>{primaryVehicle?.model}</Text>
-            <Text style={styles.edit}>Edit car details →</Text>
-          </Card>
+          <Text style={styles.section}>FAVORITE MACHINE</Text>
+          {primaryVehicle ? (
+            <Card style={{ gap: 6 }} onPress={() => router.push({ pathname: '/garage/edit', params: { id: primaryVehicle.id } })}>
+              <Ionicons name="car-sport" size={44} color={colors.accent} style={{ alignSelf: 'flex-end' }} />
+              {primaryVehicle.nickname ? <Text style={styles.year}>{primaryVehicle.nickname}</Text> : null}
+              {primaryVehicle.year ? <Text style={styles.year}>{primaryVehicle.year}</Text> : null}
+              <Text style={styles.make}>{primaryVehicle.make.toUpperCase()}</Text>
+              <Text style={styles.model}>{primaryVehicle.model}</Text>
+              <Text style={styles.edit}>Edit car details →</Text>
+            </Card>
+          ) : (
+            <Card style={{ alignItems: 'center', gap: spacing.md }}>
+              <Text style={styles.bio}>No car in your garage yet.</Text>
+              <Button title="Add a vehicle" icon="add" onPress={() => router.push('/garage/edit')} />
+            </Card>
+          )}
+          {(vehicles?.length ?? 0) > 1 && (
+            <View style={{ gap: spacing.sm }}>
+              {vehicles!.filter((v) => !v.is_primary).map((v) => (
+                <Card key={v.id} style={styles.otherCar} onPress={() => router.push({ pathname: '/garage/edit', params: { id: v.id } })}>
+                  <Ionicons name="car-sport-outline" size={18} color={colors.textMuted} />
+                  <Text style={[styles.shortcutTitle, { flex: 1 }]} numberOfLines={1}>{vehicleLabel(v)}</Text>
+                  {v.year ? <Text style={styles.year}>{v.year}</Text> : null}
+                </Card>
+              ))}
+            </View>
+          )}
+          <Button title={`Open my garage (${vehicles?.length ?? 0})`} variant="secondary" icon="construct-outline"
+            onPress={() => router.push('/garage')} />
         </View>
       ) : (
         <View style={{ gap: spacing.md }}>
@@ -195,13 +224,9 @@ const styles = StyleSheet.create({
   handle: { ...type.h1, color: colors.text, fontSize: 20 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  avatar: {
-    width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: colors.accent,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg,
-  },
-  avatarText: { ...type.h1, color: colors.text },
   name: { color: colors.text, fontFamily: fonts.bold, fontSize: 18 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
+  otherCar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   badgeText: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
   bio: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
   shareBtn: {

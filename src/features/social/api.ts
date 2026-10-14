@@ -1,4 +1,5 @@
 import { FEED } from '@/data/mock';
+import { geojsonToPath } from '@/features/drives/api';
 import type { DriveFeedItem, PublicProfile, ScoreBreakdown, Visibility } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
@@ -20,14 +21,17 @@ async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFeedItem[
   if (rows.length === 0) return [];
   const ownerIds = [...new Set(rows.map((r) => r.owner_id))];
   const vehicleIds = [...new Set(rows.map((r) => r.vehicle_id).filter((v): v is string => !!v))];
-  const [authors, vehicles, likes] = await Promise.all([
+  const [authors, vehicles, likes, paths] = await Promise.all([
     supabase.from('public_profiles').select('id, username, display_name, avatar_url').in('id', ownerIds),
     vehicleIds.length
       ? supabase.from('vehicles').select('id, make, model, year').in('id', vehicleIds)
       : Promise.resolve({ data: [] as { id: string; make: string; model: string; year: number | null }[], error: null }),
     supabase.from('likes').select('drive_id').eq('user_id', me).in('drive_id', rows.map((r) => r.id)),
+    supabase.rpc('drive_path_previews', { p_drive_ids: rows.map((r) => r.id) }),
   ]);
   for (const r of [authors, vehicles, likes]) if (r.error) throw r.error;
+  // Sans aperçu (erreur réseau, fonction absente), le fil s'affiche quand même, sans carte.
+  const pathById = new Map(((paths.data ?? []) as { drive_id: string; path: unknown }[]).map((p) => [p.drive_id, geojsonToPath(p.path)]));
   const authorById = new Map((authors.data ?? []).map((a) => [a.id, a]));
   const vehicleById = new Map((vehicles.data ?? []).map((v) => [v.id, v]));
   const liked = new Set((likes.data ?? []).map((l) => l.drive_id));
@@ -40,6 +44,7 @@ async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFeedItem[
       author: authorById.get(r.owner_id) ?? { id: r.owner_id, username: 'driver', display_name: null, avatar_url: null },
       vehicle: v ? { make: v.make, model: v.model, year: v.year } : null,
       liked_by_me: liked.has(r.id),
+      path_preview: pathById.get(r.id) ?? [],
     };
   });
 }
@@ -54,6 +59,14 @@ export async function feedFollowing(me: string, before?: string) {
 export async function feedWorld(me: string, before?: string) {
   if (!isSupabaseConfigured) return FEED;
   const { data, error } = await supabase.rpc('feed_world', { p_limit: 20, p_before: before ?? new Date().toISOString() });
+  if (error) throw error;
+  return hydrate((data ?? []) as DriveCardRow[], me);
+}
+
+/** Fil Crews : drives visibles des membres de mes crews. */
+export async function feedCrews(me: string, before?: string) {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('feed_crews', { p_limit: 20, p_before: before ?? new Date().toISOString() });
   if (error) throw error;
   return hydrate((data ?? []) as DriveCardRow[], me);
 }

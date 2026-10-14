@@ -1,6 +1,7 @@
+import { removeOldAvatars } from '@/features/profile/avatar';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
-export type ReportTarget = 'drive' | 'comment' | 'user';
+export type ReportTarget = 'drive' | 'comment' | 'user' | 'crew';
 export type ReportReason = 'dangerous_driving' | 'spam' | 'harassment' | 'inappropriate' | 'other';
 
 export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
@@ -56,6 +57,7 @@ export async function deleteAccount(me: string) {
     const { error: e } = await supabase.storage.from('drive-media').remove(media.map((m) => m.storage_path));
     if (e) throw e;
   }
+  await removeOldAvatars(me);
   const { error } = await supabase.rpc('delete_my_account');
   if (error) throw error;
   await supabase.auth.signOut({ scope: 'local' });

@@ -39,6 +39,7 @@ export type DriveDetail = {
   likeCount: number;
   commentCount: number;
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
+  vehicleId: string | null;
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
   circuitName: string | null;
   /** Tracé affichable : complet pour le propriétaire, sans les zones de confidentialité pour les autres */
@@ -78,7 +79,7 @@ export async function saveDrive(input: SaveDriveInput) {
       startedAt: new Date(input.startedAt).toISOString(), endedAt: new Date(input.endedAt).toISOString(),
       distanceM: Math.round(stats.distanceM), durationS: stats.durationS, avgSpeedKmh: stats.avgSpeedKmh,
       maxSpeedKmh: stats.maxSpeedKmh, maxLateralG: null, score, scoreBreakdown: breakdown, lapTimeMs: null,
-      visibility: input.visibility, likeCount: 0, commentCount: 0, author: null, vehicle: null, circuitName: null,
+      visibility: input.visibility, likeCount: 0, commentCount: 0, author: null, vehicleId: input.vehicleId, vehicle: null, circuitName: null,
       path: input.points.map((p) => ({ latitude: p.lat, longitude: p.lng })),
     });
     return { id, stats, score };
@@ -176,16 +177,20 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
     likeCount: row.like_count,
     commentCount: row.comment_count,
     author: author.data ?? null,
+    vehicleId: row.vehicle_id,
     vehicle: vehicle.data ?? null,
     circuitName: (circuit.data as { name: string } | null)?.name ?? null,
     path: geojsonToPath(path.data),
   };
 }
 
-export async function updateDrive(id: string, patch: { title?: string; description?: string | null; visibility?: Visibility }) {
+export async function updateDrive(
+  id: string,
+  patch: { title?: string; description?: string | null; visibility?: Visibility; vehicle_id?: string | null },
+) {
   if (!isSupabaseConfigured) {
     const d = demoDrives.get(id);
-    if (d) demoDrives.set(id, { ...d, ...patch });
+    if (d) demoDrives.set(id, { ...d, ...patch, vehicleId: patch.vehicle_id !== undefined ? patch.vehicle_id : d.vehicleId });
     return;
   }
   const { error } = await supabase.from('drives').update(patch).eq('id', id);
@@ -226,7 +231,7 @@ function demoFromFeed(id: string): DriveDetail | null {
     startedAt: f.started_at, endedAt: f.ended_at, distanceM: f.distance_m, durationS: f.duration_s,
     avgSpeedKmh: null, maxSpeedKmh: null, maxLateralG: f.max_lateral_g, score: f.score,
     scoreBreakdown: f.score_breakdown, lapTimeMs: f.lap_time_ms, visibility: f.visibility,
-    likeCount: f.like_count, commentCount: f.comment_count, author: f.author, vehicle: f.vehicle,
+    likeCount: f.like_count, commentCount: f.comment_count, author: f.author, vehicleId: f.vehicle_id, vehicle: f.vehicle,
     circuitName: null, path: [],
   };
 }

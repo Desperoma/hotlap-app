@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { useRef, type ReactNode } from 'react';
+import { Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import type { LatLng } from '@/features/drives/api';
@@ -10,10 +10,17 @@ import { darkMapStyle } from '@/theme/mapStyle';
  * Carte figée d'un tracé (fin de drive, détail). La caméra se cale sur le tracé au chargement.
  * Pas de gestes : la carte sert d'aperçu, pas de navigation.
  */
-export function DriveMap({ path, style, emptyLabel = 'No route to show' }: {
+export function DriveMap({ path, style, emptyLabel = 'No route to show', lite = false, children }: {
   path: LatLng[];
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   emptyLabel?: string;
+  /**
+   * Aperçu dans une liste (fil) : sur Android, image statique (liteMode, bien plus léger) ;
+   * partout, la carte ne capte pas les touchers pour laisser le post s'ouvrir.
+   */
+  lite?: boolean;
+  /** Contenu posé par-dessus la carte (ex. stats du post) */
+  children?: ReactNode;
 }) {
   const ref = useRef<MapView>(null);
 
@@ -21,6 +28,7 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show' }: {
     return (
       <View style={[styles.box, styles.empty, style]}>
         <Text style={styles.emptyText}>{emptyLabel}</Text>
+        {children}
       </View>
     );
   }
@@ -33,9 +41,12 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show' }: {
 
   return (
     <View style={[styles.box, style]}>
+      <View style={StyleSheet.absoluteFill} pointerEvents={lite ? 'none' : 'auto'}>
       <MapView
         ref={ref}
         style={StyleSheet.absoluteFill}
+        // Cadrage immédiat sur le tracé (indispensable en liteMode, où fitToCoordinates n'agit pas).
+        initialRegion={regionFor(path)}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         customMapStyle={darkMapStyle}
         userInterfaceStyle="dark"
@@ -48,6 +59,8 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show' }: {
         rotateEnabled={false}
         pitchEnabled={false}
         toolbarEnabled={false}
+        liteMode={lite && Platform.OS === 'android'}
+        moveOnMarkerPress={false}
       >
         <Polyline coordinates={path} strokeColor={colors.accent} strokeWidth={4} />
         <Marker coordinate={path[0]} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
@@ -57,8 +70,25 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show' }: {
           <View style={styles.end} />
         </Marker>
       </MapView>
+      </View>
+      {children}
     </View>
   );
+}
+
+/** Région englobant le tracé, avec une marge de 25 %. */
+function regionFor(path: LatLng[]) {
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const p of path) {
+    minLat = Math.min(minLat, p.latitude); maxLat = Math.max(maxLat, p.latitude);
+    minLng = Math.min(minLng, p.longitude); maxLng = Math.max(maxLng, p.longitude);
+  }
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.max((maxLat - minLat) * 1.5, 0.005),
+    longitudeDelta: Math.max((maxLng - minLng) * 1.5, 0.005),
+  };
 }
 
 const styles = StyleSheet.create({
