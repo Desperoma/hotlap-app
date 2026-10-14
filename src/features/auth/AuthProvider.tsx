@@ -12,7 +12,7 @@ export type VehicleInput = { make: string; model: string; year: number | null; m
 
 /**
  * Vérifications (voir « Onboarding » dans le doc de cadrage) :
- * - l'email est obligatoire et vérifié par un code à 6 chiffres reçu par email avant toute connexion ;
+ * - l'email est obligatoire et vérifié par un code (6 à 10 chiffres) reçu par email avant toute connexion ;
  * - le téléphone est facultatif et NON vérifié : la vérification SMS est payante (fournisseur tiers),
  *   donc abandonnée. Il reste privé et ne sert pas à se connecter.
  * Côté Supabase : Auth > Providers > Email > « Confirm email » activé, et le modèle d'email
@@ -37,7 +37,7 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 const DEMO_SESSION = { user: { id: 'demo-user' } } as unknown as Session;
-const isCode = (c: string) => /^\d{6}$/.test(c.trim());
+const isCode = (c: string) => /^\d{6,10}$/.test(c.trim());
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const verifyEmail = useCallback<AuthState['verifyEmail']>(async (email, code) => {
-    if (!isCode(code)) throw new Error('Le code fait 6 chiffres.');
+    if (!isCode(code)) throw new Error('Saisis le code complet reçu par email.');
     if (!isSupabaseConfigured) {
       setProfile({ ...demoProfile(demoSignup?.username ?? 'driver'), phone: demoSignup?.phone ?? null });
       setPrimaryVehicle(null);
