@@ -4,11 +4,15 @@ import type { PendingDrive } from './pending';
 
 /**
  * Drive simulé pour tester l'app sans rouler (Expo Go, bureau, revue App Store…).
- * Uniquement dans les versions de développement (__DEV__) : jamais dans l'app publiée.
+ * Visible seulement si TEST_TOOLS : versions de développement (__DEV__) et builds EAS
+ * « preview » (EXPO_PUBLIC_TEST_TOOLS=1 dans eas.json). Jamais dans le build « production ».
  *
  * Tracé « route de col » d'environ 12 km : lignes droites en montée, épingles, puis une
  * portion sinueuse, avec un léger bruit GPS. 1 point par seconde à ~50 km/h.
  */
+/** Outils de test (drive simulé) disponibles dans cette version de l'app. */
+export const TEST_TOOLS = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
+
 export function simulatedDrive(start: { lat: number; lng: number }, now = Date.now()): PendingDrive {
   type Seg = [lengthM: number, turnDeg: number, climbM: number];
   const segs: Seg[] = [];
