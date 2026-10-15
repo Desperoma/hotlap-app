@@ -3,6 +3,7 @@ import { Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import type { LatLng } from '@/features/drives/api';
+import { MAPS_AVAILABLE } from '@/lib/maps';
 import { colors, fonts, radius } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
@@ -24,10 +25,10 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show', lite = 
 }) {
   const ref = useRef<MapView>(null);
 
-  if (path.length < 2) {
+  if (path.length < 2 || !MAPS_AVAILABLE) {
     return (
       <View style={[styles.box, styles.empty, style]}>
-        <Text style={styles.emptyText}>{emptyLabel}</Text>
+        <Text style={styles.emptyText}>{MAPS_AVAILABLE ? emptyLabel : 'Map unavailable in this version'}</Text>
         {children}
       </View>
     );
