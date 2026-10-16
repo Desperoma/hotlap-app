@@ -46,7 +46,7 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   ou circuit) : table `country_rules`, fonction `recording_context`, côté app `features/recording/authorization.ts`.
   La date de naissance est verrouillée une fois saisie. Ne jamais contourner ce contrôle.
 - Routes chronométrées : choisies par l'équipe, `timing_enabled` exige `legal_basis` + `legal_checked_at`.
-- Zone privée du domicile (migration 0007, `features/privacy`) : option activée par défaut, désactivable,
+- Zone privée du domicile (migration 0008, `features/privacy`) : option activée par défaut, désactivable,
   demandée à l'étape localisation de l'onboarding et réglable depuis le profil. L'adresse est géocodée sur le
   téléphone ; la base ne garde qu'un centre décalé au hasard (≤ 300 m) et masque 1 300 m autour, donc au
   moins 1 km autour du domicile. Ne jamais stocker l'adresse ni le point exact du domicile. `path_public` et
