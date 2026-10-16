@@ -32,7 +32,7 @@ export function ModerationSheet({ target, onClose, onBlocked }: {
   // Une alerte ouverte pendant la fermeture de la feuille peut être ignorée sur iOS : on attend la fin de l'animation.
   const later = (fn: () => void) => setTimeout(fn, 400);
 
-  const noun = target.type === 'drive' ? 'drive' : target.type === 'comment' ? 'comment' : 'driver';
+  const noun = { drive: 'drive', comment: 'comment', user: 'driver', crew: 'crew' }[target.type];
 
   const confirmBlock = () => later(() =>
     Alert.alert(`Block ${target.userName}?`, 'You won’t see each other’s drives or comments, and follows between you are removed.', [
@@ -56,7 +56,7 @@ export function ModerationSheet({ target, onClose, onBlocked }: {
     step === 'menu'
       ? [
           { label: `Report this ${noun}`, onPress: () => setStep('reasons'), keepOpen: true },
-          ...(target.type === 'user' ? [] : [{ label: `Block ${target.userName}`, onPress: confirmBlock, destructive: true }]),
+          ...(target.type === 'user' || target.type === 'crew' ? [] : [{ label: `Block ${target.userName}`, onPress: confirmBlock, destructive: true }]),
         ]
       : REPORT_REASONS.map((r) => ({
           label: r.label,

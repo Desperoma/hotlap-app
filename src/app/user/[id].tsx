@@ -3,13 +3,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
-import { Button, Card, Screen } from '@/components/ui';
+import { Button, Card, Chip, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { listUserCrews, type Crew } from '@/features/crews/api';
 import { block, isBlocked, unblock } from '@/features/moderation/api';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
-import { displayName, getPublicProfile, initials, isFollowing, setFollow } from '@/features/social/api';
+import { displayName, getPublicProfile, isFollowing, setFollow } from '@/features/social/api';
 import type { PublicProfile } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
@@ -25,6 +27,7 @@ export default function UserProfileScreen() {
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
+  const [crews, setCrews] = useState<Crew[]>([]);
 
   // Mon propre profil : l'onglet Profile.
   useEffect(() => {
@@ -38,6 +41,7 @@ export default function UserProfileScreen() {
     listDrives(id).then(setDrives).catch(() => setDrives([]));
     isFollowing(me, id).then(setFollowing).catch(() => {});
     isBlocked(me, id).then(setBlocked).catch(() => {});
+    listUserCrews(id).then(setCrews).catch(() => setCrews([]));
   }, [id, me]);
 
   useEffect(load, [load]);
@@ -62,14 +66,14 @@ export default function UserProfileScreen() {
     const next = !following;
     setBusy(true);
     setFollowing(next);
-    setCounters((c) => (c ? { ...c, crew: c.crew + (next ? 1 : -1) } : c));
+    setCounters((c) => (c ? { ...c, followers: c.followers + (next ? 1 : -1) } : c));
     try {
       await setFollow(me, id, next);
       // Les drives « Crew » deviennent visibles (ou non) : on recharge la liste.
       listDrives(id).then(setDrives).catch(() => {});
     } catch (e) {
       setFollowing(!next);
-      setCounters((c) => (c ? { ...c, crew: c.crew + (next ? -1 : 1) } : c));
+      setCounters((c) => (c ? { ...c, followers: c.followers + (next ? -1 : 1) } : c));
       Alert.alert('Follow failed', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
@@ -110,7 +114,7 @@ export default function UserProfileScreen() {
 
       <Card style={{ gap: spacing.lg }}>
         <View style={styles.identity}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>{initials(name)}</Text></View>
+          <Avatar url={profile.avatar_url} name={name} size={72} ring />
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={styles.name}>{name}</Text>
             <Text style={styles.muted}>
@@ -119,6 +123,11 @@ export default function UserProfileScreen() {
           </View>
         </View>
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+        {crews.length > 0 && (
+          <View style={styles.crews}>
+            {crews.map((c) => <Chip key={c.id} icon="people" label={c.name} onPress={() => router.push(`/crews/${c.id}`)} />)}
+          </View>
+        )}
         {!blocked && (
           <Button
             title={following ? 'Following' : 'Follow'}
@@ -134,7 +143,7 @@ export default function UserProfileScreen() {
 
       <Card style={styles.counters}>
         <Counter value={counters?.drives ?? 0} label="DRIVES" />
-        <Counter value={counters?.crew ?? 0} label="CREW" />
+        <Counter value={counters?.followers ?? 0} label="FOLLOWERS" />
         <Counter value={counters?.following ?? 0} label="FOLLOWING" />
       </Card>
 
@@ -163,11 +172,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  avatar: {
-    width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: colors.accent,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg,
-  },
-  avatarText: { ...type.h1, color: colors.text },
+  crews: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   name: { color: colors.text, fontFamily: fonts.bold, fontSize: 18 },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13 },
   bio: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },

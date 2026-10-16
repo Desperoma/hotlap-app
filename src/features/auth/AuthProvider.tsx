@@ -1,14 +1,15 @@
 import type { Session } from '@supabase/supabase-js';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { Profile, Vehicle } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export type ProfilePatch = Partial<
-  Pick<Profile, 'first_name' | 'last_name' | 'birth_date' | 'country_code' | 'region' | 'home_city' |
+  Pick<Profile, 'first_name' | 'last_name' | 'birth_date' | 'phone' | 'country_code' | 'region' | 'home_city' |
     'display_name' | 'bio' | 'avatar_url' | 'onboarded_at'>
 >;
-export type VehicleInput = { make: string; model: string; year: number | null; modelId?: number | null };
+export type VehicleInput = { make: string; model: string; year: number | null; modelId?: number | null; nickname?: string | null };
 
 /**
  * Vérifications (voir « Onboarding » dans le doc de cadrage) :
@@ -17,12 +18,18 @@ export type VehicleInput = { make: string; model: string; year: number | null; m
  *   donc abandonnée. Il reste privé et ne sert pas à se connecter.
  * Côté Supabase : Auth > Providers > Email > « Confirm email » activé, et le modèle d'email
  * « Confirm signup » doit contenir {{ .Token }}.
+ *
+ * Connexion par email OU pseudo : l'Edge Function « sign-in » (supabase/functions/sign-in) retrouve
+ * l'email côté serveur et ouvre la session. L'email n'est jamais renvoyé à l'app.
  */
 type AuthState = {
   /** undefined = chargement, null = déconnecté */
   session: Session | null | undefined;
   /** undefined = pas encore chargé */
   profile: Profile | null | undefined;
+  /** Garage : tous les véhicules de l'utilisateur, le favori en premier. undefined = pas encore chargé */
+  vehicles: Vehicle[] | undefined;
+  /** Véhicule favori (is_primary), affiché sur le profil et choisi par défaut avant un drive */
   primaryVehicle: Vehicle | null | undefined;
   isDemo: boolean;
   signIn: (identifier: string, password: string) => Promise<void>;
@@ -32,17 +39,26 @@ type AuthState = {
   resendEmailCode: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (patch: ProfilePatch) => Promise<void>;
+  /** Onboarding : crée le véhicule favori, ou le remplace si l'étape est refaite. */
   saveVehicle: (v: VehicleInput) => Promise<void>;
+  addVehicle: (v: VehicleInput, makePrimary?: boolean) => Promise<Vehicle>;
+  updateVehicle: (id: string, v: VehicleInput) => Promise<void>;
+  removeVehicle: (id: string) => Promise<void>;
+  setPrimaryVehicle: (id: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 const DEMO_SESSION = { user: { id: 'demo-user' } } as unknown as Session;
 const isCode = (c: string) => /^\d{6,10}$/.test(c.trim());
+const byPrimaryThenDate = (a: Vehicle, b: Vehicle) =>
+  Number(b.is_primary) - Number(a.is_primary) || a.created_at.localeCompare(b.created_at);
+
+type Loaded = { userId: string; profile: Profile | null; vehicles: Vehicle[] };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
-  const [primaryVehicle, setPrimaryVehicle] = useState<Vehicle | null | undefined>(undefined);
+  // Profil + garage, rattachés à l'utilisateur pour lequel ils ont été lus (voir plus bas).
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [demoSignup, setDemoSignup] = useState<{ username: string; phone: string | null } | null>(null);
 
   // --- Session ---------------------------------------------------------------
@@ -66,47 +82,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // --- Profil + véhicule principal -----------------------------------------
+  // --- Profil + garage ---------------------------------------------------------
+  // À la connexion, la session arrive avant le profil. Tant que le profil de CET utilisateur
+  // n'est pas lu, il vaut undefined (l'écran de démarrage reste affiché) : un ancien « null »
+  // ne doit jamais être pris pour « onboarding pas fait ».
   const userId = session?.user.id;
+
   useEffect(() => {
-    if (session === null) {
-      setProfile(null);
-      setPrimaryVehicle(null);
-      return;
-    }
     if (!userId || !isSupabaseConfigured) return;
+    if (loaded?.userId === userId) return; // simple rafraîchissement du jeton : rien à recharger
     let cancelled = false;
-    Promise.all([
-      supabase.from('profiles').select('*').eq('id', userId).single(),
-      supabase.from('vehicles').select('*').eq('owner_id', userId).eq('is_primary', true).maybeSingle(),
-    ]).then(([{ data: p }, { data: v }]) => {
-      if (cancelled) return;
-      setProfile((p as Profile) ?? null);
-      setPrimaryVehicle((v as Vehicle) ?? null);
-    });
+    loadAccount(userId)
+      .then((r) => !cancelled && setLoaded({ userId, ...r }))
+      .catch(() => {
+        // Profil illisible après plusieurs essais : on déconnecte plutôt que d'envoyer vers l'onboarding.
+        if (!cancelled) supabase.auth.signOut({ scope: 'local' });
+      });
     return () => {
       cancelled = true;
     };
-  }, [session, userId]);
+  }, [userId, loaded?.userId]);
+
+  const current = loaded && loaded.userId === userId ? loaded : null;
+  const profile = session === null ? null : current ? current.profile : undefined;
+  const vehicles = session === null ? [] : current ? current.vehicles : undefined;
+  const primaryVehicle = vehicles === undefined ? undefined : vehicles.find((v) => v.is_primary) ?? null;
+
+  const patchLoaded = useCallback((fn: (l: Loaded) => Loaded) => setLoaded((l) => (l ? fn(l) : l)), []);
+  const setVehicles = useCallback(
+    (fn: (v: Vehicle[]) => Vehicle[]) => patchLoaded((l) => ({ ...l, vehicles: fn(l.vehicles).sort(byPrimaryThenDate) })),
+    [patchLoaded],
+  );
 
   // --- Connexion / inscription ------------------------------------------------
   const signIn = useCallback<AuthState['signIn']>(async (identifier, password) => {
+    const id = identifier.trim();
+    if (!id || !password) throw new Error('Saisis ton email (ou ton pseudo) et ton mot de passe.');
     if (!isSupabaseConfigured) {
       // Démo : un « ancien » compte, onboarding déjà fait.
-      const p = demoProfile(identifier.split('@')[0] || 'driver');
-      setProfile({ ...p, first_name: 'Demo', birth_date: '1995-05-01', country_code: 'FR', home_city: 'Metz', onboarded_at: p.created_at });
-      setPrimaryVehicle(demoVehicle({ make: 'Audi', model: 'A3 e-tron', year: 2017 }));
+      const p = demoProfile(id.split('@')[0] || 'driver');
+      setLoaded({
+        userId: 'demo-user',
+        profile: { ...p, first_name: 'Demo', birth_date: '1995-05-01', country_code: 'FR', home_city: 'Metz', onboarded_at: p.created_at },
+        vehicles: [demoVehicle({ make: 'Audi', model: 'A3 e-tron', year: 2017 }, true)],
+      });
       setSession(DEMO_SESSION);
       return;
     }
-    // Connexion par email uniquement : retrouver l'email depuis un pseudo public l'exposerait à tous.
-    const email = identifier.trim();
-    if (!email.includes('@')) throw new Error('Connecte-toi avec ton adresse email.');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      if (error.message.toLowerCase().includes('not confirmed')) throw new Error('Email non vérifié : utilise le code reçu par email.');
-      throw error;
-    }
+    const { data, error } = await supabase.functions.invoke<{ access_token: string; refresh_token: string }>('sign-in', {
+      body: { identifier: id, password },
+    });
+    if (error) throw new Error(await functionErrorMessage(error));
+    if (!data?.access_token) throw new Error('Connexion impossible pour le moment.');
+    const { error: e } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+    if (e) throw e;
   }, []);
 
   const signUp = useCallback<AuthState['signUp']>(async ({ username, email, password, phone }) => {
@@ -137,8 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyEmail = useCallback<AuthState['verifyEmail']>(async (email, code) => {
     if (!isCode(code)) throw new Error('Saisis le code complet reçu par email.');
     if (!isSupabaseConfigured) {
-      setProfile({ ...demoProfile(demoSignup?.username ?? 'driver'), phone: demoSignup?.phone ?? null });
-      setPrimaryVehicle(null);
+      setLoaded({
+        userId: 'demo-user',
+        profile: { ...demoProfile(demoSignup?.username ?? 'driver'), phone: demoSignup?.phone ?? null },
+        vehicles: [],
+      });
       setSession(DEMO_SESSION);
       return;
     }
@@ -155,52 +187,117 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     if (isSupabaseConfigured) await supabase.auth.signOut();
     setSession(null);
+    setLoaded(null);
   }, []);
 
-  // --- Profil et véhicule -------------------------------------------------------
+  // --- Profil -------------------------------------------------------------------
   const updateProfile = useCallback<AuthState['updateProfile']>(
     async (patch) => {
       if (!userId) return;
-      if (isSupabaseConfigured) {
-        const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select().single();
-        if (error) {
-          if (error.message.includes('birth_date_locked')) throw new Error('La date de naissance ne peut plus être modifiée. Contacte le support.');
-          throw error;
-        }
-        setProfile(data as Profile);
-      } else {
-        setProfile((p) => (p ? { ...p, ...patch } : p));
+      if (!isSupabaseConfigured) {
+        patchLoaded((l) => ({ ...l, profile: l.profile ? { ...l.profile, ...patch } : l.profile }));
+        return;
       }
+      const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select().single();
+      if (error) {
+        if (error.message.includes('birth_date_locked')) throw new Error('La date de naissance ne peut plus être modifiée. Contacte le support.');
+        if (error.message.includes('profiles_bio_check')) throw new Error('La bio fait 280 caractères maximum.');
+        throw error;
+      }
+      patchLoaded((l) => ({ ...l, profile: data as Profile }));
     },
-    [userId],
+    [userId, patchLoaded],
+  );
+
+  // --- Garage ---------------------------------------------------------------------
+  const addVehicle = useCallback<AuthState['addVehicle']>(
+    async (v, makePrimary = false) => {
+      if (!userId) throw new Error('Not signed in');
+      const first = (current?.vehicles.length ?? 0) === 0;
+      const primary = makePrimary || first;
+      if (!isSupabaseConfigured) {
+        const created = demoVehicle(v, primary);
+        setVehicles((list) => [...list.map((x) => (primary ? { ...x, is_primary: false } : x)), created]);
+        return created;
+      }
+      const { data, error } = await supabase
+        .from('vehicles')
+        .insert({ owner_id: userId, make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, is_primary: false })
+        .select()
+        .single();
+      if (error) throw garageError(error);
+      let created = data as Vehicle;
+      if (primary) {
+        const { error: e } = await supabase.rpc('set_primary_vehicle', { p_vehicle_id: created.id });
+        if (e) throw e;
+        created = { ...created, is_primary: true };
+      }
+      setVehicles((list) => [...list.map((x) => (primary ? { ...x, is_primary: false } : x)), created]);
+      return created;
+    },
+    [userId, current?.vehicles.length, setVehicles],
+  );
+
+  const updateVehicle = useCallback<AuthState['updateVehicle']>(
+    async (id, v) => {
+      const patch = { make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null };
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from('vehicles').update(patch).eq('id', id);
+        if (error) throw garageError(error);
+      }
+      setVehicles((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    },
+    [setVehicles],
+  );
+
+  const removeVehicle = useCallback<AuthState['removeVehicle']>(
+    async (id) => {
+      if (isSupabaseConfigured) {
+        // La base désigne un nouveau favori si besoin (trigger) ; les drives gardent leurs stats.
+        const { error } = await supabase.from('vehicles').delete().eq('id', id);
+        if (error) throw error;
+        if (userId) {
+          const { data } = await supabase.from('vehicles').select('*').eq('owner_id', userId);
+          if (data) return setVehicles(() => data as Vehicle[]);
+        }
+      }
+      setVehicles((list) => {
+        const rest = list.filter((x) => x.id !== id);
+        if (rest.length && !rest.some((x) => x.is_primary)) rest[0] = { ...rest[0], is_primary: true };
+        return rest;
+      });
+    },
+    [userId, setVehicles],
+  );
+
+  const setPrimaryVehicle = useCallback<AuthState['setPrimaryVehicle']>(
+    async (id) => {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.rpc('set_primary_vehicle', { p_vehicle_id: id });
+        if (error) throw error;
+      }
+      setVehicles((list) => list.map((x) => ({ ...x, is_primary: x.id === id })));
+    },
+    [setVehicles],
   );
 
   const saveVehicle = useCallback<AuthState['saveVehicle']>(
-    async ({ make, model, year, modelId }) => {
-      if (!userId) return;
-      if (!isSupabaseConfigured) {
-        setPrimaryVehicle(demoVehicle({ make, model, year }));
-        return;
-      }
-      // Remplace le véhicule principal s'il existe déjà (onboarding repris).
-      await supabase.from('vehicles').update({ is_primary: false }).eq('owner_id', userId).eq('is_primary', true);
-      const { data, error } = await supabase
-        .from('vehicles')
-        .insert({ owner_id: userId, make, model, year, model_id: modelId ?? null, is_primary: true })
-        .select()
-        .single();
-      if (error) throw error;
-      setPrimaryVehicle(data as Vehicle);
+    async (v) => {
+      // Onboarding repris : on corrige le favori existant au lieu d'en créer un deuxième.
+      if (primaryVehicle) return updateVehicle(primaryVehicle.id, v);
+      await addVehicle(v, true);
     },
-    [userId],
+    [primaryVehicle, updateVehicle, addVehicle],
   );
 
   const value = useMemo<AuthState>(
     () => ({
-      session, profile, primaryVehicle, isDemo: !isSupabaseConfigured,
-      signIn, signUp, verifyEmail, resendEmailCode, signOut, updateProfile, saveVehicle,
+      session, profile, vehicles, primaryVehicle, isDemo: !isSupabaseConfigured,
+      signIn, signUp, verifyEmail, resendEmailCode, signOut, updateProfile,
+      saveVehicle, addVehicle, updateVehicle, removeVehicle, setPrimaryVehicle,
     }),
-    [session, profile, primaryVehicle, signIn, signUp, verifyEmail, resendEmailCode, signOut, updateProfile, saveVehicle],
+    [session, profile, vehicles, primaryVehicle, signIn, signUp, verifyEmail, resendEmailCode, signOut, updateProfile,
+      saveVehicle, addVehicle, updateVehicle, removeVehicle, setPrimaryVehicle],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -212,6 +309,41 @@ export function useAuth() {
   return ctx;
 }
 
+/** Profil + garage. Une erreur réseau n'est pas « pas de profil » : on réessaie avant de conclure. */
+async function loadAccount(uid: string): Promise<{ profile: Profile | null; vehicles: Vehicle[] }> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const [p, v] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+      supabase.from('vehicles').select('*').eq('owner_id', uid),
+    ]);
+    if (!p.error && !v.error) {
+      return { profile: (p.data as Profile) ?? null, vehicles: ((v.data ?? []) as Vehicle[]).sort(byPrimaryThenDate) };
+    }
+    lastError = p.error ?? v.error;
+    await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+  }
+  throw lastError;
+}
+
+/** Message lisible renvoyé par l'Edge Function sign-in ({ error: "..." }). */
+async function functionErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = (await error.context.json()) as { error?: string };
+      if (body?.error) return body.error;
+    } catch {
+      // corps illisible : message générique ci-dessous
+    }
+  }
+  return 'Connexion impossible. Vérifie ta connexion internet.';
+}
+
+function garageError(error: { message: string }) {
+  if (error.message.includes('garage_full')) return new Error('Ton garage est plein (20 véhicules maximum).');
+  return error;
+}
+
 function demoProfile(username: string): Profile {
   return {
     id: 'demo-user', username, display_name: username, first_name: null, last_name: null,
@@ -220,9 +352,9 @@ function demoProfile(username: string): Profile {
   };
 }
 
-function demoVehicle({ make, model, year }: { make: string; model: string; year: number | null }): Vehicle {
+function demoVehicle(v: VehicleInput, primary: boolean): Vehicle {
   return {
-    id: 'demo-vehicle', owner_id: 'demo-user', model_id: null, make, model, year,
-    nickname: null, photo_url: null, is_primary: true, created_at: new Date().toISOString(),
+    id: `demo-vehicle-${Date.now()}`, owner_id: 'demo-user', model_id: null, make: v.make, model: v.model, year: v.year,
+    nickname: v.nickname ?? null, photo_url: null, is_primary: primary, created_at: new Date().toISOString(),
   };
 }

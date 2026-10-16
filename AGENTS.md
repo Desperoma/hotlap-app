@@ -2,7 +2,7 @@
 
 HotLap est un « Strava de la voiture » : l'utilisateur enregistre des drives (tracé GPS, stats, G-force,
 photos/vidéos), les publie et interagit avec ceux des autres (likes, commentaires, fil Following,
-Local Discover, Clubs). App mobile Expo + backend Supabase. Lire README.md pour l'arborescence.
+Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.md pour l'arborescence.
 
 ## Vocabulaire du domaine
 
@@ -10,8 +10,12 @@ Local Discover, Clubs). App mobile Expo + backend Supabase. Lire README.md pour 
 - **Route** : tronçon de route ouverte, réutilisable par plusieurs drives pour les comparer (table `routes`).
 - **Circuit** : circuit réel ou route fermée, utilisable par des drives, avec chrono (table `circuits`).
 - **Post** : un drive publié dans le fil.
-- **Garage / Machine** : les véhicules de l'utilisateur (table `vehicles`, un seul `is_primary`).
-- **Crew** : abonnés ; **Following** : abonnements (table `follows`).
+- **Garage / Machine** : les véhicules de l'utilisateur (table `vehicles`, 20 max, un seul favori `is_primary`).
+  Chaque drive a son véhicule (`drives.vehicle_id`), choisi avant le départ et modifiable au récap.
+- **Followers / Following** : abonnés / abonnements (table `follows`). La visibilité `followers` d'un drive
+  s'affiche « Followers ».
+- **Crew** : groupe de conducteurs (tables `crews`, `crew_members`), ouvert ou sur demande, rôles owner / admin /
+  member. Écritures uniquement via les fonctions SQL (`create_crew`, `join_crew`…), fil `feed_crews`.
 
 ## Règles produit à respecter
 
@@ -27,7 +31,12 @@ Local Discover, Clubs). App mobile Expo + backend Supabase. Lire README.md pour 
   propriétaire par `my_drive_private`. Les points bruts (`drive_points`) ne sont lisibles que par le propriétaire.
 - Un drive terminé est gardé sur le téléphone (`features/drives/pending.ts`) jusqu'à sa sauvegarde ou son abandon.
 - Le profil complet (nom, date de naissance, téléphone) n'est lisible que par son propriétaire ;
-  les autres passent par la vue `public_profiles`.
+  les autres passent par la vue `public_profiles`. Photo de profil : bucket public `avatars/<user_id>/`.
+- Connexion par email ou pseudo via l'Edge Function `sign-in` (l'email n'est jamais renvoyé à l'app,
+  essais limités par `login_attempts`). Le profil est rattaché à l'utilisateur pour lequel il a été lu :
+  ne jamais considérer `profile === null` comme « onboarding à faire » avant la fin du chargement.
+- Fil : l'aperçu du tracé de chaque post vient de `drive_path_previews` (une requête par page, mêmes zones
+  de confidentialité que `drive_path_public`).
 - Catalogue véhicules : Wikidata (`npm run catalog:import`) + saisie manuelle via `propose_vehicle`, qui
   dédoublonne (nom normalisé `catalog_key`, alias, proximité pg_trgm). Jamais d'insertion directe dans le catalogue.
 - Onboarding en 5 étapes : 20 % compte (Register + code reçu par email),
@@ -38,7 +47,7 @@ Local Discover, Clubs). App mobile Expo + backend Supabase. Lire README.md pour 
   La date de naissance est verrouillée une fois saisie. Ne jamais contourner ce contrôle.
 - Routes chronométrées : choisies par l'équipe, `timing_enabled` exige `legal_basis` + `legal_checked_at`.
 - Drives privés par défaut ; la visibilité (`private`, `followers`, `public`) est appliquée par la RLS.
-- Modération (exigée par les stores) : tout contenu d'un autre utilisateur (drive, commentaire, profil) doit
+- Modération (exigée par les stores) : tout contenu d'un autre utilisateur (drive, commentaire, profil, crew) doit
   offrir « Signaler » et « Bloquer » (`ModerationSheet`, table `reports`, table `blocks`). Le blocage est
   appliqué par `can_see_drive` et la RLS des commentaires. Suppression du compte : `delete_my_account`.
 - Aucune interaction requise pendant la conduite : gros boutons, pas de saisie pendant l'enregistrement.

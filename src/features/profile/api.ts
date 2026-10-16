@@ -2,7 +2,7 @@ import { DRIVE_COLUMNS } from '@/features/drives/api';
 import type { ScoreBreakdown, Visibility } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
-export type ProfileCounters = { drives: number; crew: number; following: number; bestScore: number | null };
+export type ProfileCounters = { drives: number; followers: number; following: number; bestScore: number | null };
 
 export type DriveLogItem = {
   id: string;
@@ -17,20 +17,20 @@ export type DriveLogItem = {
   visibility: Visibility;
 };
 
-/** Compteurs du profil : drives, crew (abonnés), following (abonnements), meilleur score. */
+/** Compteurs du profil : drives, followers (abonnés), following (abonnements), meilleur score. */
 export async function getCounters(userId: string): Promise<ProfileCounters> {
-  if (!isSupabaseConfigured) return { drives: 0, crew: 0, following: 0, bestScore: null };
-  const [drives, crew, following, best] = await Promise.all([
+  if (!isSupabaseConfigured) return { drives: 0, followers: 0, following: 0, bestScore: null };
+  const [drives, followers, following, best] = await Promise.all([
     supabase.from('drives').select('id', { count: 'exact', head: true }).eq('owner_id', userId),
     supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
     supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', userId),
     supabase.from('drives').select('score').eq('owner_id', userId).not('score', 'is', null)
       .order('score', { ascending: false }).limit(1).maybeSingle(),
   ]);
-  for (const r of [drives, crew, following, best]) if (r.error) throw r.error;
+  for (const r of [drives, followers, following, best]) if (r.error) throw r.error;
   return {
     drives: drives.count ?? 0,
-    crew: crew.count ?? 0,
+    followers: followers.count ?? 0,
     following: following.count ?? 0,
     bestScore: (best.data as { score: number } | null)?.score ?? null,
   };

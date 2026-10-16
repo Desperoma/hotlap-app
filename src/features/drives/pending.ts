@@ -17,6 +17,8 @@ export type PendingDrive = {
   /** Circuit détecté au départ (recording_context), sinon null = route ouverte */
   circuitId: string | null;
   circuitName: string | null;
+  /** Véhicule choisi avant le départ (garage) ; modifiable sur le récap. Absent sur les anciens drives en attente. */
+  vehicleId?: string | null;
 };
 
 const KEY = 'hotlap/pending-drive';

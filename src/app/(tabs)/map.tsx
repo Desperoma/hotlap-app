@@ -6,8 +6,10 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { MAPS_AVAILABLE } from '@/lib/maps';
 import { getPendingDrive, setPendingDrive } from '@/features/drives/pending';
 import { simulatedDrive, TEST_TOOLS } from '@/features/drives/simulate';
 import { checkRecording, refusalMessage, type RecordingContext } from '@/features/recording/authorization';
@@ -18,7 +20,7 @@ import { darkMapStyle } from '@/theme/mapStyle';
 
 /** Live Drive Map : carte, démarrage, stats live, arrêt et sauvegarde du drive. */
 export default function MapScreen() {
-  const { profile } = useAuth();
+  const { profile, primaryVehicle, vehicles } = useAuth();
   const { status, points, stats, recorder } = useRecorder();
   const mapRef = useRef<MapView>(null);
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
@@ -26,6 +28,13 @@ export default function MapScreen() {
   const [gps, setGps] = useState<'searching' | 'ok' | 'denied'>('searching');
   const [where, setWhere] = useState<RecordingContext | null>(null);
   const [checking, setChecking] = useState(false);
+  // Véhicule du prochain drive : le favori par défaut, modifiable avant le départ.
+  const [vehicleId, setVehicleId] = useState<string | null | undefined>(undefined);
+  const chosenVehicle = vehicleId === undefined ? primaryVehicle?.id ?? null : vehicleId;
+  useEffect(() => {
+    // Véhicule retiré du garage entre-temps : retour au favori.
+    if (vehicleId && vehicles && !vehicles.some((v) => v.id === vehicleId)) setVehicleId(undefined);
+  }, [vehicleId, vehicles]);
 
   // Permission « pendant l'utilisation » à l'ouverture de la carte (pas avant, cf. maquette).
   useEffect(() => {
@@ -95,7 +104,7 @@ export default function MapScreen() {
     const pos = await Location.getLastKnownPositionAsync().catch(() => null);
     // À défaut de position : départ de la route du col de Turini.
     const origin = pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : { lat: 43.991, lng: 7.336 };
-    await setPendingDrive(simulatedDrive(origin));
+    await setPendingDrive(simulatedDrive(origin, chosenVehicle));
     router.push('/drive/finish');
   };
 
@@ -110,6 +119,7 @@ export default function MapScreen() {
       points: finished.points,
       circuitId: where?.circuitId ?? null,
       circuitName: where?.circuitName ?? null,
+      vehicleId: chosenVehicle,
     });
     router.push('/drive/finish');
   };
@@ -118,6 +128,8 @@ export default function MapScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Sans clé Google Maps (Android), pas de carte : l'enregistrement fonctionne quand même. */}
+      {MAPS_AVAILABLE ? (
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
@@ -138,6 +150,11 @@ export default function MapScreen() {
           />
         )}
       </MapView>
+      ) : (
+        <View style={styles.noMap}>
+          <Text style={styles.panelText}>Map unavailable in this version. Recording still works.</Text>
+        </View>
+      )}
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
         <View style={styles.brand}>
@@ -196,6 +213,7 @@ export default function MapScreen() {
             <Text style={styles.panelText}>
               Start a drive to draw your route live. HotLap ignores weak GPS fixes for a cleaner track.
             </Text>
+            <VehicleSelect compact label="Car for this drive" value={chosenVehicle} onChange={setVehicleId} />
             <Button title="START DRIVE" icon="radio-button-on" trailingIcon="arrow-forward" onPress={start}
               disabled={gps === 'denied'} loading={checking} />
             <Text style={styles.footnote}>Precise GPS · Live route · Private by default</Text>
@@ -235,6 +253,7 @@ const glass = { backgroundColor: 'rgba(22,25,22,0.92)', borderWidth: 1, borderCo
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  noMap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   top: { position: 'absolute', top: 0, left: 0, right: 0, padding: spacing.lg, gap: spacing.md },
   brand: { ...glass, flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.md },
   brandIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },

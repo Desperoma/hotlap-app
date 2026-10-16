@@ -7,6 +7,13 @@ import type { ExpoConfig } from "expo/config";
 // Identifiant du projet EAS, affiché par `npx eas-cli@latest init` (pas un secret).
 const EAS_PROJECT_ID = '2917e236-175f-4b58-a141-f86c1179dd06'; // @hotlaphar/hotlap
 
+// Sans clé, le SDK Google Maps ferme l'app Android dès qu'une carte s'affiche. L'app lit
+// extra.androidMapsKey (vrai / faux, jamais la clé elle-même) et n'affiche alors pas de carte.
+const ANDROID_MAPS_KEY = process.env.GOOGLE_MAPS_ANDROID_API_KEY?.trim() || undefined;
+if (!ANDROID_MAPS_KEY && process.env.EAS_BUILD_PLATFORM === 'android') {
+  console.warn('GOOGLE_MAPS_ANDROID_API_KEY absente : les cartes seront désactivées dans ce build Android.');
+}
+
 const config: ExpoConfig = {
   "name": "HotLap",
   "slug": "hotlap",
@@ -61,10 +68,13 @@ const config: ExpoConfig = {
     [
       "react-native-maps",
       {
-        "androidGoogleMapsApiKey": process.env.GOOGLE_MAPS_ANDROID_API_KEY
+        "androidGoogleMapsApiKey": ANDROID_MAPS_KEY
       }
     ]
   ],
+  "extra": {
+    "androidMapsKey": !!ANDROID_MAPS_KEY
+  },
   "experiments": {
     "typedRoutes": true
   }

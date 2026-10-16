@@ -65,10 +65,17 @@ src/
     (auth)/verify-email   saisie du code reçu par email
     onboarding/index.tsx  Account Setup : identité, localisation, véhicule, GPS (40 → 100 %)
     (tabs)/               Discover, Community, Record (+), Map, Profile
-    drive/[id].tsx        détail d'un drive
+    drive/[id].tsx        détail d'un drive (véhicule, visibilité, suppression pour le propriétaire)
+    drive/finish.tsx      récap de fin de drive : véhicule, titre, photos, visibilité
+    edit-profile.tsx      modifier son profil (photo, bio, ville ; nom et téléphone privés)
+    garage/               garage : véhicule favori, ajout, modification, suppression
+    crews/                crews : mes crews, recherche, création, détail et gestion des membres
+    user/[id].tsx         profil public d'un autre conducteur
   components/             TabBar, DriveCard, GForceCard, Picker, ui/ (Button, Card, TextField…)
   features/
-    auth/                 AuthProvider (session, profil, véhicule principal)
+    auth/                 AuthProvider (session, profil, garage et véhicule favori)
+    garage/               formulaire véhicule (catalogue ou saisie manuelle)
+    crews/                accès aux crews (fonctions SQL)
     recording/            tâche GPS d'arrière-plan, filtre GPS, stats, G-force, autorisation d'enregistrer
     drives/               sauvegarde d'un drive dans Supabase
     onboarding/           étapes de l'onboarding et validation (âge minimum dans src/config.ts)
@@ -78,6 +85,9 @@ src/
   data/                   données factices et catalogue véhicules
 supabase/
   migrations/0001_init.sql  15 tables, RLS, fil, autour de moi, profils publics, règles d'âge, catalogue dédoublonné
+  migrations/0002…0006      confidentialité des tracés, photos, fil World, modération, durcissement
+  migrations/0007…          garage, crews, aperçu des tracés du fil, photo de profil, essais de connexion
+  functions/sign-in/        Edge Function : connexion par email ou pseudo (déployée sans vérification JWT)
   seed.sql                  catalogue marques et modèles
 scripts/
   score-scenarios.ts        compare les formules de score (npm run score:check)

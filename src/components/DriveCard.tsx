@@ -3,11 +3,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
+import { DriveMap } from '@/components/DriveMap';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Card } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatKm } from '@/features/recording/geo';
-import { displayName, initials as toInitials, setLike } from '@/features/social/api';
+import { displayName, setLike } from '@/features/social/api';
 import type { DriveFeedItem } from '@/lib/database.types';
 import { colors, fonts, radius, type } from '@/theme';
 
@@ -17,7 +19,6 @@ export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocke
   const [liked, setLiked] = useState(drive.liked_by_me);
   const likes = drive.like_count + (liked === drive.liked_by_me ? 0 : liked ? 1 : -1);
   const name = displayName(drive.author);
-  const initials = toInitials(name);
   const openAuthor = () => router.push(`/user/${drive.owner_id}`);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
   const isMine = session?.user.id === drive.owner_id;
@@ -39,7 +40,7 @@ export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocke
     <Card onPress={() => router.push(`/drive/${drive.id}`)} style={{ gap: 12 }}>
       <View style={styles.header}>
         <Pressable onPress={openAuthor} style={styles.authorLink} accessibilityLabel={`Open ${name}'s profile`}>
-          <View style={styles.avatar}><Text style={styles.initials}>{initials}</Text></View>
+          <Avatar url={drive.author.avatar_url} name={name} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={styles.author}>{name}</Text>
             <Text style={styles.time}>{timeAgo(drive.created_at)}</Text>
@@ -66,14 +67,13 @@ export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocke
       <Text style={styles.title}>{drive.title}</Text>
       {drive.description ? <Text style={styles.desc}>{drive.description}</Text> : null}
 
-      <View style={styles.preview}>
-        <Ionicons name="git-network-outline" size={36} color={colors.routeBlue} />
-        <View style={styles.stats}>
+      <DriveMap path={drive.path_preview} lite style={styles.preview} emptyLabel="Route hidden">
+        <View style={styles.stats} pointerEvents="none">
           <Stat value={`${formatKm(drive.distance_m)} km`} label="DISTANCE" />
           <Stat value={`${Math.round(drive.duration_s / 60)}m`} label="TIME" />
           {drive.score != null && <Stat value={String(drive.score)} label="SCORE" />}
         </View>
-      </View>
+      </DriveMap>
 
       <View style={styles.actions}>
         <Pressable style={styles.action} onPress={toggleLike} hitSlop={8} accessibilityLabel={liked ? 'Unlike' : 'Like'}>
@@ -110,11 +110,6 @@ function timeAgo(iso: string) {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   authorLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bgElevated,
-    borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
-  },
-  initials: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 13 },
   author: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
   time: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12 },
   vehicle: {
@@ -124,11 +119,12 @@ const styles = StyleSheet.create({
   vehicleText: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 11 },
   title: { ...type.h2, color: colors.text, fontFamily: fonts.bold, fontSize: 18 },
   desc: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
-  preview: {
-    height: 180, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.routeBlue,
-    backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center',
+  preview: { height: 190, borderRadius: radius.md },
+  // Bandeau lisible par-dessus la carte
+  stats: {
+    position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 32,
+    paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'rgba(14,16,14,0.78)',
   },
-  stats: { position: 'absolute', left: 16, bottom: 14, flexDirection: 'row', gap: 40 },
   statValue: { color: colors.text, fontFamily: fonts.display, fontSize: 16 },
   statLabel: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 10, letterSpacing: 0.5 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 20 },

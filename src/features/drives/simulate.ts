@@ -13,7 +13,7 @@ import type { PendingDrive } from './pending';
 /** Outils de test (drive simulé) disponibles dans cette version de l'app. */
 export const TEST_TOOLS = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
 
-export function simulatedDrive(start: { lat: number; lng: number }, now = Date.now()): PendingDrive {
+export function simulatedDrive(start: { lat: number; lng: number }, vehicleId: string | null = null, now = Date.now()): PendingDrive {
   type Seg = [lengthM: number, turnDeg: number, climbM: number];
   const segs: Seg[] = [];
   for (let i = 0; i < 12; i++) segs.push([450, 0, 28], [45, i % 2 ? 165 : -165, 4]); // épingles
@@ -55,5 +55,5 @@ export function simulatedDrive(start: { lat: number; lng: number }, now = Date.n
       }
     }
   }
-  return { startedAt, endedAt: t, points, circuitId: null, circuitName: null };
+  return { startedAt, endedAt: t, points, circuitId: null, circuitName: null, vehicleId };
 }

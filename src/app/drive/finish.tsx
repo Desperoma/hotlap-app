@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { DriveMap } from '@/components/DriveMap';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
+import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Card, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { saveDrive } from '@/features/drives/api';
@@ -17,13 +18,13 @@ import { colors, fonts, spacing, type } from '@/theme';
 
 const VISIBILITY: { value: Visibility; label: string }[] = [
   { value: 'private', label: 'Only me' },
-  { value: 'followers', label: 'Crew' },
+  { value: 'followers', label: 'Followers' },
   { value: 'public', label: 'Everyone' },
 ];
 
 const VISIBILITY_HINT: Record<Visibility, string> = {
   private: 'Only you can see this drive.',
-  followers: 'Your crew can see it. Start and finish are hidden.',
+  followers: 'Drivers who follow you can see it. Start and finish are hidden.',
   public: 'Everyone can see it. Start and finish are hidden.',
 };
 
@@ -32,18 +33,20 @@ const VISIBILITY_HINT: Record<Visibility, string> = {
  * Le drive reste dans pending.ts tant qu'il n'est pas sauvegardé ou abandonné.
  */
 export default function FinishDriveScreen() {
-  const { session, primaryVehicle } = useAuth();
+  const { session, primaryVehicle, vehicles } = useAuth();
   const [drive, setDrive] = useState<PendingDrive | null | undefined>(undefined);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('private');
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [vehicleId, setVehicleId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     getPendingDrive().then((d) => {
       setDrive(d);
       if (d) setTitle(defaultTitle(d.startedAt));
+      if (d && d.vehicleId !== undefined) setVehicleId(d.vehicleId);
     });
   }, []);
 
@@ -69,6 +72,9 @@ export default function FinishDriveScreen() {
   }
 
   const tooShort = drive.points.length < 2;
+  // Véhicule choisi avant le départ, sinon le favori ; un véhicule retiré du garage entre-temps est ignoré.
+  const picked = vehicleId === undefined ? primaryVehicle?.id ?? null : vehicleId;
+  const chosenVehicle = picked && vehicles?.some((v) => v.id === picked) ? picked : null;
 
   const save = async () => {
     if (!session) return;
@@ -78,7 +84,7 @@ export default function FinishDriveScreen() {
     try {
       const { id } = await saveDrive({
         ownerId: session.user.id,
-        vehicleId: primaryVehicle?.id ?? null,
+        vehicleId: chosenVehicle,
         circuitId: drive.circuitId,
         title: t.slice(0, 80),
         description: description.trim() || undefined,
@@ -145,6 +151,8 @@ export default function FinishDriveScreen() {
       </Card>
 
       <ScoreCard score={summary.score} breakdown={summary.breakdown} />
+
+      <VehicleSelect label="Car" value={chosenVehicle} onChange={setVehicleId} />
 
       <TextField label="Title" icon="flag-outline" value={title} onChangeText={setTitle} maxLength={80}
         autoCapitalize="sentences" />
