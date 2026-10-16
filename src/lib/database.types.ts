@@ -110,5 +110,6 @@ export interface DriveFeedItem extends Drive {
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
   liked_by_me: boolean;
   /** Aperçu du tracé (simplifié, sans les zones de confidentialité pour les autres). Vide si masqué. */
-  path_preview: { latitude: number; longitude: number }[];
+  /** Un tracé, ou plusieurs morceaux quand la zone privée du domicile le coupe */
+  path_preview: { latitude: number; longitude: number }[] | { latitude: number; longitude: number }[][];
 }

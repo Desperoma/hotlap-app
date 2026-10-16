@@ -145,7 +145,7 @@ export default function DriveDetailScreen() {
 
       <DriveMap
         path={drive.path}
-        emptyLabel={drive.isMine ? 'No route recorded' : 'Route hidden (too short to share)'}
+        emptyLabel={drive.isMine ? 'No route recorded' : 'Route hidden (inside the driver’s private zone)'}
       />
 
       <PhotoStrip uris={photos} size={140} />

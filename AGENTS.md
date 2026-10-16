@@ -27,8 +27,8 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
 - `max_speed_kmh` n'est jamais affichée publiquement. Depuis la migration 0002, `max_speed_kmh`, `path` et
   `start_point` ne sont pas lisibles directement (privilèges par colonne) : ne jamais faire `select('*')` sur
   `drives`, utiliser `DRIVE_COLUMNS` (`features/drives/api.ts`). Le tracé s'obtient par `drive_path_public`
-  (complet pour le propriétaire, sans 1,6 km au départ et à l'arrivée pour les autres), la vitesse max du
-  propriétaire par `my_drive_private`. Les points bruts (`drive_points`) ne sont lisibles que par le propriétaire.
+  (complet pour le propriétaire ; pour les autres, `path_public`, sans la zone privée du domicile, en
+  LineString ou MultiLineString), la vitesse max du propriétaire par `my_drive_private`. Les points bruts (`drive_points`) ne sont lisibles que par le propriétaire.
 - Un drive terminé est gardé sur le téléphone (`features/drives/pending.ts`) jusqu'à sa sauvegarde ou son abandon.
 - Le profil complet (nom, date de naissance, téléphone) n'est lisible que par son propriétaire ;
   les autres passent par la vue `public_profiles`. Photo de profil : bucket public `avatars/<user_id>/`.
@@ -46,6 +46,12 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   ou circuit) : table `country_rules`, fonction `recording_context`, côté app `features/recording/authorization.ts`.
   La date de naissance est verrouillée une fois saisie. Ne jamais contourner ce contrôle.
 - Routes chronométrées : choisies par l'équipe, `timing_enabled` exige `legal_basis` + `legal_checked_at`.
+- Zone privée du domicile (migration 0007, `features/privacy`) : option activée par défaut, désactivable,
+  demandée à l'étape localisation de l'onboarding et réglable depuis le profil. L'adresse est géocodée sur le
+  téléphone ; la base ne garde qu'un centre décalé au hasard (≤ 300 m) et masque 1 300 m autour, donc au
+  moins 1 km autour du domicile. Ne jamais stocker l'adresse ni le point exact du domicile. `path_public` et
+  `start_point_public` sont calculés par trigger (jamais écrits par l'app) ; Local Discover cherche sur
+  `start_point_public`.
 - Drives privés par défaut ; la visibilité (`private`, `followers`, `public`) est appliquée par la RLS.
 - Modération (exigée par les stores) : tout contenu d'un autre utilisateur (drive, commentaire, profil, crew) doit
   offrir « Signaler » et « Bloquer » (`ModerationSheet`, table `reports`, table `blocks`). Le blocage est

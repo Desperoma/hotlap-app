@@ -118,6 +118,7 @@ export default function ProfileScreen() {
         <Shortcut icon="radio-button-on" title="Record a drive" text="Log a new road session" onPress={() => router.push('/record')} />
         <Shortcut icon="map-outline" title="Explore the map" text="Find roads and drivers nearby" onPress={() => router.push('/map')} />
         <Shortcut icon="people-outline" title="Crews" text="Create, join or manage your crews" onPress={() => router.push('/crews')} />
+        <Shortcut icon="home-outline" title="Private zone" text="Hide your drives near home" onPress={() => router.push('/settings/privacy-zone')} />
       </Card>
 
       <View style={styles.tabs}>
