@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 140 1000 480">
+  <!-- Silhouette générique HotLap : voiture de sport vue de 3/4 avant, tournée vers la droite.
+       Sert tant que le modèle de l'utilisateur n'a pas son visuel. Tons neutres (pas de couleur de carrosserie). -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4c524c"/>
+      <stop offset="0.5" stop-color="#2f342f"/>
+      <stop offset="1" stop-color="#161916"/>
+    </linearGradient>
+    <linearGradient id="hood" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0" stop-color="#4a504a"/>
+      <stop offset="0.55" stop-color="#5e655e"/>
+      <stop offset="1" stop-color="#323732"/>
+    </linearGradient>
+    <linearGradient id="fender" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6a716a"/>
+      <stop offset="1" stop-color="#323732"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f342f"/>
+      <stop offset="1" stop-color="#1b1e1b"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0c0b"/>
+      <stop offset="0.6" stop-color="#191c19"/>
+      <stop offset="1" stop-color="#080908"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0.45" stop-color="#fff" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="lamp" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="1"/>
+    </linearGradient>
+    <radialGradient id="ground" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="tyre" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.62" stop-color="#1c1f1c"/>
+      <stop offset="0.66" stop-color="#4a504a"/>
+      <stop offset="0.7" stop-color="#0b0c0b"/>
+      <stop offset="1" stop-color="#050605"/>
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-200%" width="140%" height="500%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+
+  <!-- ombre au sol -->
+  <ellipse cx="500" cy="596" rx="540" ry="40" fill="url(#ground)"/>
+
+  <!-- roues -->
+  <ellipse cx="160" cy="540" rx="96" ry="84" fill="url(#tyre)"/>
+  <path d="M830,515 C 845,575 905,592 940,560 L 942,505 Z" fill="#060706"/>
+
+  <!-- carrosserie (silhouette complète) -->
+  <path d="M0,226 C 130,196 280,168 432,160 L 482,166
+           C 528,202 562,230 604,250
+           C 690,258 760,262 812,282
+           C 860,296 905,318 932,346
+           C 952,370 958,400 952,438
+           L 940,500 C 910,538 830,560 700,566 L 410,566
+           C 340,566 296,562 262,552
+           C 266,500 236,448 178,440 C 118,436 78,474 64,522
+           L 0,528 Z" fill="url(#body)"/>
+
+  <!-- aile avant droite, au-dessus du phare -->
+  <path d="M604,250 C 690,258 760,262 812,282 C 860,296 905,318 932,346
+           C 880,340 800,332 720,326 C 690,300 650,272 604,250 Z" fill="url(#fender)"/>
+  <!-- capot -->
+  <path d="M0,262 C 200,248 420,244 604,250 C 650,272 690,300 720,326
+           C 560,320 300,316 0,318 Z" fill="url(#hood)"/>
+  <!-- nervures du capot -->
+  <path d="M120,300 C 300,292 480,292 640,302" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
+  <path d="M0,318 C 300,316 560,320 720,326 C 800,332 880,340 932,346" fill="none" stroke="#fff" stroke-opacity="0.16" stroke-width="2"/>
+
+  <!-- pare-brise -->
+  <path d="M0,230 C 130,200 280,174 430,166 L 474,171
+           C 514,204 552,230 594,250 C 420,244 210,248 0,258 Z" fill="url(#glass)"/>
+  <path d="M110,212 C 210,194 300,182 392,177 L 312,232 C 240,234 172,238 110,242 Z" fill="#fff" opacity="0.045"/>
+
+  <!-- liseré de lumière -->
+  <path d="M0,226 C 130,196 280,168 432,160 L 482,166 C 528,202 562,230 604,250
+           C 690,258 760,262 812,282 C 860,296 905,318 932,346"
+        fill="none" stroke="url(#rim)" stroke-width="2.5"/>
+
+  <!-- face avant -->
+  <path d="M272,326 C 420,322 600,326 720,330 C 800,334 880,340 932,348
+           C 950,372 954,404 948,440 C 780,456 520,458 274,446
+           C 264,410 264,360 272,326 Z" fill="url(#face)"/>
+
+  <!-- phare droit (proche) : forme effilée -->
+  <path d="M700,340 C 780,344 870,350 928,358 C 930,372 924,384 912,392
+           C 860,388 780,384 742,380 C 728,368 714,354 700,340 Z" fill="#070807"/>
+  <path d="M748,370 C 800,372 860,374 914,370" fill="none" stroke="url(#lamp)" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M748,370 C 800,372 860,374 914,370" fill="none" stroke="url(#lamp)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M780,384 L 800,374 M 820,386 L 840,375 M 860,388 L 880,376" stroke="#fff" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- phare gauche (éloigné) -->
+  <path d="M276,334 C 330,333 380,334 416,338 C 406,350 394,358 380,364 L 280,362 C 276,352 275,344 276,334 Z" fill="#070807"/>
+  <path d="M290,350 C 330,350 370,350 400,346" fill="none" stroke="#fff" stroke-opacity="0.7" stroke-width="2" stroke-linecap="round" filter="url(#soft)"/>
+
+  <!-- prise d'air centrale -->
+  <path d="M430,396 L 800,398 C 790,428 774,456 750,478 L 482,478 C 460,456 442,428 430,396 Z" fill="#060706"/>
+  <path d="M446,414 L 790,415 M 458,434 L 780,435 M 470,454 L 768,455" stroke="#1f231f" stroke-width="2"/>
+  <!-- prises latérales -->
+  <path d="M290,400 L 400,402 L 430,470 L 300,466 Z" fill="#090a09"/>
+  <path d="M832,404 L 936,410 L 928,470 L 800,476 Z" fill="#090a09"/>
+
+  <!-- lame avant -->
+  <path d="M280,520 C 450,532 760,534 938,504" fill="none" stroke="#fff" stroke-opacity="0.12" stroke-width="2"/>
+  <!-- bas de caisse côté visible -->
+  <path d="M0,500 C 30,498 50,500 64,504" fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="2"/>
+</svg>

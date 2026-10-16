@@ -3,15 +3,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
+import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
 import { VehicleSelect } from '@/components/VehicleSelect';
-import { Button, Card, Screen, SegmentedControl, TextField } from '@/components/ui';
+import { Button, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { saveDrive } from '@/features/drives/api';
+import { driveMode, showcaseStats, vehicleHeading } from '@/features/drives/showcase';
 import { MAX_PHOTOS, pickPhotos, uploadDrivePhotos } from '@/features/drives/media';
 import { clearPendingDrive, getPendingDrive, type PendingDrive } from '@/features/drives/pending';
-import { computeStats, formatDuration, formatKm } from '@/features/recording/geo';
+import { computeStats } from '@/features/recording/geo';
 import { computeScore } from '@/features/scoring/score';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -41,6 +43,7 @@ export default function FinishDriveScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [vehicleId, setVehicleId] = useState<string | null | undefined>(undefined);
+  const [carSheet, setCarSheet] = useState(false);
 
   useEffect(() => {
     getPendingDrive().then((d) => {
@@ -134,21 +137,29 @@ export default function FinishDriveScreen() {
     ]);
 
   return (
-    <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
-      <View>
-        <Text style={styles.overline}>
-          DRIVE COMPLETE{drive.circuitName ? ` · ${drive.circuitName.toUpperCase()}` : ''}
-        </Text>
-        <Text style={styles.title}>Nice drive.</Text>
+    <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.sm }}>
+      <View style={{ marginHorizontal: -spacing.lg }}>
+        <DriveShowcase
+          {...vehicleHeading(vehicles?.find((v) => v.id === chosenVehicle), true)}
+          stats={showcaseStats({
+            durationS: summary.stats.durationS,
+            distanceM: summary.stats.distanceM,
+            avgSpeedKmh: summary.stats.avgSpeedKmh, // récap : toujours le propriétaire
+            score: summary.score,
+            maxLateralG: null,
+            lapTimeMs: null,
+            turns: summary.metrics.turns.length,
+            elevationChangeM: summary.metrics.elevationChangeM,
+          })}
+          mode={driveMode(drive.circuitName)}
+          onPressPlus={() => setCarSheet(true)}
+          topLeft={<ShowcaseButton icon="close" label="Discard drive" onPress={discard} />}
+        />
+        <VehicleSelect hideTrigger open={carSheet} onOpenChange={setCarSheet} value={chosenVehicle} onChange={setVehicleId} />
       </View>
 
+      <Text style={styles.overline}>DRIVE COMPLETE · NICE DRIVE</Text>
       <DriveMap path={summary.path} emptyLabel="Not enough GPS points for a route" />
-
-      <Card style={styles.stats}>
-        <Stat label="DISTANCE" value={`${formatKm(summary.stats.distanceM)} km`} />
-        <Stat label="TIME" value={formatDuration(summary.stats.durationS)} />
-        <Stat label="TURNS" value={String(summary.metrics.turns.length)} />
-      </Card>
 
       <ScoreCard score={summary.score} breakdown={summary.breakdown} />
 
@@ -181,15 +192,6 @@ export default function FinishDriveScreen() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={{ flex: 1, gap: 4 }}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function defaultTitle(ts: number) {
   const h = new Date(ts).getHours();
   const moment = h < 6 ? 'Night' : h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening';
@@ -199,10 +201,6 @@ function defaultTitle(ts: number) {
 const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
   overline: { ...type.overline, color: colors.accent },
-  title: { ...type.h1, color: colors.text, marginTop: 4 },
-  stats: { flexDirection: 'row' },
-  statValue: { ...type.stat, color: colors.text, fontSize: 18 },
-  statLabel: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 10, letterSpacing: 0.5 },
   label: { color: colors.text, fontFamily: fonts.semibold, fontSize: 13 },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13 },
 });

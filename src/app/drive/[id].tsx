@@ -1,19 +1,19 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
+import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { DriveSocial } from '@/components/DriveSocial';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
 import { VehicleSelect } from '@/components/VehicleSelect';
-import { Button, Card, Screen, SegmentedControl } from '@/components/ui';
+import { Button, Screen, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { deleteDrive, getDrive, updateDrive, type DriveDetail } from '@/features/drives/api';
 import { listDrivePhotos } from '@/features/drives/media';
-import { formatDuration, formatKm } from '@/features/recording/geo';
+import { driveMode, showcaseStats, vehicleHeading } from '@/features/drives/showcase';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
@@ -31,6 +31,7 @@ export default function DriveDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
+  const [carSheet, setCarSheet] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -109,20 +110,28 @@ export default function DriveDetailScreen() {
   const vehicle = drive.vehicle ? `${drive.vehicle.make} ${drive.vehicle.model}` : null;
 
   return (
-    <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
-      <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </Pressable>
-        {!drive.isMine && (
-          <Pressable
-            onPress={() => setMenu({ type: 'drive', id: drive.id, userId: drive.ownerId, userName: author })}
-            hitSlop={12}
-            accessibilityLabel="More options"
-            style={styles.backBtn}
-          >
-            <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
-          </Pressable>
+    <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.sm }}>
+      <View style={{ marginHorizontal: -spacing.lg }}>
+        <DriveShowcase
+          {...vehicleHeading(drive.vehicle, drive.isMine)}
+          stats={showcaseStats({
+            durationS: drive.durationS,
+            distanceM: drive.distanceM,
+            avgSpeedKmh: drive.isMine ? drive.avgSpeedKmh : null, // privée : propriétaire uniquement
+            score: drive.score,
+            maxLateralG: drive.maxLateralG,
+            lapTimeMs: drive.lapTimeMs,
+          })}
+          mode={driveMode(drive.circuitName)}
+          onPressPlus={drive.isMine ? () => setCarSheet(true) : undefined}
+          topLeft={<ShowcaseButton icon="arrow-back" label="Back" onPress={back} />}
+          topRight={drive.isMine ? undefined : (
+            <ShowcaseButton icon="ellipsis-horizontal" label="More options"
+              onPress={() => setMenu({ type: 'drive', id: drive.id, userId: drive.ownerId, userName: author })} />
+          )}
+        />
+        {drive.isMine && (
+          <VehicleSelect hideTrigger open={carSheet} onOpenChange={setCarSheet} value={drive.vehicleId} onChange={changeVehicle} />
         )}
       </View>
       <ModerationSheet target={menu} onClose={() => setMenu(null)} onBlocked={back} />
@@ -150,16 +159,6 @@ export default function DriveDetailScreen() {
 
       <PhotoStrip uris={photos} size={140} />
 
-      <Card style={styles.stats}>
-        <Stat label="DISTANCE" value={`${formatKm(drive.distanceM)} km`} />
-        <Stat label="TIME" value={formatDuration(drive.durationS)} />
-        {drive.lapTimeMs != null ? (
-          <Stat label="BEST LAP" value={formatLap(drive.lapTimeMs)} />
-        ) : (
-          <Stat label="MAX LAT G" value={drive.maxLateralG != null ? drive.maxLateralG.toFixed(2) : '–'} />
-        )}
-      </Card>
-
       <ScoreCard score={drive.score} breakdown={drive.scoreBreakdown} />
 
       {drive.description ? <Text style={styles.desc}>{drive.description}</Text> : null}
@@ -170,10 +169,7 @@ export default function DriveDetailScreen() {
 
       {drive.isMine && (
         <View style={{ gap: spacing.md }}>
-          {/* Vitesses : visibles uniquement du propriétaire, jamais publiées. */}
-          <Card style={styles.stats}>
-            <Stat label="AVG SPEED · PRIVATE" value={drive.avgSpeedKmh != null ? `${Math.round(drive.avgSpeedKmh)} km/h` : '–'} />
-          </Card>
+          <Text style={styles.muted}>Avg. speed is only shown to you.</Text>
           <VehicleSelect label="Car" value={drive.vehicleId} onChange={changeVehicle} />
           <Text style={styles.label}>Who can see it</Text>
           <SegmentedControl options={VISIBILITY} value={drive.visibility} onChange={changeVisibility} />
@@ -184,15 +180,6 @@ export default function DriveDetailScreen() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={{ flex: 1, gap: 4 }}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d
@@ -200,23 +187,12 @@ function formatDate(iso: string) {
     .toUpperCase();
 }
 
-function formatLap(ms: number) {
-  const m = Math.floor(ms / 60000);
-  const s = ((ms % 60000) / 1000).toFixed(3).padStart(6, '0');
-  return `${m}:${s}`;
-}
-
 const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  backBtn: { padding: 4 },
   overline: { ...type.overline, color: colors.accent },
   title: { ...type.h1, color: colors.text },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, textAlign: 'left' },
   label: { color: colors.text, fontFamily: fonts.semibold, fontSize: 13 },
-  stats: { flexDirection: 'row' },
-  statValue: { ...type.stat, color: colors.text, fontSize: 18 },
-  statLabel: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 10, letterSpacing: 0.5 },
   link: { color: colors.text, fontFamily: fonts.semibold },
   desc: { color: colors.text, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
 });
