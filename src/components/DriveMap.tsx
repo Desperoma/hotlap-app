@@ -10,9 +10,10 @@ import { darkMapStyle } from '@/theme/mapStyle';
 /**
  * Carte figée d'un tracé (fin de drive, détail). La caméra se cale sur le tracé au chargement.
  * Pas de gestes : la carte sert d'aperçu, pas de navigation.
+ * `path` : un tracé, ou plusieurs morceaux quand la zone privée d'un autre conducteur le coupe.
  */
-export function DriveMap({ path, style, emptyLabel = 'No route to show', lite = false, children }: {
-  path: LatLng[];
+export function DriveMap({ path: input, style, emptyLabel = 'No route to show', lite = false, children }: {
+  path: LatLng[] | LatLng[][];
   style?: StyleProp<ViewStyle>;
   emptyLabel?: string;
   /**
@@ -24,8 +25,12 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show', lite = 
   children?: ReactNode;
 }) {
   const ref = useRef<MapView>(null);
+  const segments = (isSegments(input) ? input : [input]).filter((s) => s.length >= 2);
+  const path = segments.flat();
+  const first = segments[0]?.[0];
+  const last = segments.at(-1)?.at(-1);
 
-  if (path.length < 2 || !MAPS_AVAILABLE) {
+  if (!first || !last || !MAPS_AVAILABLE) {
     return (
       <View style={[styles.box, styles.empty, style]}>
         <Text style={styles.emptyText}>{MAPS_AVAILABLE ? emptyLabel : 'Map unavailable in this version'}</Text>
@@ -63,11 +68,13 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show', lite = 
         liteMode={lite && Platform.OS === 'android'}
         moveOnMarkerPress={false}
       >
-        <Polyline coordinates={path} strokeColor={colors.accent} strokeWidth={4} />
-        <Marker coordinate={path[0]} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        {segments.map((s, i) => (
+          <Polyline key={i} coordinates={s} strokeColor={colors.accent} strokeWidth={4} />
+        ))}
+        <Marker coordinate={first} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
           <View style={styles.start} />
         </Marker>
-        <Marker coordinate={path[path.length - 1]} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker coordinate={last} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
           <View style={styles.end} />
         </Marker>
       </MapView>
@@ -75,6 +82,10 @@ export function DriveMap({ path, style, emptyLabel = 'No route to show', lite = 
       {children}
     </View>
   );
+}
+
+function isSegments(p: LatLng[] | LatLng[][]): p is LatLng[][] {
+  return Array.isArray(p[0]);
 }
 
 /** Région englobant le tracé, avec une marge de 25 %. */
