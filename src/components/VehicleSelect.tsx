@@ -12,15 +12,24 @@ import { colors, fonts, radius, spacing, type } from '@/theme';
  * Choix du véhicule d'un drive parmi le garage (avant le départ, au récap, sur le détail).
  * compact : une pastille qui tient dans le panneau de la carte.
  */
-export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = false, disabled = false }: {
+export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = false, disabled = false, hideTrigger = false, open: openProp, onOpenChange }: {
   value: string | null;
   onChange: (vehicleId: string | null) => void;
   label?: string;
   compact?: boolean;
   disabled?: boolean;
+  /** Feuille seule, ouverte par un autre bouton (ex. « + » de la vitrine) */
+  hideTrigger?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { vehicles } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (o: boolean) => {
+    setOpenState(o);
+    onOpenChange?.(o);
+  };
   const insets = useSafeAreaInsets();
   const selected = vehicles?.find((v) => v.id === value) ?? null;
   const text = selected ? vehicleLabel(selected) : vehicles?.length ? 'No vehicle' : 'Add a vehicle';
@@ -31,8 +40,9 @@ export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = fa
   };
 
   return (
-    <View style={{ gap: 8 }}>
-      {!compact && <Text style={styles.label}>{label}</Text>}
+    <View style={hideTrigger ? undefined : { gap: 8 }}>
+      {!compact && !hideTrigger && <Text style={styles.label}>{label}</Text>}
+      {!hideTrigger && (
       <Pressable
         onPress={openSheet}
         disabled={disabled}
@@ -43,6 +53,7 @@ export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = fa
         <Text style={[compact ? styles.pillText : styles.value]} numberOfLines={1}>{text}</Text>
         {!disabled && <Ionicons name="chevron-down" size={compact ? 14 : 18} color={colors.textMuted} />}
       </Pressable>
+      )}
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close" />
