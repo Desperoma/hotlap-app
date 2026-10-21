@@ -45,6 +45,31 @@ npm run build:dev:android                # ~15 min, donne un lien d'installation
 npm start                                # sur le PC ; l'app installée se connecte au serveur de dev
 ```
 
+### Trois versions installables côte à côte
+
+| Profil EAS | App | Identifiant | Pour qui | Outils de test |
+| --- | --- | --- | --- | --- |
+| `development` | HotLap Dev | `com.hotlap.app.dev` | développement, se connecte à `npm start` | oui |
+| `preview` | HotLap Test | `com.hotlap.app.test` | tests autonomes (sans PC) | oui (drive simulé) |
+| `beta` | HotLap | `com.hotlap.app` | testeurs (amis) | non |
+
+```bash
+npm run build:dev:android     # HotLap Dev
+npm run build:test:android    # HotLap Test
+npm run build:beta:android    # HotLap (testeurs) : partager le lien d'installation donné à la fin
+```
+
+Chaque identifiant a sa propre clé de signature EAS : son empreinte SHA-1 doit être ajoutée à la clé
+Google Maps (Google Cloud > Identifiants > clé > Restrictions Android), sinon la carte reste grise.
+Les drives simulés sont marqués `drives.is_simulated` (titre « Test · … ») ; ils peuvent être publics pendant
+la phase de test et seront supprimés avant l'ouverture : `delete from drives where is_simulated`.
+
+### Droits de la base (Data API)
+
+Depuis le 30 octobre 2026, Supabase n'ouvre plus automatiquement les nouvelles tables à l'API. **Toute
+nouvelle table reçoit ses `GRANT` dans la migration qui la crée** (voir `0010_explicit_grants.sql`) :
+`authenticated` pour l'app (filtré par la RLS), `service_role` pour l'administration, rien pour `anon`.
+
 Les variables de `.env.local` ne partent pas sur EAS : celles de l'app compilée viennent de `eas env`.
 L'app de développement ne se recompile que si une dépendance native change ; le reste se recharge à chaud.
 

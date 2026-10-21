@@ -13,7 +13,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 export const DRIVE_COLUMNS =
   'id, owner_id, vehicle_id, route_id, circuit_id, title, description, started_at, ended_at, ' +
   'distance_m, duration_s, avg_speed_kmh, max_lateral_g, score, score_breakdown, score_version, ' +
-  'lap_time_ms, visibility, like_count, comment_count, created_at';
+  'lap_time_ms, visibility, like_count, comment_count, created_at, is_simulated';
 
 export type LatLng = { latitude: number; longitude: number };
 
@@ -42,6 +42,8 @@ export type DriveDetail = {
   vehicleId: string | null;
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
   circuitName: string | null;
+  /** Drive simulé (outils de test), repérable pour être supprimé avant l'ouverture au public */
+  isSimulated: boolean;
   /** Tracé affichable : complet pour le propriétaire, sans les zones de confidentialité pour les autres */
   path: LatLng[];
 };
@@ -57,6 +59,8 @@ type SaveDriveInput = {
   startedAt: number;
   endedAt: number;
   points: TrackPoint[];
+  /** Drive simulé (outils de test) : drives.is_simulated */
+  simulated?: boolean;
 };
 
 // Mode démo : les drives sauvegardés restent en mémoire pour pouvoir les rouvrir.
@@ -80,6 +84,7 @@ export async function saveDrive(input: SaveDriveInput) {
       distanceM: Math.round(stats.distanceM), durationS: stats.durationS, avgSpeedKmh: stats.avgSpeedKmh,
       maxSpeedKmh: stats.maxSpeedKmh, maxLateralG: null, score, scoreBreakdown: breakdown, lapTimeMs: null,
       visibility: input.visibility, likeCount: 0, commentCount: 0, author: null, vehicleId: input.vehicleId, vehicle: null, circuitName: null,
+      isSimulated: !!input.simulated,
       path: input.points.map((p) => ({ latitude: p.lat, longitude: p.lng })),
     });
     return { id, stats, score };
@@ -97,6 +102,7 @@ export async function saveDrive(input: SaveDriveInput) {
       title: input.title,
       description: input.description ?? null,
       visibility: input.visibility,
+      is_simulated: !!input.simulated,
       started_at: new Date(input.startedAt).toISOString(),
       ended_at: new Date(input.endedAt).toISOString(),
       distance_m: Math.round(stats.distanceM),
@@ -180,6 +186,7 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
     vehicleId: row.vehicle_id,
     vehicle: vehicle.data ?? null,
     circuitName: (circuit.data as { name: string } | null)?.name ?? null,
+    isSimulated: !!row.is_simulated,
     path: geojsonToPath(path.data),
   };
 }
@@ -214,7 +221,7 @@ type DriveRow = {
   title: string; description: string | null; started_at: string; ended_at: string;
   distance_m: number; duration_s: number; avg_speed_kmh: number | null; max_lateral_g: number | null;
   score: number | null; score_breakdown: ScoreBreakdown | null; lap_time_ms: number | null;
-  visibility: Visibility; like_count: number; comment_count: number;
+  visibility: Visibility; like_count: number; comment_count: number; is_simulated?: boolean;
 };
 
 export function geojsonToPath(g: unknown): LatLng[] {
@@ -232,6 +239,6 @@ function demoFromFeed(id: string): DriveDetail | null {
     avgSpeedKmh: null, maxSpeedKmh: null, maxLateralG: f.max_lateral_g, score: f.score,
     scoreBreakdown: f.score_breakdown, lapTimeMs: f.lap_time_ms, visibility: f.visibility,
     likeCount: f.like_count, commentCount: f.comment_count, author: f.author, vehicleId: f.vehicle_id, vehicle: f.vehicle,
-    circuitName: null, path: [],
+    circuitName: null, path: [], isSimulated: false,
   };
 }

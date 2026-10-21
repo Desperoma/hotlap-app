@@ -49,7 +49,8 @@
     "catalog:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/catalog.test.ts",
     "build:dev:android": "npx eas-cli@latest build --profile development --platform android",
     "build:dev:ios": "npx eas-cli@latest build --profile development --platform ios",
-    "build:preview:android": "npx eas-cli@latest build --profile preview --platform android"
+    "build:test:android": "npx eas-cli@latest build --profile preview --platform android",
+    "build:beta:android": "npx eas-cli@latest build --profile beta --platform android"
   },
   "private": true
 }
