@@ -183,9 +183,9 @@ export default function FinishDriveScreen() {
 
       <View style={{ gap: spacing.sm }}>
         <Text style={styles.label}>Who can see it</Text>
-        <SegmentedControl options={drive.simulated ? VISIBILITY.filter((v) => v.value !== 'public') : VISIBILITY} value={visibility} onChange={setVisibility} />
+        <SegmentedControl options={VISIBILITY} value={visibility} onChange={setVisibility} />
         <Text style={styles.muted}>{VISIBILITY_HINT[visibility]}</Text>
-        {drive.simulated && <Text style={styles.muted}>Simulated drive: it can’t be shared with everyone.</Text>}
+        {drive.simulated && <Text style={styles.muted}>Simulated drive: marked as a test drive.</Text>}
       </View>
 
       <Button title={tooShort ? 'Too short to save' : 'Save drive'} icon="checkmark" onPress={save}

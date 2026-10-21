@@ -61,7 +61,14 @@ npm run build:beta:android    # HotLap (testeurs) : partager le lien d'installat
 
 Chaque identifiant a sa propre clé de signature EAS : son empreinte SHA-1 doit être ajoutée à la clé
 Google Maps (Google Cloud > Identifiants > clé > Restrictions Android), sinon la carte reste grise.
-Les drives simulés (`is_simulated`) ne peuvent jamais être publics (contrainte en base).
+Les drives simulés sont marqués `drives.is_simulated` (titre « Test · … ») ; ils peuvent être publics pendant
+la phase de test et seront supprimés avant l'ouverture : `delete from drives where is_simulated`.
+
+### Droits de la base (Data API)
+
+Depuis le 30 octobre 2026, Supabase n'ouvre plus automatiquement les nouvelles tables à l'API. **Toute
+nouvelle table reçoit ses `GRANT` dans la migration qui la crée** (voir `0010_explicit_grants.sql`) :
+`authenticated` pour l'app (filtré par la RLS), `service_role` pour l'administration, rien pour `anon`.
 
 Les variables de `.env.local` ne partent pas sur EAS : celles de l'app compilée viennent de `eas env`.
 L'app de développement ne se recompile que si une dépendance native change ; le reste se recharge à chaud.

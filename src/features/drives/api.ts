@@ -42,7 +42,7 @@ export type DriveDetail = {
   vehicleId: string | null;
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
   circuitName: string | null;
-  /** Drive simulé (outils de test) : ne peut pas être public */
+  /** Drive simulé (outils de test), repérable pour être supprimé avant l'ouverture au public */
   isSimulated: boolean;
   /** Tracé affichable : complet pour le propriétaire, sans les zones de confidentialité pour les autres */
   path: LatLng[];
@@ -59,7 +59,7 @@ type SaveDriveInput = {
   startedAt: number;
   endedAt: number;
   points: TrackPoint[];
-  /** Drive simulé : jamais public (contrainte en base) */
+  /** Drive simulé (outils de test) : drives.is_simulated */
   simulated?: boolean;
 };
 
