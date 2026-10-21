@@ -172,7 +172,7 @@ export default function DriveDetailScreen() {
           <Text style={styles.muted}>Avg. speed is only shown to you.</Text>
           <VehicleSelect label="Car" value={drive.vehicleId} onChange={changeVehicle} />
           <Text style={styles.label}>Who can see it</Text>
-          <SegmentedControl options={VISIBILITY} value={drive.visibility} onChange={changeVisibility} />
+          <SegmentedControl options={drive.isSimulated ? VISIBILITY.filter((v) => v.value !== 'public') : VISIBILITY} value={drive.visibility} onChange={changeVisibility} />
           <Button title="Delete drive" variant="ghost" icon="trash-outline" onPress={remove} />
         </View>
       )}

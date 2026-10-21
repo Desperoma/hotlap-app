@@ -19,6 +19,9 @@ export type PendingDrive = {
   circuitName: string | null;
   /** Véhicule choisi avant le départ (garage) ; modifiable sur le récap. Absent sur les anciens drives en attente. */
   vehicleId?: string | null;
+  /** Drive simulé (outils de test) : jamais publié à tout le monde */
+  simulated?: boolean;
+  simStyle?: string;
 };
 
 const KEY = 'hotlap/pending-drive';

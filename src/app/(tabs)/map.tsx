@@ -11,7 +11,8 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { MAPS_AVAILABLE } from '@/lib/maps';
 import { getPendingDrive, setPendingDrive } from '@/features/drives/pending';
-import { simulatedDrive, TEST_TOOLS } from '@/features/drives/simulate';
+import { OptionsSheet } from '@/components/OptionsSheet';
+import { SIM_STYLES, simulatedDrive, TEST_TOOLS, type SimStyle } from '@/features/drives/simulate';
 import { checkRecording, refusalMessage, type RecordingContext } from '@/features/recording/authorization';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import { useRecorder } from '@/features/recording/useRecorder';
@@ -100,11 +101,12 @@ export default function MapScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const simulate = async () => {
+  const [simMenu, setSimMenu] = useState(false);
+  const simulate = async (style?: SimStyle) => {
     const pos = await Location.getLastKnownPositionAsync().catch(() => null);
     // À défaut de position : départ de la route du col de Turini.
     const origin = pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : { lat: 43.991, lng: 7.336 };
-    await setPendingDrive(simulatedDrive(origin, chosenVehicle));
+    await setPendingDrive(simulatedDrive(origin, chosenVehicle, { style }));
     router.push('/drive/finish');
   };
 
@@ -220,11 +222,22 @@ export default function MapScreen() {
             {/* Tests sans rouler : versions de développement et builds « preview » uniquement,
                 jamais dans l'app publiée (voir TEST_TOOLS). */}
             {TEST_TOOLS && (
-              <Button title="Simulate a drive (test)" variant="ghost" icon="flask-outline" onPress={simulate} />
+              <Button title="Simulate a drive (test)" variant="ghost" icon="flask-outline" onPress={() => setSimMenu(true)} />
             )}
           </>
         )}
       </View>
+      {TEST_TOOLS && (
+        <OptionsSheet
+          visible={simMenu}
+          title="Simulated route (near you)"
+          onClose={() => setSimMenu(false)}
+          options={[
+            { label: 'Random', onPress: () => simulate() },
+            ...SIM_STYLES.map((s) => ({ label: s.label, onPress: () => simulate(s.value) })),
+          ]}
+        />
+      )}
     </View>
   );
 }

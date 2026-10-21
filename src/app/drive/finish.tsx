@@ -10,6 +10,7 @@ import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { saveDrive } from '@/features/drives/api';
+import { SIM_STYLES } from '@/features/drives/simulate';
 import { driveMode, showcaseStats, vehicleHeading } from '@/features/drives/showcase';
 import { MAX_PHOTOS, pickPhotos, uploadDrivePhotos } from '@/features/drives/media';
 import { clearPendingDrive, getPendingDrive, type PendingDrive } from '@/features/drives/pending';
@@ -48,7 +49,7 @@ export default function FinishDriveScreen() {
   useEffect(() => {
     getPendingDrive().then((d) => {
       setDrive(d);
-      if (d) setTitle(defaultTitle(d.startedAt));
+      if (d) setTitle(d.simulated ? `Test · ${simLabel(d.simStyle)}` : defaultTitle(d.startedAt));
       if (d && d.vehicleId !== undefined) setVehicleId(d.vehicleId);
     });
   }, []);
@@ -95,6 +96,7 @@ export default function FinishDriveScreen() {
         startedAt: drive.startedAt,
         endedAt: drive.endedAt,
         points: drive.points,
+        simulated: drive.simulated,
       });
       await clearPendingDrive();
       if (photos.length) {
@@ -181,8 +183,9 @@ export default function FinishDriveScreen() {
 
       <View style={{ gap: spacing.sm }}>
         <Text style={styles.label}>Who can see it</Text>
-        <SegmentedControl options={VISIBILITY} value={visibility} onChange={setVisibility} />
+        <SegmentedControl options={drive.simulated ? VISIBILITY.filter((v) => v.value !== 'public') : VISIBILITY} value={visibility} onChange={setVisibility} />
         <Text style={styles.muted}>{VISIBILITY_HINT[visibility]}</Text>
+        {drive.simulated && <Text style={styles.muted}>Simulated drive: it can’t be shared with everyone.</Text>}
       </View>
 
       <Button title={tooShort ? 'Too short to save' : 'Save drive'} icon="checkmark" onPress={save}
@@ -190,6 +193,10 @@ export default function FinishDriveScreen() {
       <Button title="Discard" variant="ghost" onPress={discard} disabled={saving} />
     </Screen>
   );
+}
+
+function simLabel(style?: string) {
+  return SIM_STYLES.find((s) => s.value === style)?.label ?? 'Simulated drive';
 }
 
 function defaultTitle(ts: number) {

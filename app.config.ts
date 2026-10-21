@@ -7,6 +7,22 @@ import type { ExpoConfig } from "expo/config";
 // Identifiant du projet EAS, affiché par `npx eas-cli@latest init` (pas un secret).
 const EAS_PROJECT_ID = '2917e236-175f-4b58-a141-f86c1179dd06'; // @hotlaphar/hotlap
 
+// Variantes de l'app (APP_VARIANT, fixé par chaque profil de eas.json). Identifiants différents :
+// les versions de test et la version des testeurs s'installent côte à côte sur un même téléphone.
+//   development : app de développement (se connecte au serveur Expo du PC), outils de test
+//   preview     : « HotLap Test », version autonome pour Romain, outils de test (drive simulé)
+//   beta        : « HotLap », version pour les testeurs (amis), sans outils de test
+//   production  : version des stores
+type Variant = 'development' | 'preview' | 'beta' | 'production';
+const VARIANT = (process.env.APP_VARIANT ?? 'production') as Variant;
+const VARIANTS: Record<Variant, { name: string; suffix: string; scheme: string }> = {
+  development: { name: 'HotLap Dev', suffix: '.dev', scheme: 'hotlap-dev' },
+  preview: { name: 'HotLap Test', suffix: '.test', scheme: 'hotlap-test' },
+  beta: { name: 'HotLap', suffix: '', scheme: 'hotlap' },
+  production: { name: 'HotLap', suffix: '', scheme: 'hotlap' },
+};
+const V = VARIANTS[VARIANT] ?? VARIANTS.production;
+
 // Sans clé, le SDK Google Maps ferme l'app Android dès qu'une carte s'affiche. L'app lit
 // extra.androidMapsKey (vrai / faux, jamais la clé elle-même) et n'affiche alors pas de carte.
 const ANDROID_MAPS_KEY = process.env.GOOGLE_MAPS_ANDROID_API_KEY?.trim() || undefined;
@@ -15,17 +31,17 @@ if (!ANDROID_MAPS_KEY && process.env.EAS_BUILD_PLATFORM === 'android') {
 }
 
 const config: ExpoConfig = {
-  "name": "HotLap",
+  "name": V.name,
   "slug": "hotlap",
   "owner": "hotlaphar",
-  "scheme": "hotlap",
+  "scheme": V.scheme,
   "version": "0.1.0",
   "orientation": "portrait",
   "icon": "./assets/icon.png",
   "userInterfaceStyle": "dark",
   "backgroundColor": "#0E100E",
   "ios": {
-    "bundleIdentifier": "com.hotlap.app",
+    "bundleIdentifier": `com.hotlap.app${V.suffix}`,
     "supportsTablet": false,
     "infoPlist": {
       "UIBackgroundModes": [
@@ -34,7 +50,7 @@ const config: ExpoConfig = {
     }
   },
   "android": {
-    "package": "com.hotlap.app",
+    "package": `com.hotlap.app${V.suffix}`,
     "adaptiveIcon": {
       "backgroundColor": "#0E100E",
       "foregroundImage": "./assets/android-icon-foreground.png",
@@ -73,7 +89,8 @@ const config: ExpoConfig = {
     ]
   ],
   "extra": {
-    "androidMapsKey": !!ANDROID_MAPS_KEY
+    "androidMapsKey": !!ANDROID_MAPS_KEY,
+    "variant": VARIANT
   },
   "experiments": {
     "typedRoutes": true

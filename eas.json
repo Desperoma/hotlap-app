@@ -12,6 +12,9 @@
       },
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "APP_VARIANT": "development"
       }
     },
     "preview": {
@@ -21,14 +24,27 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_TEST_TOOLS": "1"
+        "EXPO_PUBLIC_TEST_TOOLS": "1",
+        "APP_VARIANT": "preview"
+      }
+    },
+    "beta": {
+      "distribution": "internal",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "beta",
+        "EXPO_PUBLIC_TEST_TOOLS": "0"
       }
     },
     "production": {
       "environment": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_TEST_TOOLS": "0"
+        "EXPO_PUBLIC_TEST_TOOLS": "0",
+        "APP_VARIANT": "production"
       }
     }
   },
