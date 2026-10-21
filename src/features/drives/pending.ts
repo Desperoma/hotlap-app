@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import { Alert } from 'react-native';
 
 import type { TrackPoint } from '@/features/recording/geo';
 
@@ -19,7 +21,7 @@ export type PendingDrive = {
   circuitName: string | null;
   /** Véhicule choisi avant le départ (garage) ; modifiable sur le récap. Absent sur les anciens drives en attente. */
   vehicleId?: string | null;
-  /** Drive simulé (outils de test) : jamais publié à tout le monde */
+  /** Drive simulé (outils de test) : marqué drives.is_simulated */
   simulated?: boolean;
   simStyle?: string;
 };
@@ -46,4 +48,14 @@ export async function getPendingDrive(): Promise<PendingDrive | null> {
 export async function clearPendingDrive() {
   current = null;
   await AsyncStorage.removeItem(KEY);
+}
+
+/** Un drive terminé mais pas sauvegardé (app fermée, échec réseau) : propose de le reprendre. */
+export async function promptPendingDrive() {
+  const p = await getPendingDrive();
+  if (!p) return;
+  Alert.alert('Unsaved drive', 'You have a finished drive that isn’t saved yet.', [
+    { text: 'Later', style: 'cancel' },
+    { text: 'Review', onPress: () => router.push('/drive/finish') },
+  ]);
 }

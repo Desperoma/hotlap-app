@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Card, Screen } from '@/components/ui';
+import { promptPendingDrive } from '@/features/drives/pending';
+import { useRecorder } from '@/features/recording/useRecorder';
 import { colors, fonts, spacing, type } from '@/theme';
 
 const PROMISES = [
@@ -11,8 +14,15 @@ const PROMISES = [
   { icon: 'shield-checkmark-outline', title: 'Private by default', text: 'Only you can access your recorded route' },
 ] as const;
 
-/** Drive Mode : écran d'intro avant d'ouvrir la carte live. */
+/** Drive Mode (onglet « + ») : écran d'intro avant d'ouvrir le Live drive. */
 export default function RecordScreen() {
+  const { status } = useRecorder();
+  const recording = status !== 'idle';
+  useEffect(() => {
+    if (!recording) promptPendingDrive();
+    // Seulement à l'ouverture de l'onglet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <Screen scroll style={{ gap: spacing.xl, paddingTop: spacing.lg, alignItems: 'stretch' }}>
       <Text style={styles.overline}>HOTLAP / DRIVE MODE</Text>
@@ -43,8 +53,8 @@ export default function RecordScreen() {
 
       <Text style={styles.warning}>Set up before you move. Never interact with your phone while driving.</Text>
 
-      <Button title="OPEN LIVE DRIVE MAP" icon="radio-button-on" trailingIcon="arrow-forward"
-        onPress={() => router.navigate('/map')} />
+      <Button title={recording ? 'BACK TO LIVE DRIVE' : 'OPEN LIVE DRIVE'} icon="radio-button-on" trailingIcon="arrow-forward"
+        onPress={() => router.push('/drive/live')} />
       <Text style={styles.footnote}>Location is requested only when you enter the map or start a drive.</Text>
     </Screen>
   );

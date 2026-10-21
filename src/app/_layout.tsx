@@ -60,6 +60,7 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
       <Stack.Protected guard={signedIn && onboarded}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="drive/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="drive/live" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="drive/finish" options={{ gestureEnabled: false }} />
         <Stack.Screen name="user/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="edit-profile" />
