@@ -146,3 +146,16 @@ dans [SECURITY.md](SECURITY.md), avec la liste des vulnérabilités connues acce
 Phase 1 (fondations) faite : navigation, thème, écrans de la maquette, enregistrement GPS, onboarding en
 5 étapes, premier calcul de score, schéma de base.
 Les écrans Discover, Community et Drive utilisent encore des données factices (phases 2 à 4 du cadrage).
+
+### Serveur Expo Go permanent (testeurs iPhone)
+
+Sur la machine serveur (Windows, Tailscale installé), une seule fois :
+
+1. `npm install`, `.env.local` rempli, `npx expo login` avec le compte Expo partagé avec les testeurs
+   (depuis le SDK 57, Expo Go exige le même compte côté serveur et côté iPhone).
+2. Dans un PowerShell **administrateur** : `powershell -ExecutionPolicy Bypass -File scripts\server\install-autostart.ps1`
+   (option `-AtLogon` pour démarrer à l'ouverture de session, sans mot de passe ; `-Uninstall` pour retirer).
+3. `Start-ScheduledTask -TaskName 'HotLap Expo Go'`, puis vérifier `logs\serve-go.log`.
+
+La tâche démarre `npm run start:go` sur l'IP Tailscale au démarrage de Windows, le relance s'il s'arrête,
+récupère `main` toutes les 10 minutes et n'ouvre le port 8081 qu'aux adresses Tailscale.
