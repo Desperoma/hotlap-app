@@ -40,3 +40,6 @@ yarn-error.*
 /ios
 /android
 scripts/out/
+
+# Journaux du serveur Expo Go (scripts/server)
+logs/
