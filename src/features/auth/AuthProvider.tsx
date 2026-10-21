@@ -139,6 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback<AuthState['signUp']>(async ({ username, email, password, phone }) => {
+    const usernameError = checkUsername(username);
+    if (usernameError) throw new Error(usernameError);
     if (!isSupabaseConfigured) {
       setDemoSignup({ username, phone: phone?.trim() || null });
       return true; // démo : on simule l'envoi du code
@@ -150,8 +152,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: { data: { username: username.trim(), phone: phone?.trim() || '' } },
     });
     if (error) {
+      // Le trigger handle_new_user crée le profil : une erreur de base à l'inscription vient du pseudo.
+      if (/profiles_username_check/i.test(error.message)) throw new Error(USERNAME_RULE);
       if (/duplicate key|profiles_username_key|database error saving new user/i.test(error.message)) {
-        throw new Error('Ce pseudo est déjà pris.');
+        throw new Error('Ce pseudo est déjà pris (ou invalide). ' + USERNAME_RULE);
       }
       throw error;
     }
@@ -357,4 +361,10 @@ function demoVehicle(v: VehicleInput, primary: boolean): Vehicle {
     id: `demo-vehicle-${Date.now()}`, owner_id: 'demo-user', model_id: null, make: v.make, model: v.model, year: v.year,
     nickname: v.nickname ?? null, photo_url: null, is_primary: primary, created_at: new Date().toISOString(),
   };
+}
+
+/** Même règle que la contrainte profiles_username_check (migration 0001). */
+export const USERNAME_RULE = 'Pseudo : 3 à 24 caractères, lettres sans accent, chiffres, « _ » ou « . », sans espace.';
+export function checkUsername(username: string): string | null {
+  return /^[a-zA-Z0-9_.]{3,24}$/.test(username.trim()) ? null : USERNAME_RULE;
 }
