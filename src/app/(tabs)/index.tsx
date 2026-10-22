@@ -1,19 +1,34 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { DriveLogRow } from '@/components/DriveLogRow';
 import { GForceCard } from '@/components/GForceCard';
-import { RouteBadge } from '@/components/RouteBadge';
 import { Button, Card, Chip, Screen, SegmentedControl } from '@/components/ui';
-import { MY_ROUTES } from '@/data/mock';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { listDrives, type DriveLogItem } from '@/features/profile/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
-/** Discover : accueil, G-force live, accès rapide à l'enregistrement, mes routes / explorer. */
+type Tab = 'explore' | 'mine';
+
+/**
+ * Discover : accueil, G-force live, accès rapide à l'enregistrement.
+ * Onglets : Explore (routes connues autour de moi, en premier), puis My routes (mes drives récents).
+ */
 export default function DiscoverScreen() {
-  const { primaryVehicle } = useAuth();
-  const [tab, setTab] = useState<'mine' | 'explore'>('mine');
+  const { session, primaryVehicle } = useAuth();
+  const me = session?.user.id;
+  const [tab, setTab] = useState<Tab>('explore');
+  const [mine, setMine] = useState<DriveLogItem[] | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    if (tab !== 'mine' || !me) return;
+    let alive = true;
+    listDrives(me, 10)
+      .then((d) => alive && setMine(d))
+      .catch(() => alive && setMine([]));
+    return () => { alive = false; };
+  }, [tab, me]));
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
@@ -29,26 +44,26 @@ export default function DiscoverScreen() {
         onPress={() => router.push('/record')} style={{ justifyContent: 'center' }} />
 
       <SegmentedControl value={tab} onChange={setTab}
-        options={[{ value: 'mine', label: 'My Routes' }, { value: 'explore', label: 'Explore' }]} />
+        options={[{ value: 'explore', label: 'Explore' }, { value: 'mine', label: 'My Routes' }]} />
 
-      {tab === 'mine' ? (
-        MY_ROUTES.map((r) => (
-          <Card key={r.id} style={styles.route}>
-            <RouteBadge color={r.color} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.routeName}>{r.name}</Text>
-              <Text style={styles.routeMeta}>{r.place}</Text>
-              <Text style={styles.routeMeta}>★ Best score: {r.bestScore}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.km}>{r.distanceKm}</Text>
-              <Text style={styles.routeMeta}>km</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </Card>
-        ))
+      {tab === 'explore' ? (
+        <Card style={{ gap: spacing.sm }}>
+          <Text style={styles.cardTitle}>Known roads near you</Text>
+          <Text style={styles.empty}>
+            Les routes connues autour de toi arrivent avec la recherche et la carte des drives publics.
+          </Text>
+        </Card>
+      ) : mine === null ? (
+        <ActivityIndicator color={colors.accent} />
+      ) : mine.length === 0 ? (
+        <Card style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl }}>
+          <Text style={styles.cardTitle}>No drives yet. Take the wheel!</Text>
+          <Button title="Record your first drive" trailingIcon="arrow-forward" onPress={() => router.push('/record')} />
+        </Card>
       ) : (
-        <Text style={styles.empty}>Explore arrive en V1 : routes populaires autour de toi.</Text>
+        <View style={{ gap: spacing.md }}>
+          {mine.map((d) => <DriveLogRow key={d.id} drive={d} />)}
+        </View>
       )}
     </Screen>
   );
@@ -57,9 +72,6 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   title: { ...type.h1, color: colors.text, fontSize: 30 },
   subtitle: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 14 },
-  route: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  routeName: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
-  routeMeta: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12 },
-  km: { ...type.stat, color: colors.text, fontSize: 18 },
-  empty: { color: colors.textMuted, fontFamily: fonts.regular, textAlign: 'center', marginTop: spacing.xl },
+  cardTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
+  empty: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
 });
