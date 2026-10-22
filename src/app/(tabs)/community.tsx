@@ -21,11 +21,11 @@ const EMPTY: Record<Filter, string> = {
   crews: 'No drives from your crews yet. Join a crew from your profile.',
 };
 
-/** Fil social : Following (comptes suivis + moi), Local Discover (50 km), World (tous les drives publics), Crews (membres de mes crews). */
+/** Fil social, dans cet ordre : World (tous les drives publics), Local (50 km), Following (comptes suivis + moi), Crews (membres de mes crews). */
 export default function CommunityScreen() {
   const { session } = useAuth();
   const me = session?.user.id;
-  const [filter, setFilter] = useState<Filter>('following');
+  const [filter, setFilter] = useState<Filter>('world');
   const [items, setItems] = useState<DriveFeedItem[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -106,9 +106,9 @@ export default function CommunityScreen() {
               <Ionicons name="search" size={22} color={colors.text} />
             </View>
             <View style={styles.filters}>
-              <Chip label="Following" active={filter === 'following'} onPress={() => choose('following')} />
-              <Chip label="Local Discover" active={filter === 'local'} onPress={() => choose('local')} />
               <Chip label="World" active={filter === 'world'} onPress={() => choose('world')} />
+              <Chip label="Local" active={filter === 'local'} onPress={() => choose('local')} />
+              <Chip label="Following" active={filter === 'following'} onPress={() => choose('following')} />
               <Chip label="Crews" active={filter === 'crews'} onPress={() => choose('crews')} />
             </View>
           </View>
