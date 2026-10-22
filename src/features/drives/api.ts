@@ -44,8 +44,11 @@ export type DriveDetail = {
   circuitName: string | null;
   /** Drive simulé (outils de test), repérable pour être supprimé avant l'ouverture au public */
   isSimulated: boolean;
-  /** Tracé affichable : complet pour le propriétaire, sans les zones de confidentialité pour les autres */
-  path: LatLng[];
+  /**
+   * Tracé affichable, en un ou plusieurs morceaux : complet pour le propriétaire ; pour les autres,
+   * sans la zone privée autour du domicile (un drive qui la traverse est coupé en deux).
+   */
+  path: LatLng[][];
 };
 
 type SaveDriveInput = {
@@ -85,7 +88,7 @@ export async function saveDrive(input: SaveDriveInput) {
       maxSpeedKmh: stats.maxSpeedKmh, maxLateralG: null, score, scoreBreakdown: breakdown, lapTimeMs: null,
       visibility: input.visibility, likeCount: 0, commentCount: 0, author: null, vehicleId: input.vehicleId, vehicle: null, circuitName: null,
       isSimulated: !!input.simulated,
-      path: input.points.map((p) => ({ latitude: p.lat, longitude: p.lng })),
+      path: [input.points.map((p) => ({ latitude: p.lat, longitude: p.lng }))],
     });
     return { id, stats, score };
   }
@@ -224,10 +227,14 @@ type DriveRow = {
   visibility: Visibility; like_count: number; comment_count: number; is_simulated?: boolean;
 };
 
-export function geojsonToPath(g: unknown): LatLng[] {
-  const coords = (g as { type?: string; coordinates?: [number, number][] } | null)?.coordinates;
-  if (!Array.isArray(coords)) return [];
-  return coords.map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+/** GeoJSON LineString ou MultiLineString (tracé coupé par la zone privée) -> morceaux de tracé. */
+export function geojsonToPath(g: unknown): LatLng[][] {
+  const geo = g as { type?: string; coordinates?: unknown } | null;
+  const toLine = (c: unknown): LatLng[] =>
+    Array.isArray(c) ? (c as [number, number][]).map(([lng, lat]) => ({ latitude: lat, longitude: lng })) : [];
+  if (!geo || !Array.isArray(geo.coordinates)) return [];
+  const lines = geo.type === 'MultiLineString' ? (geo.coordinates as unknown[]).map(toLine) : [toLine(geo.coordinates)];
+  return lines.filter((l) => l.length >= 2);
 }
 
 function demoFromFeed(id: string): DriveDetail | null {

@@ -3,7 +3,12 @@
  * À remplacer par les types générés dès que le projet Supabase existe :
  *   npx supabase gen types typescript --project-id <id> > src/lib/database.types.ts
  */
-export type Visibility = 'private' | 'followers' | 'public';
+/** private < friends (abonnement réciproque) < followers (ceux qui me suivent) < public */
+export type Visibility = 'private' | 'friends' | 'followers' | 'public';
+/** open : on s'abonne librement ; approval : chaque abonnement est une demande à accepter */
+export type FollowPolicy = 'open' | 'approval';
+/** Qui voit le garage et la ville */
+export type DetailsVisibility = 'public' | 'followers' | 'private';
 
 export interface Profile {
   id: string;
@@ -24,13 +29,15 @@ export interface Profile {
   bio: string | null;
   /** null tant que l'onboarding n'est pas terminé */
   onboarded_at: string | null;
+  follow_policy: FollowPolicy;
+  details_visibility: DetailsVisibility;
   created_at: string;
 }
 
 /** Ce que les autres utilisateurs voient (vue public_profiles). */
 export type PublicProfile = Pick<
   Profile,
-  'id' | 'username' | 'display_name' | 'avatar_url' | 'bio' | 'country_code' | 'home_city' | 'created_at'
+  'id' | 'username' | 'display_name' | 'avatar_url' | 'bio' | 'country_code' | 'home_city' | 'created_at' | 'follow_policy'
 >;
 
 export interface Vehicle {
@@ -110,5 +117,6 @@ export interface DriveFeedItem extends Drive {
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
   liked_by_me: boolean;
   /** Aperçu du tracé (simplifié, sans les zones de confidentialité pour les autres). Vide si masqué. */
-  path_preview: { latitude: number; longitude: number }[];
+  /** Un tracé, ou plusieurs morceaux quand la zone privée du domicile le coupe */
+  path_preview: { latitude: number; longitude: number }[] | { latitude: number; longitude: number }[][];
 }

@@ -14,14 +14,9 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { deleteDrive, getDrive, updateDrive, type DriveDetail } from '@/features/drives/api';
 import { listDrivePhotos } from '@/features/drives/media';
 import { driveMode, showcaseStats, vehicleHeading } from '@/features/drives/showcase';
+import { VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
-
-const VISIBILITY: { value: Visibility; label: string }[] = [
-  { value: 'private', label: 'Only me' },
-  { value: 'followers', label: 'Followers' },
-  { value: 'public', label: 'Everyone' },
-];
 
 /** Détail d'un drive : tracé, stats, score détaillé ; visibilité et suppression pour le propriétaire. */
 export default function DriveDetailScreen() {
@@ -154,7 +149,7 @@ export default function DriveDetailScreen() {
 
       <DriveMap
         path={drive.path}
-        emptyLabel={drive.isMine ? 'No route recorded' : 'Route hidden (too short to share)'}
+        emptyLabel={drive.isMine ? 'No route recorded' : 'Route hidden (inside the driver’s private zone)'}
       />
 
       <PhotoStrip uris={photos} size={140} />
@@ -172,7 +167,7 @@ export default function DriveDetailScreen() {
           <Text style={styles.muted}>Avg. speed is only shown to you.</Text>
           <VehicleSelect label="Car" value={drive.vehicleId} onChange={changeVehicle} />
           <Text style={styles.label}>Who can see it</Text>
-          <SegmentedControl options={VISIBILITY} value={drive.visibility} onChange={changeVisibility} />
+          <SegmentedControl options={VISIBILITY_OPTIONS} value={drive.visibility} onChange={changeVisibility} />
           <Button title="Delete drive" variant="ghost" icon="trash-outline" onPress={remove} />
         </View>
       )}

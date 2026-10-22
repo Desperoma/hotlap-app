@@ -2,7 +2,18 @@ import { DRIVE_COLUMNS } from '@/features/drives/api';
 import type { ScoreBreakdown, Visibility } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
-export type ProfileCounters = { drives: number; followers: number; following: number; bestScore: number | null };
+export type ProfileCounters = {
+  /** Drives visibles par moi */
+  drives: number;
+  followers: number;
+  following: number;
+  bestScore: number | null;
+  /** Relation avec moi */
+  iFollow: boolean;
+  followsMe: boolean;
+  /** Demande d'abonnement envoyée, en attente */
+  requested: boolean;
+};
 
 export type DriveLogItem = {
   id: string;
@@ -17,22 +28,20 @@ export type DriveLogItem = {
   visibility: Visibility;
 };
 
-/** Compteurs du profil : drives, followers (abonnés), following (abonnements), meilleur score. */
+/** Compteurs d'un profil et relation avec moi (fonction profile_stats : les listes restent privées). */
 export async function getCounters(userId: string): Promise<ProfileCounters> {
-  if (!isSupabaseConfigured) return { drives: 0, followers: 0, following: 0, bestScore: null };
-  const [drives, followers, following, best] = await Promise.all([
-    supabase.from('drives').select('id', { count: 'exact', head: true }).eq('owner_id', userId),
-    supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
-    supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', userId),
-    supabase.from('drives').select('score').eq('owner_id', userId).not('score', 'is', null)
-      .order('score', { ascending: false }).limit(1).maybeSingle(),
-  ]);
-  for (const r of [drives, followers, following, best]) if (r.error) throw r.error;
+  const empty = { drives: 0, followers: 0, following: 0, bestScore: null, iFollow: false, followsMe: false, requested: false };
+  if (!isSupabaseConfigured) return empty;
+  const { data, error } = await supabase.rpc('profile_stats', { p_user: userId });
+  if (error) throw error;
+  const r = (data as {
+    drives: number; followers: number; following: number; best_score: number | null;
+    i_follow: boolean; follows_me: boolean; requested: boolean;
+  }[] | null)?.[0];
+  if (!r) return empty;
   return {
-    drives: drives.count ?? 0,
-    followers: followers.count ?? 0,
-    following: following.count ?? 0,
-    bestScore: (best.data as { score: number } | null)?.score ?? null,
+    drives: r.drives, followers: r.followers, following: r.following, bestScore: r.best_score,
+    iFollow: r.i_follow, followsMe: r.follows_me, requested: r.requested,
   };
 }
 
