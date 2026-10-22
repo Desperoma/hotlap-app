@@ -66,7 +66,8 @@ export default function AuthScreen() {
             </>
           ) : (
             <>
-              <TextField label="Username" icon="person-outline" placeholder="Choose a display name"
+              <TextField label="Username" icon="person-outline" placeholder="e.g. romain_rx7 (letters, numbers, _ .)"
+                autoCapitalize="none" autoCorrect={false}
                 value={username} onChangeText={setUsername} />
               <TextField label="Email" icon="mail-outline" placeholder="Enter your email" keyboardType="email-address"
                 value={email} onChangeText={setEmail} />
