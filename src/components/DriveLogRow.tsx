@@ -17,7 +17,7 @@ export function DriveLogRow({ drive }: { drive: DriveLogItem }) {
         <Text style={styles.title} numberOfLines={1}>{drive.title}</Text>
         <Text style={styles.meta}>
           {date} · {formatKm(drive.distanceM)} km · {formatDuration(drive.durationS)}
-          {drive.visibility === 'private' ? ' · Only me' : ''}
+          {drive.visibility === 'private' ? ' · Only me' : drive.visibility === 'friends' ? ' · Friends' : ''}
         </Text>
       </View>
       <Text style={styles.score}>{drive.score ?? '–'}</Text>

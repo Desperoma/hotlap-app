@@ -11,11 +11,15 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { listUserCrews, type Crew } from '@/features/crews/api';
 import { block, isBlocked, unblock } from '@/features/moderation/api';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
-import { displayName, getPublicProfile, isFollowing, setFollow } from '@/features/social/api';
-import type { PublicProfile } from '@/lib/database.types';
+import { displayName, follow, getPublicProfile, unfollow } from '@/features/social/api';
+import type { PublicProfile, Vehicle } from '@/lib/database.types';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
 
-/** Profil public d'un autre conducteur : identité, compteurs, suivre / ne plus suivre, drives visibles. */
+/**
+ * Profil d'un autre conducteur : identité, compteurs (sans les listes), suivre / demande / ne plus suivre,
+ * garage et ville selon son réglage, drives visibles par moi.
+ */
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
@@ -23,7 +27,8 @@ export default function UserProfileScreen() {
   const [profile, setProfile] = useState<PublicProfile | null | undefined>(undefined);
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
-  const [following, setFollowing] = useState(false);
+  const [rel, setRel] = useState<'none' | 'following' | 'requested'>('none');
+  const [garage, setGarage] = useState<Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'is_primary'>[]>([]);
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
@@ -37,9 +42,12 @@ export default function UserProfileScreen() {
   const load = useCallback(() => {
     if (!id || !me) return;
     getPublicProfile(id).then(setProfile).catch(() => setProfile(null));
-    getCounters(id).then(setCounters).catch(() => {});
+    getCounters(id).then((c) => {
+      setCounters(c);
+      setRel(c.iFollow ? 'following' : c.requested ? 'requested' : 'none');
+    }).catch(() => {});
     listDrives(id).then(setDrives).catch(() => setDrives([]));
-    isFollowing(me, id).then(setFollowing).catch(() => {});
+    loadGarage(id).then(setGarage).catch(() => setGarage([]));
     isBlocked(me, id).then(setBlocked).catch(() => {});
     listUserCrews(id).then(setCrews).catch(() => setCrews([]));
   }, [id, me]);
@@ -63,17 +71,20 @@ export default function UserProfileScreen() {
   const name = displayName(profile);
 
   const toggleFollow = async () => {
-    const next = !following;
+    const prev = rel;
     setBusy(true);
-    setFollowing(next);
-    setCounters((c) => (c ? { ...c, followers: c.followers + (next ? 1 : -1) } : c));
     try {
-      await setFollow(me, id, next);
-      // Les drives « Crew » deviennent visibles (ou non) : on recharge la liste.
-      listDrives(id).then(setDrives).catch(() => {});
+      if (prev === 'none') {
+        const r = await follow(id);
+        setRel(r);
+      } else {
+        await unfollow(me, id);
+        setRel('none');
+      }
+      // Les drives Friends / Followers et le garage deviennent visibles (ou non) : on recharge.
+      load();
     } catch (e) {
-      setFollowing(!next);
-      setCounters((c) => (c ? { ...c, followers: c.followers + (next ? -1 : 1) } : c));
+      setRel(prev);
       Alert.alert('Follow failed', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
@@ -93,7 +104,7 @@ export default function UserProfileScreen() {
         style: 'destructive',
         onPress: () =>
           block(me, id)
-            .then(() => { setBlocked(true); setFollowing(false); setDrives([]); getCounters(id).then(setCounters).catch(() => {}); })
+            .then(() => { setBlocked(true); setRel('none'); setDrives([]); setGarage([]); getCounters(id).then(setCounters).catch(() => {}); })
             .catch((e) => Alert.alert('Block failed', e instanceof Error ? e.message : String(e))),
       },
     ]);
@@ -128,13 +139,18 @@ export default function UserProfileScreen() {
             {crews.map((c) => <Chip key={c.id} icon="people" label={c.name} onPress={() => router.push(`/crews/${c.id}`)} />)}
           </View>
         )}
+        {counters?.followsMe && (
+          <View style={styles.crews}>
+            <Chip icon={counters.iFollow ? 'people' : 'person'} label={counters.iFollow ? 'Friends' : 'Follows you'} />
+          </View>
+        )}
         {!blocked && (
           <Button
-            title={following ? 'Following' : 'Follow'}
-            icon={following ? 'checkmark' : 'person-add-outline'}
-            variant={following ? 'secondary' : 'primary'}
+            title={rel === 'following' ? 'Following' : rel === 'requested' ? 'Requested' : profile.follow_policy === 'approval' ? 'Ask to follow' : 'Follow'}
+            icon={rel === 'following' ? 'checkmark' : rel === 'requested' ? 'time-outline' : 'person-add-outline'}
+            variant={rel === 'none' ? 'primary' : 'secondary'}
             onPress={toggleFollow}
-            disabled={busy}
+            loading={busy}
           />
         )}
         <Button title={blocked ? `Unblock ${name}` : `Block ${name}`} variant="ghost"
@@ -146,6 +162,20 @@ export default function UserProfileScreen() {
         <Counter value={counters?.followers ?? 0} label="FOLLOWERS" />
         <Counter value={counters?.following ?? 0} label="FOLLOWING" />
       </Card>
+
+      {garage.length > 0 && (
+        <>
+          <Text style={styles.section}>GARAGE</Text>
+          <Card style={{ gap: spacing.sm }}>
+            {garage.map((v) => (
+              <View key={v.id} style={styles.garageRow}>
+                <Ionicons name={v.is_primary ? 'star' : 'car-sport-outline'} size={16} color={colors.accent} />
+                <Text style={styles.garageText}>{[v.year, v.make, v.model].filter(Boolean).join(' ')}</Text>
+              </View>
+            ))}
+          </Card>
+        </>
+      )}
 
       <Text style={styles.section}>DRIVES</Text>
       {drives === null ? (
@@ -168,11 +198,22 @@ function Counter({ value, label }: { value: number; label: string }) {
   );
 }
 
+/** Garage d'un autre conducteur : vide si son réglage ne me le montre pas (RLS). */
+async function loadGarage(userId: string) {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from('vehicles').select('id, make, model, year, is_primary')
+    .eq('owner_id', userId).order('is_primary', { ascending: false }).order('created_at');
+  if (error) throw error;
+  return data ?? [];
+}
+
 const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   crews: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  garageRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  garageText: { color: colors.text, fontFamily: fonts.medium, fontSize: 14 },
   name: { color: colors.text, fontFamily: fonts.bold, fontSize: 18 },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13 },
   bio: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },

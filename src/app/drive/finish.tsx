@@ -16,20 +16,9 @@ import { MAX_PHOTOS, pickPhotos, uploadDrivePhotos } from '@/features/drives/med
 import { clearPendingDrive, getPendingDrive, type PendingDrive } from '@/features/drives/pending';
 import { computeStats } from '@/features/recording/geo';
 import { computeScore } from '@/features/scoring/score';
+import { VISIBILITY_HINT, VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
-
-const VISIBILITY: { value: Visibility; label: string }[] = [
-  { value: 'private', label: 'Only me' },
-  { value: 'followers', label: 'Followers' },
-  { value: 'public', label: 'Everyone' },
-];
-
-const VISIBILITY_HINT: Record<Visibility, string> = {
-  private: 'Only you can see this drive.',
-  followers: 'Drivers who follow you can see it. Start and finish are hidden.',
-  public: 'Everyone can see it. Start and finish are hidden.',
-};
 
 /**
  * Fin de drive : résumé, titre, description, visibilité, puis sauvegarde.
@@ -183,7 +172,7 @@ export default function FinishDriveScreen() {
 
       <View style={{ gap: spacing.sm }}>
         <Text style={styles.label}>Who can see it</Text>
-        <SegmentedControl options={VISIBILITY} value={visibility} onChange={setVisibility} />
+        <SegmentedControl options={VISIBILITY_OPTIONS} value={visibility} onChange={setVisibility} />
         <Text style={styles.muted}>{VISIBILITY_HINT[visibility]}</Text>
         {drive.simulated && <Text style={styles.muted}>Simulated drive: marked as a test drive.</Text>}
       </View>

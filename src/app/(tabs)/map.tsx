@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions,
   type NativeScrollEvent, type NativeSyntheticEvent,
@@ -49,7 +49,7 @@ export default function MapScreen() {
   const [satellite, setSatellite] = useState(false);
   const [gps, setGps] = useState(false);
   const [selected, setSelected] = useState<{ pinKey: string; index: number } | null>(null);
-  const [paths, setPaths] = useState<Record<string, LatLng[] | 'loading' | 'none'>>({});
+  const [paths, setPaths] = useState<Record<string, LatLng[][] | 'loading' | 'none'>>({});
   const fitted = useRef(false);
 
   useEffect(() => {
@@ -126,13 +126,14 @@ export default function MapScreen() {
     if (!selectedDrive) return;
     const id = selectedDrive.id;
     const cached = paths[id];
-    if (Array.isArray(cached)) return fitPath(cached);
+    if (Array.isArray(cached)) return fitPath(cached.flat());
     if (cached) return;
     setPaths((p) => ({ ...p, [id]: 'loading' }));
     fetchDrivePath(id)
       .then((path) => {
-        setPaths((p) => ({ ...p, [id]: path.length > 1 ? path : 'none' }));
-        if (path.length > 1) fitPath(path);
+        const ok = path.some((s) => s.length > 1);
+        setPaths((p) => ({ ...p, [id]: ok ? path : 'none' }));
+        if (ok) fitPath(path.flat());
       })
       .catch(() => setPaths((p) => ({ ...p, [id]: 'none' })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,14 +182,18 @@ export default function MapScreen() {
         >
           {Array.isArray(selectedPath) && (
             <>
-              {/* Surbrillance : halo large et transparent, puis trait net */}
-              <Polyline coordinates={selectedPath} strokeColor={`${highlight}33`} strokeWidth={14} lineCap="round" lineJoin="round" zIndex={1} />
-              <Polyline coordinates={selectedPath} strokeColor={`${highlight}80`} strokeWidth={8} lineCap="round" lineJoin="round" zIndex={2} />
-              <Polyline coordinates={selectedPath} strokeColor={highlight} strokeWidth={4} lineCap="round" lineJoin="round" zIndex={3} />
-              <Marker coordinate={selectedPath[0]} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false} zIndex={4}>
+              {/* Surbrillance : halo large et transparent, puis trait net ; un morceau par partie visible */}
+              {selectedPath.map((seg, i) => (
+                <Fragment key={i}>
+                  <Polyline coordinates={seg} strokeColor={`${highlight}33`} strokeWidth={14} lineCap="round" lineJoin="round" zIndex={1} />
+                  <Polyline coordinates={seg} strokeColor={`${highlight}80`} strokeWidth={8} lineCap="round" lineJoin="round" zIndex={2} />
+                  <Polyline coordinates={seg} strokeColor={highlight} strokeWidth={4} lineCap="round" lineJoin="round" zIndex={3} />
+                </Fragment>
+              ))}
+              <Marker coordinate={selectedPath[0][0]} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false} zIndex={4}>
                 <View style={styles.startDot} />
               </Marker>
-              <Marker coordinate={selectedPath[selectedPath.length - 1]} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false} zIndex={4}>
+              <Marker coordinate={selectedPath.at(-1)!.at(-1)!} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false} zIndex={4}>
                 <View style={[styles.endDot, { backgroundColor: highlight }]}>
                   <Ionicons name="flag" size={9} color={colors.accentText} />
                 </View>
@@ -323,7 +328,7 @@ function DriveMapCard({ drive, width, position, pathState, onClose }: {
   drive: MapDrive;
   width: number;
   position: string | null;
-  pathState: LatLng[] | 'loading' | 'none' | undefined;
+  pathState: LatLng[][] | 'loading' | 'none' | undefined;
   onClose: () => void;
 }) {
   const src = SOURCE[drive.source];
@@ -356,7 +361,7 @@ function DriveMapCard({ drive, width, position, pathState, onClose }: {
 
       <View style={styles.cardFooter}>
         <Text style={styles.cardHint}>
-          {pathState === 'loading' ? 'Loading route…' : pathState === 'none' ? 'Route hidden (too short to share)' : position ? `${position} · swipe for more` : ' '}
+          {pathState === 'loading' ? 'Loading route…' : pathState === 'none' ? 'Route hidden (private zone)' : position ? `${position} · swipe for more` : ' '}
         </Text>
         <Pressable style={styles.openBtn} onPress={() => router.push(`/drive/${drive.id}`)}>
           <Text style={styles.openText}>Open drive</Text>

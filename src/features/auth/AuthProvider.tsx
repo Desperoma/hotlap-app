@@ -7,7 +7,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 export type ProfilePatch = Partial<
   Pick<Profile, 'first_name' | 'last_name' | 'birth_date' | 'phone' | 'country_code' | 'region' | 'home_city' |
-    'display_name' | 'bio' | 'avatar_url' | 'onboarded_at'>
+    'display_name' | 'bio' | 'avatar_url' | 'onboarded_at' | 'follow_policy' | 'details_visibility'>
 >;
 export type VehicleInput = { make: string; model: string; year: number | null; modelId?: number | null; nickname?: string | null };
 
@@ -352,7 +352,7 @@ function demoProfile(username: string): Profile {
   return {
     id: 'demo-user', username, display_name: username, first_name: null, last_name: null,
     birth_date: null, phone: null, country_code: null, region: null, home_city: null,
-    avatar_url: null, bio: null, onboarded_at: null, created_at: new Date().toISOString(),
+    avatar_url: null, bio: null, onboarded_at: null, follow_policy: 'open', details_visibility: 'followers', created_at: new Date().toISOString(),
   };
 }
 

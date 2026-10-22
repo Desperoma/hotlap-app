@@ -134,25 +134,59 @@ export async function getPublicProfile(userId: string): Promise<PublicProfile | 
   if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from('public_profiles')
-    .select('id, username, display_name, avatar_url, bio, country_code, home_city, created_at')
+    .select('id, username, display_name, avatar_url, bio, country_code, home_city, created_at, follow_policy')
     .eq('id', userId).maybeSingle();
   if (error) throw error;
   return data;
 }
 
-export async function isFollowing(me: string, userId: string) {
-  if (!isSupabaseConfigured) return false;
-  const { count } = await supabase.from('follows').select('following_id', { count: 'exact', head: true })
-    .eq('follower_id', me).eq('following_id', userId);
-  return (count ?? 0) > 0;
+/** S'abonner : direct si le compte est ouvert, sinon une demande à accepter. */
+export async function follow(userId: string): Promise<'following' | 'requested'> {
+  if (!isSupabaseConfigured) return 'following';
+  const { data, error } = await supabase.rpc('follow_user', { p_target: userId });
+  if (error) throw error;
+  return data as 'following' | 'requested';
 }
 
-export async function setFollow(me: string, userId: string, follow: boolean) {
+/** Se désabonner, ou annuler une demande en attente. */
+export async function unfollow(me: string, userId: string) {
   if (!isSupabaseConfigured || me === userId) return;
-  const q = follow
-    ? supabase.from('follows').upsert({ follower_id: me, following_id: userId }, { onConflict: 'follower_id,following_id', ignoreDuplicates: true })
-    : supabase.from('follows').delete().eq('follower_id', me).eq('following_id', userId);
-  const { error } = await q;
+  const [a, b] = await Promise.all([
+    supabase.from('follows').delete().eq('follower_id', me).eq('following_id', userId),
+    supabase.from('follow_requests').delete().eq('requester_id', me).eq('target_id', userId),
+  ]);
+  if (a.error) throw a.error;
+  if (b.error) throw b.error;
+}
+
+/** Retirer quelqu'un de mes followers. */
+export async function removeFollower(me: string, userId: string) {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('follows').delete().eq('follower_id', userId).eq('following_id', me);
+  if (error) throw error;
+}
+
+export type PersonRow = {
+  id: string; username: string; displayName: string | null; avatarUrl: string | null;
+  iFollow: boolean; followsMe: boolean;
+};
+
+/** Mes followers, mes abonnements, ou les demandes reçues. */
+export async function listPeople(kind: 'followers' | 'following' | 'requests'): Promise<PersonRow[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('my_people', { p_kind: kind });
+  if (error) throw error;
+  return ((data ?? []) as {
+    id: string; username: string; display_name: string | null; avatar_url: string | null; i_follow: boolean; follows_me: boolean;
+  }[]).map((r) => ({
+    id: r.id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url,
+    iFollow: r.i_follow, followsMe: r.follows_me,
+  }));
+}
+
+export async function answerFollowRequest(requesterId: string, accept: boolean) {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.rpc('answer_follow_request', { p_requester: requesterId, p_accept: accept });
   if (error) throw error;
 }
 

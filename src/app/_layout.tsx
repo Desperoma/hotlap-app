@@ -69,6 +69,9 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="crews/index" />
         <Stack.Screen name="crews/form" />
         <Stack.Screen name="crews/[id]" />
+        <Stack.Screen name="settings/privacy-zone" options={{ presentation: 'card' }} />
+        <Stack.Screen name="settings/privacy" />
+        <Stack.Screen name="people/[kind]" />
       </Stack.Protected>
     </Stack>
   );

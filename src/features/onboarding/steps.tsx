@@ -7,6 +7,8 @@ import { Button, Card, TextField } from '@/components/ui';
 import { COUNTRIES } from '@/config';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VehicleForm } from '@/features/garage/VehicleForm';
+import { HomeZoneFields } from '@/features/privacy/HomeZoneFields';
+import { applyHomeZone, homeZoneInputError, type HomeZoneInput } from '@/features/privacy/homeZone';
 import { recorder } from '@/features/recording/recorder';
 import { colors, fonts, spacing, type } from '@/theme';
 
@@ -68,19 +70,23 @@ export function IdentityStep({ onNext }: StepProps) {
   );
 }
 
-// --- 60 % : localisation -----------------------------------------------------
+// --- 60 % : localisation + zone privée autour du domicile ----------------------
 export function LocationStep({ onNext }: StepProps) {
   const { profile, updateProfile } = useAuth();
   const initial = COUNTRIES.find((c) => c.code === profile?.country_code) ?? null;
   const [country, setCountry] = useState(initial);
   const [region, setRegion] = useState(profile?.region ?? '');
   const [city, setCity] = useState(profile?.home_city ?? '');
-  const { busy, run } = useSubmit(
-    () => updateProfile({ country_code: country?.code ?? null, region: region.trim() || null, home_city: city.trim() }),
-    onNext,
-  );
+  // Option activée par défaut.
+  const [zone, setZone] = useState<HomeZoneInput>({ enabled: true, address: '', here: null });
+  const { busy, run } = useSubmit(async () => {
+    await updateProfile({ country_code: country?.code ?? null, region: region.trim() || null, home_city: city.trim() });
+    await applyHomeZone(zone, false);
+  }, onNext);
   const submit = () => {
     if (!country || !city.trim()) return Alert.alert('Presque', 'Le pays et la ville sont obligatoires.');
+    const e = homeZoneInputError(zone, false);
+    if (e) return Alert.alert('Presque', e);
     run();
   };
   return (
@@ -93,6 +99,7 @@ export function LocationStep({ onNext }: StepProps) {
         autoCapitalize="words" value={region} onChangeText={setRegion} />
       <TextField label="Home city" icon="home-outline" placeholder="ex. Metz" autoCapitalize="words"
         value={city} onChangeText={setCity} />
+      <HomeZoneFields value={zone} onChange={setZone} />
       <Button title="Continue" onPress={submit} loading={busy} />
     </>
   );

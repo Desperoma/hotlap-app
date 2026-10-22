@@ -3,8 +3,9 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 /**
  * Données de l'onglet Map : un repère par drive (les miens, mon crew, mes amis) et,
- * au toucher, le tracé du drive. Règles de visibilité côté base (migration 0011) :
- * les tracés des autres sont privés de 1,6 km au départ et à l'arrivée.
+ * au toucher, le tracé du drive. Règles de visibilité côté base (migrations 0011, 0013, 0014) :
+ * les tracés des autres sont privés de leur zone autour du domicile, et le repère est leur
+ * premier point visible.
  */
 export type MapSource = 'me' | 'crew' | 'friend';
 
@@ -47,8 +48,8 @@ export async function fetchMapDrives(limit = 200): Promise<MapDrive[]> {
   }));
 }
 
-/** Tracé simplifié d'un drive visible (vide s'il n'est plus visible). */
-export async function fetchDrivePath(driveId: string): Promise<LatLng[]> {
+/** Tracé simplifié d'un drive visible, en morceaux si la zone privée le coupe (vide s'il n'est plus visible). */
+export async function fetchDrivePath(driveId: string): Promise<LatLng[][]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase.rpc('drive_path_previews', { p_drive_ids: [driveId] });
   if (error) throw error;

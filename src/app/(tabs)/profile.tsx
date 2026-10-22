@@ -11,6 +11,7 @@ import { listMyCrews, type MyCrew } from '@/features/crews/api';
 import { vehicleLabel } from '@/features/garage/VehicleForm';
 import { deleteAccount } from '@/features/moderation/api';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
+import { listPeople } from '@/features/social/api';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
 /** Driver Profile : identité, compteurs, raccourcis, My Garage / Drive Log. */
@@ -18,6 +19,7 @@ export default function ProfileScreen() {
   const { session, profile, vehicles, primaryVehicle, signOut } = useAuth();
   const [tab, setTab] = useState<'garage' | 'log'>('garage');
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
+  const [requests, setRequests] = useState(0);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const [crews, setCrews] = useState<MyCrew[]>([]);
   const userId = session?.user.id;
@@ -58,6 +60,7 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (!userId) return;
       getCounters(userId).then(setCounters).catch(() => {});
+      listPeople('requests').then((r) => setRequests(r.length)).catch(() => {});
       listDrives(userId).then(setDrives).catch(() => setDrives([]));
       listMyCrews(userId).then((c) => setCrews(c.filter((x) => x.myStatus === 'active'))).catch(() => {});
     }, [userId]),
@@ -109,15 +112,21 @@ export default function ProfileScreen() {
       </Card>
 
       <Card style={styles.counters}>
-        <Counter value={counters?.drives ?? 0} label="DRIVES" />
-        <Counter value={counters?.followers ?? 0} label="FOLLOWERS" />
-        <Counter value={counters?.following ?? 0} label="FOLLOWING" />
+        <Counter value={counters?.drives ?? 0} label="DRIVES" onPress={() => setTab('log')} />
+        <Counter value={counters?.followers ?? 0} label="FOLLOWERS" onPress={() => router.push('/people/followers')} />
+        <Counter value={counters?.following ?? 0} label="FOLLOWING" onPress={() => router.push('/people/following')} />
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
         <Shortcut icon="radio-button-on" title="Record a drive" text="Log a new road session" onPress={() => router.push('/record')} />
         <Shortcut icon="map-outline" title="Explore the map" text="Find roads and drivers nearby" onPress={() => router.push('/map')} />
         <Shortcut icon="people-outline" title="Crews" text="Create, join or manage your crews" onPress={() => router.push('/crews')} />
+        {requests > 0 && (
+          <Shortcut icon="person-add-outline" title={`Follow requests (${requests})`} text="Accept or decline"
+            onPress={() => router.push('/people/requests')} />
+        )}
+        <Shortcut icon="lock-closed-outline" title="Privacy" text="Followers, garage and city, private zone"
+          onPress={() => router.push('/settings/privacy')} />
       </Card>
 
       <View style={styles.tabs}>
@@ -183,12 +192,13 @@ export default function ProfileScreen() {
   );
 }
 
-function Counter({ value, label }: { value: number; label: string }) {
+function Counter({ value, label, onPress }: { value: number; label: string; onPress: () => void }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+    <Pressable style={{ flex: 1, alignItems: 'center', gap: 4 }} onPress={onPress} accessibilityRole="button"
+      accessibilityLabel={`${value} ${label.toLowerCase()}`}>
       <Text style={styles.counterValue}>{value}</Text>
       <Text style={styles.overline}>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
