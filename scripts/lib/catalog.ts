@@ -11,6 +11,9 @@ export type WdModelBinding = {
   alts?: { value: string };
   from?: { value: string };
   to?: { value: string };
+  /** Puissance normalisée en watts (P2109) et masse en kg (P2067), la plus petite version connue */
+  power?: { value: string };
+  mass?: { value: string };
 };
 
 export type CatalogModel = {
@@ -20,9 +23,21 @@ export type CatalogModel = {
   yearFrom: number | null;
   yearTo: number | null;
   aliases: string[];
+  powerKw: number | null;
+  weightKg: number | null;
 };
 
 const qidOf = (uri: string) => uri.split('/').pop()!;
+/** Watts -> kW, gardé seulement dans une plage plausible pour une voiture. */
+export const powerKwOf = (v?: { value: string }) => {
+  const w = v ? Number(v.value) : NaN;
+  const kw = w / 1000;
+  return Number.isFinite(kw) && kw >= 5 && kw <= 2500 ? Math.round(kw * 10) / 10 : null;
+};
+export const weightKgOf = (v?: { value: string }) => {
+  const kg = v ? Number(v.value) : NaN;
+  return Number.isFinite(kg) && kg >= 300 && kg <= 8000 ? Math.round(kg) : null;
+};
 const isQid = (s: string) => /^Q\d+$/.test(s);
 const thisYear = new Date().getFullYear();
 const year = (v?: { value: string }) => {
@@ -67,7 +82,10 @@ export function buildModels(bindings: WdModelBinding[], makeName: string) {
     let yearTo = year(b.to);
     if (yearFrom && yearTo && yearTo < yearFrom) yearTo = null;
 
-    const entry: CatalogModel = { qid: qidOf(b.model.value), name, key, yearFrom, yearTo, aliases: [...aliases] };
+    const entry: CatalogModel = {
+      qid: qidOf(b.model.value), name, key, yearFrom, yearTo, aliases: [...aliases],
+      powerKw: powerKwOf(b.power), weightKg: weightKgOf(b.mass),
+    };
     const existing = byKey.get(key);
     if (!existing) { byKey.set(key, entry); continue; }
 
@@ -77,6 +95,8 @@ export function buildModels(bindings: WdModelBinding[], makeName: string) {
     keep.aliases = [...new Set([...keep.aliases, ...drop.aliases, drop.name])].filter((a) => catalogKey(a) !== keep.key);
     keep.yearFrom = keep.yearFrom ?? drop.yearFrom;
     keep.yearTo = keep.yearTo ?? drop.yearTo;
+    keep.powerKw = keep.powerKw ?? drop.powerKw;
+    keep.weightKg = keep.weightKg ?? drop.weightKg;
     byKey.set(key, keep);
   }
   return { models: [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name)), skipped, merged };

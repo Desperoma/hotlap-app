@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Button, Card, Screen, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { listMyCrews, searchCrews, type Crew, type MyCrew } from '@/features/crews/api';
+import { listMyCrewInvites, listMyCrews, searchCrews, type Crew, type CrewInvite, type MyCrew } from '@/features/crews/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
 /** Mes crews, recherche d'un crew à rejoindre, création. */
@@ -15,10 +15,12 @@ export default function CrewsScreen() {
   const [mine, setMine] = useState<MyCrew[] | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Crew[] | null>(null);
+  const [invites, setInvites] = useState<CrewInvite[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       if (me) listMyCrews(me).then(setMine).catch(() => setMine([]));
+      listMyCrewInvites().then(setInvites).catch(() => setInvites([]));
     }, [me]),
   );
 
@@ -45,6 +47,23 @@ export default function CrewsScreen() {
       </View>
 
       <Button title="Create a crew" icon="add" onPress={() => router.push('/crews/form')} />
+
+      {invites.length > 0 && (
+        <>
+          <Text style={styles.section}>INVITATIONS ({invites.length})</Text>
+          {invites.map((i) => (
+            <Pressable key={i.crewId} style={styles.invite} onPress={() => router.push(`/crews/${i.crewId}`)}
+              accessibilityRole="button" accessibilityLabel={`Invitation to ${i.crewName}`}>
+              <Ionicons name="mail-unread-outline" size={20} color={colors.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inviteName} numberOfLines={1}>{i.crewName}</Text>
+                <Text style={styles.muted} numberOfLines={1}>{i.inviterName} invited you · {i.memberCount} {i.memberCount === 1 ? 'member' : 'members'}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+          ))}
+        </>
+      )}
 
       <Text style={styles.section}>MY CREWS</Text>
       {mine === null ? (
@@ -94,6 +113,11 @@ const styles = StyleSheet.create({
   title: { ...type.h1, color: colors.text },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
   section: { ...type.h2, color: colors.text, fontSize: 15, marginTop: spacing.sm },
+  invite: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md,
+    borderRadius: 14, borderWidth: 1, borderColor: colors.accent, backgroundColor: colors.card,
+  },
+  inviteName: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   badge: {
     width: 44, height: 44, borderRadius: 12, backgroundColor: colors.accentSoft,

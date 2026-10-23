@@ -54,7 +54,8 @@ export default function MapScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [satellite, setSatellite] = useState(false);
   const [gps, setGps] = useState(false);
-  const [selected, setSelected] = useState<{ pinKey: string; index: number } | null>(null);
+  // Drives sélectionnés (copie) : le regroupement change avec le zoom, la sélection doit survivre.
+  const [selected, setSelected] = useState<{ drives: MapDrive[]; index: number } | null>(null);
   const [paths, setPaths] = useState<Record<string, LatLng[][] | 'loading' | 'none'>>({});
   const fitted = useRef(false);
   // Couche publique et circuits : rechargés pour la zone affichée.
@@ -149,14 +150,10 @@ export default function MapScreen() {
     [allDrives, filter, cellKey],
   );
   const selectedCircuit = circuitId ? circuits.find((c) => c.id === circuitId) ?? null : null;
-  const selectedPin = selected ? pins.find((p) => p.key === selected.pinKey) ?? null : null;
-  const selectedDrive = selectedPin ? selectedPin.drives[Math.min(selected!.index, selectedPin.drives.length - 1)] : null;
+  const selectedIds = useMemo(() => new Set(selected?.drives.map((d) => d.id) ?? []), [selected]);
+  const selectedPin = selected ? { drives: selected.drives } : null;
+  const selectedDrive = selected ? selected.drives[Math.min(selected.index, selected.drives.length - 1)] : null;
   const selectedPath = selectedDrive ? paths[selectedDrive.id] : undefined;
-
-  // Le repère sélectionné disparaît (filtre, rafraîchissement) : on ferme la carte du bas.
-  useEffect(() => {
-    if (selected && !selectedPin) setSelected(null);
-  }, [selected, selectedPin]);
 
   // Premier affichage : cadre sur les repères, sinon sur ma position.
   useEffect(() => {
@@ -179,7 +176,7 @@ export default function MapScreen() {
     setTracking(true);
     const t = setTimeout(() => setTracking(false), 800);
     return () => clearTimeout(t);
-  }, [pins, selected?.pinKey, circuits, circuitId]);
+  }, [pins, selected, circuits, circuitId]);
 
   // Tracé du drive affiché : chargé une fois, puis la caméra se cale dessus (au-dessus de la carte du bas).
   useEffect(() => {
@@ -222,14 +219,16 @@ export default function MapScreen() {
   };
 
   // Gros groupe vu de loin : on zoome dessus plutôt que d'ouvrir des dizaines de cartes.
+  // Des drives partis du même endroit ne se sépareront jamais : on ouvre directement leurs cartes.
   const onPinPress = (pin: Pin, isSelected: boolean) => {
     setCircuitId(null);
-    if (!isSelected && pin.drives.length > 3 && latDelta > 0.08) {
-      const coords = pin.drives.map((d) => d.coordinate);
+    if (isSelected) return setSelected(null);
+    const coords = pin.drives.map((d) => d.coordinate);
+    if (pin.drives.length > 3 && latDelta > 0.08 && spreadDeg(coords) > 0.003) {
       mapRef.current?.fitToCoordinates(coords, { edgePadding: { top: 200, right: 80, bottom: 200, left: 80 }, animated: true });
-      if (new Set(coords.map((c) => `${c.latitude.toFixed(3)}:${c.longitude.toFixed(3)}`)).size > 1) return;
+      return;
     }
-    setSelected(isSelected ? null : { pinKey: pin.key, index: 0 });
+    setSelected({ drives: pin.drives, index: 0 });
   };
 
   const recording = status !== 'idle';
@@ -275,7 +274,7 @@ export default function MapScreen() {
           )}
 
           {pins.map((pin) => {
-            const isSelected = pin.key === selected?.pinKey;
+            const isSelected = pin.drives.some((d) => selectedIds.has(d.id));
             return (
               <Marker
                 key={pin.key}
@@ -522,6 +521,12 @@ function groupPins(drives: MapDrive[], cell = 0.0014): Pin[] {
     else byCell.set(key, { key, coordinate: d.coordinate, drives: [d] });
   }
   return [...byCell.values()];
+}
+
+/** Plus grand écart (en degrés) entre des points. */
+function spreadDeg(coords: LatLng[]) {
+  const lats = coords.map((c) => c.latitude), lngs = coords.map((c) => c.longitude);
+  return Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lngs) - Math.min(...lngs));
 }
 
 function initialsOf(name: string) {

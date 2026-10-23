@@ -9,8 +9,8 @@ import { OptionsSheet, type SheetOption } from '@/components/OptionsSheet';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
-  answerRequest, deleteCrew, getCrew, joinCrew, leaveCrew, listMembers, removeMember, setMemberRole, transferCrew,
-  type CrewMember, type MyCrew,
+  answerRequest, deleteCrew, getCrew, joinCrew, leaveCrew, listMembers, listMyCrewInvites, removeMember, respondCrewInvite,
+  setMemberRole, transferCrew, type CrewInvite, type CrewMember, type MyCrew,
 } from '@/features/crews/api';
 import { displayName } from '@/features/social/api';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -31,11 +31,13 @@ export default function CrewScreen() {
   const [memberMenu, setMemberMenu] = useState<CrewMember | null>(null);
   const [crewMenu, setCrewMenu] = useState(false);
   const [report, setReport] = useState<ModerationTarget | null>(null);
+  const [invite, setInvite] = useState<CrewInvite | null>(null);
 
   const load = useCallback(() => {
     if (!id || !me) return;
     getCrew(id, me).then(setCrew).catch(() => setCrew(null));
     listMembers(id).then(setMembers).catch(() => setMembers([]));
+    listMyCrewInvites().then((l) => setInvite(l.find((i) => i.crewId === id) ?? null)).catch(() => setInvite(null));
   }, [id, me]);
   useFocusEffect(load);
 
@@ -54,6 +56,7 @@ export default function CrewScreen() {
   const active = crew.myStatus === 'active';
   const isOwner = active && crew.myRole === 'owner';
   const isAdmin = active && (crew.myRole === 'owner' || crew.myRole === 'admin');
+  const canInvite = isAdmin || (active && crew.join_policy === 'open');
   const pending = members.filter((m) => m.status === 'pending');
   const roster = members.filter((m) => m.status === 'active');
   const later = (fn: () => void) => setTimeout(fn, 400); // après la fermeture de la feuille (iOS)
@@ -145,8 +148,23 @@ export default function CrewScreen() {
             crew.join_policy === 'approval' ? 'Joins on request' : 'Open crew'].filter(Boolean).join(' · ')}
         </Text>
         {crew.description ? <Text style={styles.desc}>{crew.description}</Text> : null}
-        {crew.myStatus === null && (
+        {invite && !active && (
+          <View style={styles.invite}>
+            <Text style={styles.inviteText}><Text style={styles.name}>{invite.inviterName}</Text> invited you to join.</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <Button title="Decline" variant="secondary" style={{ flex: 1 }} disabled={busy}
+                onPress={() => run(() => respondCrewInvite(crew.id, false), 'Update failed')} />
+              <Button title="Join" icon="checkmark" style={{ flex: 1 }} loading={busy}
+                onPress={() => run(() => respondCrewInvite(crew.id, true), 'Couldn’t join')} />
+            </View>
+          </View>
+        )}
+        {crew.myStatus === null && !invite && (
           <Button title={crew.join_policy === 'open' ? 'Join crew' : 'Ask to join'} icon="people" onPress={join} loading={busy} />
+        )}
+        {canInvite && (
+          <Button title="Invite drivers" variant="secondary" icon="person-add-outline"
+            onPress={() => router.push({ pathname: '/crews/invite', params: { id: crew.id } })} />
         )}
         {crew.myStatus === 'pending' && (
           <Button title="Request sent · Cancel" variant="secondary" icon="time-outline" onPress={leave} disabled={busy} />
@@ -207,6 +225,8 @@ const styles = StyleSheet.create({
   desc: { color: colors.text, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
   section: { ...type.h2, color: colors.text, fontSize: 15 },
   member: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  invite: { gap: spacing.sm, borderWidth: 1, borderColor: colors.accent, borderRadius: 14, padding: spacing.md },
+  inviteText: { color: colors.text, fontFamily: fonts.regular, fontSize: 14 },
   name: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
   meta: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12 },
   role: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },

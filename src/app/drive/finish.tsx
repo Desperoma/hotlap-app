@@ -136,6 +136,7 @@ export default function FinishDriveScreen() {
             durationS: summary.stats.durationS,
             distanceM: summary.stats.distanceM,
             avgSpeedKmh: summary.stats.avgSpeedKmh, // récap : toujours le propriétaire
+            maxSpeedKmh: summary.stats.maxSpeedKmh,
             score: summary.score,
             maxLateralG: null,
             lapTimeMs: null,

@@ -37,7 +37,7 @@ export interface Profile {
 /** Ce que les autres utilisateurs voient (vue public_profiles). */
 export type PublicProfile = Pick<
   Profile,
-  'id' | 'username' | 'display_name' | 'avatar_url' | 'bio' | 'country_code' | 'home_city' | 'created_at' | 'follow_policy'
+  'id' | 'username' | 'display_name' | 'avatar_url' | 'bio' | 'country_code' | 'region' | 'home_city' | 'created_at' | 'follow_policy'
 >;
 
 export interface Vehicle {
@@ -52,6 +52,9 @@ export interface Vehicle {
   /** Une des couleurs de data/carColors.ts, ou null */
   color: string | null;
   photo_url: string | null;
+  /** Puissance (kW) et poids (kg) : saisis, ou repris du catalogue */
+  power_kw: number | null;
+  weight_kg: number | null;
   is_primary: boolean;
   created_at: string;
 }

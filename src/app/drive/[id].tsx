@@ -5,15 +5,17 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { DriveMap } from '@/components/DriveMap';
 import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { DriveSocial } from '@/components/DriveSocial';
+import { DriveTelemetry } from '@/components/DriveTelemetry';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
 import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Screen, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { deleteDrive, getDrive, updateDrive, type DriveDetail } from '@/features/drives/api';
+import { deleteDrive, getDrive, getDrivePoints, updateDrive, type DriveDetail } from '@/features/drives/api';
 import { listDrivePhotos } from '@/features/drives/media';
 import { driveMode, showcaseStats, vehicleHeading } from '@/features/drives/showcase';
+import { buildSamples, type Sample } from '@/features/drives/telemetry';
 import { VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -27,6 +29,7 @@ export default function DriveDetailScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
   const [carSheet, setCarSheet] = useState(false);
+  const [samples, setSamples] = useState<Sample[] | null>(null);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -38,6 +41,13 @@ export default function DriveDetailScreen() {
   }, [id, session?.user.id]);
 
   useEffect(load, [load]);
+
+  // Télémétrie : points bruts, lisibles par le seul propriétaire.
+  const mine = !!drive?.isMine;
+  useEffect(() => {
+    if (!id || !mine) return;
+    getDrivePoints(id).then((p) => setSamples(buildSamples(p))).catch(() => setSamples([]));
+  }, [id, mine]);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -112,7 +122,8 @@ export default function DriveDetailScreen() {
           stats={showcaseStats({
             durationS: drive.durationS,
             distanceM: drive.distanceM,
-            avgSpeedKmh: drive.isMine ? drive.avgSpeedKmh : null, // privée : propriétaire uniquement
+            avgSpeedKmh: drive.isMine ? drive.avgSpeedKmh : null, // privées : propriétaire uniquement
+            maxSpeedKmh: drive.isMine ? drive.maxSpeedKmh : null,
             score: drive.score,
             maxLateralG: drive.maxLateralG,
             lapTimeMs: drive.lapTimeMs,
@@ -147,10 +158,14 @@ export default function DriveDetailScreen() {
         </Text>
       </View>
 
-      <DriveMap
-        path={drive.path}
-        emptyLabel={drive.isMine ? 'No route recorded' : 'Route hidden (inside the driver’s private zone)'}
-      />
+      {drive.isMine && samples && samples.length >= 2 ? (
+        <DriveTelemetry samples={samples} />
+      ) : (
+        <DriveMap
+          path={drive.path}
+          emptyLabel={drive.isMine ? (samples === null ? 'Loading route…' : 'No route recorded') : 'Route hidden (inside the driver’s private zone)'}
+        />
+      )}
 
       <PhotoStrip uris={photos} size={140} />
 
@@ -164,7 +179,7 @@ export default function DriveDetailScreen() {
 
       {drive.isMine && (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.muted}>Avg. speed is only shown to you.</Text>
+          <Text style={styles.muted}>Speeds and telemetry are only shown to you.</Text>
           <VehicleSelect label="Car" value={drive.vehicleId} onChange={changeVehicle} />
           <Text style={styles.label}>Who can see it</Text>
           <SegmentedControl options={VISIBILITY_OPTIONS} value={drive.visibility} onChange={changeVisibility} />

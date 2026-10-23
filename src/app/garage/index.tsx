@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CarThumb } from '@/components/CarThumb';
+import { GarageCarCard } from '@/components/GarageCarCard';
 import { OptionsSheet } from '@/components/OptionsSheet';
-import { Button, Card, Screen } from '@/components/ui';
+import { Button, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { myVehicleStats, type VehicleStats } from '@/features/garage/stats';
 import type { Vehicle } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
@@ -14,6 +15,8 @@ import { colors, fonts, spacing, type } from '@/theme';
 export default function GarageScreen() {
   const { vehicles, setPrimaryVehicle, removeVehicle } = useAuth();
   const [menu, setMenu] = useState<Vehicle | null>(null);
+  const [stats, setStats] = useState<Map<string, VehicleStats>>(new Map());
+  useFocusEffect(useCallback(() => { myVehicleStats().then(setStats).catch(() => {}); }, []));
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/profile'));
 
@@ -40,23 +43,12 @@ export default function GarageScreen() {
         <Text style={styles.muted}>Your favorite is picked by default before a drive. You can change the car on each drive.</Text>
       </View>
 
-      {vehicles?.map((v) => (
-        <Card key={v.id} style={[styles.car, v.is_primary && styles.favorite]} onPress={() => setMenu(v)}>
-          <CarThumb vehicle={v} size={72} />
-          <View style={{ flex: 1, gap: 2 }}>
-            {v.is_primary && (
-              <View style={styles.badge}>
-                <Ionicons name="star" size={11} color={colors.accent} />
-                <Text style={styles.badgeText}>FAVORITE</Text>
-              </View>
-            )}
-            {v.nickname ? <Text style={styles.muted}>{v.nickname}</Text> : null}
-            <Text style={styles.make}>{v.make.toUpperCase()}{v.year ? ` · ${v.year}` : ''}</Text>
-            <Text style={styles.model}>{v.model}</Text>
-          </View>
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
-        </Card>
+      {vehicles?.map((v, i) => (
+        <GarageCarCard key={v.id} car={v} stats={stats.get(v.id)} flip={i % 2 === 1} index={i} onPress={() => setMenu(v)} />
       ))}
+      {vehicles && vehicles.length > 0 && (
+        <Text style={styles.muted}>Top speed and drive totals are only shown to you. Touch a car to edit it.</Text>
+      )}
 
       <Button title="Add a vehicle" icon="add" onPress={() => router.push('/garage/edit')} />
 
@@ -79,10 +71,4 @@ const styles = StyleSheet.create({
   overline: { ...type.overline, color: colors.accent },
   title: { ...type.h1, color: colors.text },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
-  car: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  favorite: { borderColor: colors.accent },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  badgeText: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
-  make: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 1 },
-  model: { ...type.h1, color: colors.text, fontSize: 22 },
 });

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
@@ -23,7 +23,7 @@ export default function EditProfileScreen() {
   const [displayName, setDisplayName] = useState(profile?.display_name ?? profile?.username ?? '');
   const [bio, setBio] = useState(profile?.bio ?? '');
   const [place, setPlace] = useState<PlaceValue>({
-    countryCode: profile?.country_code ?? null, region: profile?.region ?? '', city: profile?.home_city ?? '',
+    countryCode: profile?.country_code?.trim() || null, region: profile?.region ?? '', city: profile?.home_city ?? '',
   });
   const [first, setFirst] = useState(profile?.first_name ?? '');
   const [last, setLast] = useState(profile?.last_name ?? '');
@@ -31,6 +31,19 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoMenu, setPhotoMenu] = useState(false);
+
+  // Profil arrivé après l'ouverture de l'écran (ou rechargé) : on remplit les champs non modifiés.
+  const touched = useRef(false);
+  useEffect(() => {
+    if (!profile || touched.current) return;
+    setDisplayName(profile.display_name ?? profile.username ?? '');
+    setBio(profile.bio ?? '');
+    setPlace({ countryCode: profile.country_code?.trim() || null, region: profile.region ?? '', city: profile.home_city ?? '' });
+    setFirst(profile.first_name ?? '');
+    setLast(profile.last_name ?? '');
+    setPhone(profile.phone ?? '');
+  }, [profile]);
+  const touch = <T,>(set: (v: T) => void) => (v: T) => { touched.current = true; set(v); };
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/profile'));
   const userId = session?.user.id;
@@ -113,20 +126,20 @@ export default function EditProfileScreen() {
       <Text style={styles.section}>PUBLIC</Text>
       <Text style={styles.hint}>@{profile.username} · ton pseudo ne change pas.</Text>
       <TextField label="Display name" icon="person-outline" placeholder={profile.username} autoCapitalize="words"
-        value={displayName} onChangeText={setDisplayName} maxLength={40} />
+        value={displayName} onChangeText={touch(setDisplayName)} maxLength={40} />
       <View style={{ gap: 6 }}>
         <TextField label="Bio" icon="create-outline" placeholder="What do you drive, where, why?" autoCapitalize="sentences"
-          value={bio} onChangeText={setBio} maxLength={BIO_MAX} multiline />
+          value={bio} onChangeText={touch(setBio)} maxLength={BIO_MAX} multiline />
         <Text style={[styles.hint, { textAlign: 'right' }]}>{bio.length}/{BIO_MAX}</Text>
       </View>
-      <PlaceFields value={place} onChange={setPlace} />
+      <PlaceFields value={place} onChange={touch(setPlace)} />
 
       <Text style={styles.section}>PRIVATE</Text>
       <Text style={styles.hint}>Visible par toi seul.</Text>
-      <TextField label="First name" icon="person-outline" autoCapitalize="words" value={first} onChangeText={setFirst} />
-      <TextField label="Last name" icon="person-outline" autoCapitalize="words" value={last} onChangeText={setLast} />
+      <TextField label="First name" icon="person-outline" autoCapitalize="words" value={first} onChangeText={touch(setFirst)} />
+      <TextField label="Last name" icon="person-outline" autoCapitalize="words" value={last} onChangeText={touch(setLast)} />
       <TextField label="Phone (optional)" icon="call-outline" placeholder="+33 6 12 34 56 78" keyboardType="phone-pad"
-        value={phone} onChangeText={setPhone} maxLength={20} />
+        value={phone} onChangeText={touch(setPhone)} maxLength={20} />
       <Card style={{ gap: 4 }}>
         <Text style={styles.label}>Date of birth</Text>
         <Text style={styles.hint}>

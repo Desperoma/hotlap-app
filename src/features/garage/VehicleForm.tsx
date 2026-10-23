@@ -10,14 +10,17 @@ import { catalogKey, fetchMakes, fetchModels, proposeVehicle, suggestModels, typ
 import type { Vehicle } from '@/lib/database.types';
 import { colors, fonts, spacing } from '@/theme';
 
+import { HP_PER_KW, kwToHp } from './units';
+
 const MANUAL = 'Autre (saisie manuelle)';
+const parseNum = (s: string) => { const n = Number(s.replace(',', '.').replace(/\s/g, '')); return s.trim() && Number.isFinite(n) ? n : null; };
 
 /**
  * Marque, modèle, année (et surnom) d'un véhicule : catalogue Wikidata, ou saisie manuelle
  * dédoublonnée par propose_vehicle. Utilisé par l'onboarding (80 %) et par le garage.
  */
 export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = false }: {
-  initial?: Pick<Vehicle, 'make' | 'model' | 'year' | 'nickname' | 'color'> | null;
+  initial?: Pick<Vehicle, 'make' | 'model' | 'year' | 'nickname' | 'color' | 'power_kw' | 'weight_kg'> | null;
   submitLabel: string;
   onSubmit: (v: VehicleInput) => Promise<void>;
   showNickname?: boolean;
@@ -35,6 +38,20 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
   const [nickname, setNickname] = useState(initial?.nickname ?? '');
   const [color, setColor] = useState<string | null>(initial?.color ?? null);
   const [busy, setBusy] = useState(false);
+  const [power, setPower] = useState(initial?.power_kw ? String(kwToHp(initial.power_kw)) : '');
+  const [weight, setWeight] = useState(initial?.weight_kg ? String(initial.weight_kg) : '');
+  const [specsFromCatalog, setSpecsFromCatalog] = useState(false);
+
+  // Modèle du catalogue choisi : puissance et poids théoriques, si le catalogue les connaît
+  // et que le conducteur ne les a pas déjà saisis.
+  useEffect(() => {
+    if (!model) return;
+    let filled = false;
+    if (model.powerKw && !power.trim()) { setPower(String(kwToHp(model.powerKw))); filled = true; }
+    if (model.weightKg && !weight.trim()) { setWeight(String(model.weightKg)); filled = true; }
+    if (filled) setSpecsFromCatalog(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model]);
 
   // Catalogue des marques ; en modification, on retrouve la marque du véhicule dans le catalogue.
   useEffect(() => {
@@ -80,6 +97,9 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
 
   const submit = async () => {
     if (!makeName || !modelName) return Alert.alert('Presque', 'Choisis ou saisis la marque et le modèle.');
+    const hp = parseNum(power), kg = parseNum(weight);
+    if (hp != null && (hp < 1 || hp > 3000)) return Alert.alert('Presque', 'Puissance entre 1 et 3 000 ch.');
+    if (kg != null && (kg < 200 || kg > 8000)) return Alert.alert('Presque', 'Poids entre 200 et 8 000 kg.');
     setBusy(true);
     try {
       const manual = manualMake || manualModel;
@@ -87,6 +107,8 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
       await onSubmit({
         make: makeName, model: modelName, year: year ? Number(year) : null, modelId,
         nickname: nickname.trim() || null, color,
+        powerKw: hp != null ? Math.round((hp / HP_PER_KW) * 10) / 10 : null,
+        weightKg: kg != null ? Math.round(kg) : null,
       });
     } catch (e) {
       Alert.alert('Oups', e instanceof Error ? e.message : 'Enregistrement impossible');
@@ -150,6 +172,19 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
         </View>
         <Text style={styles.hint}>{CAR_COLORS.find((c) => c.value === color)?.label ?? 'No color selected'}</Text>
       </View>
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <TextField label="Power (hp)" icon="flash-outline" placeholder="ex. 385" keyboardType="number-pad"
+            value={power} onChangeText={(t) => { setPower(t); setSpecsFromCatalog(false); }} maxLength={4} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <TextField label="Weight (kg)" icon="barbell-outline" placeholder="ex. 1450" keyboardType="number-pad"
+            value={weight} onChangeText={(t) => { setWeight(t); setSpecsFromCatalog(false); }} maxLength={4} />
+        </View>
+      </View>
+      <Text style={styles.hint}>
+        {specsFromCatalog ? 'Valeurs théoriques du catalogue (Wikidata), modifiables.' : 'Facultatif : affiché dans ton garage.'}
+      </Text>
       {showNickname && (
         <TextField label="Nickname (optional)" icon="pricetag-outline" placeholder="ex. La Bleue" autoCapitalize="words"
           value={nickname} onChangeText={setNickname} maxLength={40} />
@@ -167,6 +202,7 @@ export function vehicleLabel(v: Pick<Vehicle, 'make' | 'model' | 'nickname'>) {
 const styles = StyleSheet.create({
   hint: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  row: { flexDirection: 'row', gap: spacing.md },
   label: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 13 },
   swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   swatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.border },

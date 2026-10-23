@@ -8,10 +8,11 @@ import { Button, Screen } from '@/components/ui';
 import {
   listNotifications, markAllRead, notificationText, type AppNotification,
 } from '@/features/notifications/api';
+import { respondCrewInvite } from '@/features/crews/api';
 import { answerFollowRequest, follow } from '@/features/social/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
-/** Notifications : likes, commentaires, nouveaux abonnés, demandes reçues et acceptées. */
+/** Notifications : likes, commentaires, nouveaux abonnés, demandes reçues et acceptées, invitations de crew. */
 export default function NotificationsScreen() {
   const [items, setItems] = useState<AppNotification[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,6 +34,7 @@ export default function NotificationsScreen() {
 
   const open = (n: AppNotification) => {
     if ((n.type === 'like' || n.type === 'comment') && n.driveId) router.push(`/drive/${n.driveId}`);
+    else if (n.type === 'crew_invite' && n.crewId) router.push(`/crews/${n.crewId}`);
     else router.push(`/user/${n.actor.id}`);
   };
 
@@ -55,6 +57,15 @@ export default function NotificationsScreen() {
         <View style={styles.actions}>
           <Button title="Accept" onPress={() => run(n, () => answerFollowRequest(n.actor.id, true))} loading={busy} />
           <Button title="Decline" variant="ghost" onPress={() => run(n, () => answerFollowRequest(n.actor.id, false))} disabled={busy} />
+        </View>
+      );
+    }
+    if (n.type === 'crew_invite' && n.invitePending && n.crewId) {
+      const crewId = n.crewId;
+      return (
+        <View style={styles.actions}>
+          <Button title="Join crew" onPress={() => run(n, () => respondCrewInvite(crewId, true))} loading={busy} />
+          <Button title="Decline" variant="ghost" onPress={() => run(n, () => respondCrewInvite(crewId, false))} disabled={busy} />
         </View>
       );
     }

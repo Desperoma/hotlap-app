@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 /** Notifications de la cloche (migration 0016) : créées par la base, lues ici. */
-export type NotificationType = 'like' | 'comment' | 'follow' | 'follow_request' | 'follow_accepted';
+export type NotificationType = 'like' | 'comment' | 'follow' | 'follow_request' | 'follow_accepted' | 'crew_invite';
 
 export type AppNotification = {
   id: number;
@@ -16,6 +16,10 @@ export type AppNotification = {
   iFollow: boolean;
   /** Demande d'abonnement encore en attente */
   requestPending: boolean;
+  /** Invitation dans un crew (migration 0022) */
+  crewId: string | null;
+  crewName: string | null;
+  invitePending: boolean;
 };
 
 type Row = {
@@ -23,6 +27,7 @@ type Row = {
   actor_id: string; actor_username: string; actor_display_name: string | null; actor_avatar_url: string | null;
   drive_id: string | null; drive_title: string | null; comment_excerpt: string | null;
   i_follow: boolean; request_pending: boolean;
+  crew_id?: string | null; crew_name?: string | null; invite_pending?: boolean;
 };
 
 export async function listNotifications(before?: string): Promise<AppNotification[]> {
@@ -34,6 +39,7 @@ export async function listNotifications(before?: string): Promise<AppNotificatio
     actor: { id: r.actor_id, username: r.actor_username, displayName: r.actor_display_name, avatarUrl: r.actor_avatar_url },
     driveId: r.drive_id, driveTitle: r.drive_title, commentExcerpt: r.comment_excerpt,
     iFollow: r.i_follow, requestPending: r.request_pending,
+    crewId: r.crew_id ?? null, crewName: r.crew_name ?? null, invitePending: !!r.invite_pending,
   }));
 }
 
@@ -58,5 +64,6 @@ export function notificationText(n: AppNotification): string {
     case 'follow': return n.iFollow ? 'followed you back. You are now friends.' : 'started following you.';
     case 'follow_request': return n.requestPending ? 'wants to follow you.' : 'sent you a follow request.';
     case 'follow_accepted': return 'accepted your follow request.';
+    case 'crew_invite': return `invited you to join the crew ${n.crewName ?? ''}.`;
   }
 }

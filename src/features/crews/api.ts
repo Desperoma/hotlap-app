@@ -169,6 +169,31 @@ export const setMemberRole = (crewId: string, userId: string, role: 'admin' | 'm
   call('set_crew_role', { p_crew_id: crewId, p_user_id: userId, p_role: role });
 export const transferCrew = (crewId: string, userId: string) => call('transfer_crew', { p_crew_id: crewId, p_user_id: userId });
 
+// Invitations (migration 0022) -----------------------------------------------------------
+export type CrewInviteResult = 'invited' | 'already_member' | 'joined';
+export const inviteToCrew = async (crewId: string, userId: string) =>
+  ((await call('invite_to_crew', { p_crew_id: crewId, p_user_id: userId })) ?? 'invited') as CrewInviteResult;
+export const respondCrewInvite = async (crewId: string, accept: boolean) =>
+  ((await call('respond_crew_invite', { p_crew_id: crewId, p_accept: accept })) ?? (accept ? 'active' : 'declined')) as 'active' | 'declined';
+export const cancelCrewInvite = (crewId: string, userId: string) => call('cancel_crew_invite', { p_crew_id: crewId, p_user_id: userId });
+
+export type CrewInvite = { crewId: string; crewName: string; memberCount: number; inviterName: string; createdAt: string };
+export async function listMyCrewInvites(): Promise<CrewInvite[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('my_crew_invites');
+  if (error) throw crewError(error);
+  return ((data ?? []) as { crew_id: string; crew_name: string; member_count: number; inviter_username: string; inviter_display_name: string | null; created_at: string }[])
+    .map((r) => ({ crewId: r.crew_id, crewName: r.crew_name, memberCount: r.member_count, inviterName: r.inviter_display_name ?? r.inviter_username, createdAt: r.created_at }));
+}
+
+/** Personnes déjà invitées dans un crew (visibles par les admins et par l'auteur de l'invitation). */
+export async function listInvitedIds(crewId: string): Promise<Set<string>> {
+  if (!isSupabaseConfigured) return new Set();
+  const { data, error } = await supabase.from('crew_invites').select('user_id').eq('crew_id', crewId);
+  if (error) return new Set();
+  return new Set(((data ?? []) as { user_id: string }[]).map((r) => r.user_id));
+}
+
 /** Messages lisibles pour les erreurs levées par les fonctions SQL. */
 function crewError(error: { message: string }) {
   const m = error.message;
@@ -178,6 +203,8 @@ function crewError(error: { message: string }) {
   if (m.includes('crew_owner_cannot_leave')) return new Error('Transmets le crew à un membre, ou supprime-le, avant de partir.');
   if (m.includes('crew_forbidden')) return new Error('Tu n’as pas les droits pour faire ça dans ce crew.');
   if (m.includes('crew_not_found')) return new Error('Ce crew n’existe plus.');
+  if (m.includes('crew_invite_not_found')) return new Error('Cette invitation n’est plus valable.');
+  if (m.includes('crew_invite_unavailable')) return new Error('Impossible d’inviter cette personne.');
   if (m.includes('crews_name_check') || m.includes('crews_description_check')) {
     return new Error('Nom : 3 à 40 caractères. Description : 280 caractères maximum.');
   }

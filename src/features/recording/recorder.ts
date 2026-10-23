@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 
-import { acceptPoint, type TrackPoint } from './geo';
+import { acceptPoint, speedOf, type TrackPoint } from './geo';
 
 /**
  * Enregistrement d'un drive, y compris écran verrouillé.
@@ -55,7 +55,8 @@ export const recorder = {
         speed: loc.coords.speed,
         accuracy: loc.coords.accuracy,
       };
-      if (acceptPoint(points[points.length - 1], p)) points.push(p);
+      const prev = points[points.length - 1];
+      if (acceptPoint(prev, p)) points.push({ ...p, speed: speedOf(prev, p) });
     }
     state = { ...state, points };
     emit();
