@@ -72,6 +72,7 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="settings/privacy-zone" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings/privacy" />
         <Stack.Screen name="people/[kind]" />
+        <Stack.Screen name="search" options={{ animation: 'fade' }} />
       </Stack.Protected>
     </Stack>
   );

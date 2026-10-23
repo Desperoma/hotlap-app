@@ -4,7 +4,7 @@ import type { DriveFeedItem, PublicProfile, ScoreBreakdown, Visibility } from '@
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 /** Ligne renvoyée par les fonctions de fil (type drive_card, migration 0002). */
-type DriveCardRow = {
+export type DriveCardRow = {
   id: string; owner_id: string; vehicle_id: string | null; route_id: string | null; circuit_id: string | null;
   title: string; description: string | null; started_at: string; ended_at: string;
   distance_m: number; duration_s: number; avg_speed_kmh: number | null; max_lateral_g: number | null;
@@ -17,7 +17,7 @@ export type Author = Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'a
 export type Comment = { id: string; body: string; createdAt: string; author: Author | null; isMine: boolean };
 
 /** Complète les lignes de fil : auteur, véhicule, « j'aime » de l'utilisateur. */
-async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFeedItem[]> {
+export async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFeedItem[]> {
   if (rows.length === 0) return [];
   const ownerIds = [...new Set(rows.map((r) => r.owner_id))];
   const vehicleIds = [...new Set(rows.map((r) => r.vehicle_id).filter((v): v is string => !!v))];
