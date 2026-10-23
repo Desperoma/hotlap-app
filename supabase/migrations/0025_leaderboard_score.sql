@@ -2,6 +2,7 @@
 -- 0025 : classement « Score » — meilleur score d'un drive sur route ouverte (hors circuit),
 -- toutes voitures confondues. Meilleur drive par conducteur, sur les drives que je peux voir ;
 -- drives simulés exclus. Portées : world, country, friends, crews (pas de « même modèle »).
+-- + garage : le propriétaire voit aussi ses drives simulés dans la vitesse max de ses voitures.
 -- =============================================================================
 
 create or replace function public.leaderboard_score(
@@ -36,3 +37,26 @@ as $$
 $$;
 revoke all on function public.leaderboard_score(text, text, int) from public, anon;
 grant execute on function public.leaderboard_score(text, text, int) to authenticated;
+
+-- Garage : la vitesse max (et les totaux) d'une voiture compte aussi les drives simulés pour son
+-- propriétaire (outils de test) ; les autres ne voient que les drives réels qu'ils peuvent voir.
+create or replace function public.my_vehicle_stats()
+returns table (vehicle_id uuid, drive_count int, distance_m bigint, max_speed_kmh real)
+language sql stable security definer set search_path = '' as $$
+  select d.vehicle_id, count(*)::int, sum(d.distance_m)::bigint, max(d.max_speed_kmh)
+  from public.drives d
+  where d.owner_id = auth.uid() and d.vehicle_id is not null
+  group by d.vehicle_id
+$$;
+
+create or replace function public.user_vehicle_stats(p_user uuid)
+returns table (vehicle_id uuid, drive_count int, distance_m bigint, max_speed_kmh real)
+language sql stable security definer set search_path = '' as $$
+  select d.vehicle_id, count(*)::int, sum(d.distance_m)::bigint, max(d.max_speed_kmh)
+  from public.drives d
+  where d.owner_id = p_user and d.vehicle_id is not null
+    and auth.uid() is not null
+    and (p_user = auth.uid()
+         or (not d.is_simulated and public.can_see_details(p_user) and public.can_see_drive(d.owner_id, d.visibility)))
+  group by d.vehicle_id
+$$;
