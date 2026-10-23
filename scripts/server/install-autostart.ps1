@@ -62,4 +62,4 @@ if (-not (Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContin
 
 Write-Output "Tâche « $TaskName » installée ($(if ($AtLogon) { 'à l''ouverture de session' } else { 'au démarrage de Windows' }))."
 Write-Output 'Démarrer maintenant : Start-ScheduledTask -TaskName ''HotLap Expo Go'''
-Write-Output 'Journal : logs\serve-go.log (et logs\metro.log pour Metro)'
+Write-Output 'Journaux : logs\serve-go.log, et logs\metro-<date>.log pour chaque lancement de Metro'

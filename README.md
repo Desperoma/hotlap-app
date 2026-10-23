@@ -155,7 +155,7 @@ Sur la machine serveur (Windows, Tailscale installé), une seule fois :
    (depuis le SDK 57, Expo Go exige le même compte côté serveur et côté iPhone).
 2. Dans un PowerShell **administrateur** : `powershell -ExecutionPolicy Bypass -File scripts\server\install-autostart.ps1`
    (option `-AtLogon` pour démarrer à l'ouverture de session, sans mot de passe ; `-Uninstall` pour retirer).
-3. `Start-ScheduledTask -TaskName 'HotLap Expo Go'`, puis vérifier `logs\serve-go.log`.
+3. `Start-ScheduledTask -TaskName 'HotLap Expo Go'`, puis vérifier `logs\serve-go.log` (et `logs\metro-<date>.log`, un par lancement de Metro).
 
 La tâche démarre `npm run start:go` sur l'IP Tailscale au démarrage de Windows, le relance s'il s'arrête,
 récupère `main` toutes les 10 minutes et n'ouvre le port 8081 qu'aux adresses Tailscale.

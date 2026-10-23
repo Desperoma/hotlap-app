@@ -6,6 +6,7 @@
 // Les options passées après `--` sont transmises à Expo : npm run start:go -- --clear
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 if (major < 22 || (major === 22 && minor < 13) || major === 23 || (major === 24 && minor < 3) || major === 25) {
@@ -43,9 +44,7 @@ if (env.REACT_NATIVE_PACKAGER_HOSTNAME) {
   }
 }
 
-const child = spawn('npx', ['expo', 'start', '--go', ...process.argv.slice(2)], {
-  stdio: 'inherit',
-  env,
-  shell: process.platform === 'win32', // npx est un .cmd sous Windows
-});
+// Expo CLI lancé directement avec ce Node : pas de shell (ni npx.cmd), arguments non réinterprétés.
+const expoCli = createRequire(import.meta.url).resolve('expo/bin/cli');
+const child = spawn(process.execPath, [expoCli, 'start', '--go', ...process.argv.slice(2)], { stdio: 'inherit', env });
 child.on('exit', (code, signal) => process.exit(signal ? 1 : (code ?? 0)));

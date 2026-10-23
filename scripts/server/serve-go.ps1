@@ -6,7 +6,8 @@
 #   et le serveur redémarre seulement si les dépendances (package-lock.json) ont changé.
 #
 # Lancé au démarrage de Windows par la tâche planifiée « HotLap Expo Go »
-# (voir install-autostart.ps1). Journal : logs\serve-go.log à la racine du dépôt.
+# (voir install-autostart.ps1). Journaux dans logs\ à la racine du dépôt : serve-go.log (cette boucle)
+# et metro-<date>.log / .err.log (un par lancement de Metro, les 10 derniers sont gardés).
 # Prérequis, une seule fois : .env.local rempli, `npx expo login` avec le compte des testeurs.
 
 param(
@@ -20,7 +21,6 @@ Set-Location $Repo
 $logDir = Join-Path $Repo 'logs'
 New-Item -ItemType Directory -Force $logDir | Out-Null
 $log = Join-Path $logDir 'serve-go.log'
-$metroLog = Join-Path $logDir 'metro.log'
 
 function Log([string]$msg) {
   $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg"
@@ -38,11 +38,26 @@ function Get-TailscaleIp {
 }
 
 function Start-Metro {
-  Log "Démarrage de Metro (Expo Go) sur $($env:REACT_NATIVE_PACKAGER_HOSTNAME):8081"
-  # cmd /c : npm est un script .cmd ; la sortie va dans metro.log.
-  return Start-Process -FilePath 'cmd.exe' `
-    -ArgumentList '/c', "npm run start:go >> `"$metroLog`" 2>&1" `
-    -WorkingDirectory $Repo -WindowStyle Hidden -PassThru
+  # Un ancien Metro (lancé à la main, ou resté d'un lancement précédent) garderait le port :
+  # Expo, sans terminal pour demander « utiliser 8082 ? », s'arrêterait aussitôt.
+  Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue |
+    ForEach-Object { Log "Port 8081 occupé (PID $($_.OwningProcess)) : arrêt"; & taskkill.exe /PID $_.OwningProcess /T /F | Out-Null }
+
+  # Un journal par lancement : un fichier encore ouvert par un ancien process ne bloque plus rien.
+  Get-ChildItem $logDir -Filter 'metro-*.log' | Sort-Object LastWriteTime -Descending |
+    Select-Object -Skip 20 | Remove-Item -ErrorAction SilentlyContinue
+  $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+  $out = Join-Path $logDir "metro-$stamp.log"
+  $err = Join-Path $logDir "metro-$stamp.err.log"
+
+  $node = (Get-Command node -ErrorAction SilentlyContinue).Source
+  if (-not $node) { $node = 'C:\Program Files\nodejs\node.exe' }
+  Log "Démarrage de Metro (Expo Go) sur $($env:REACT_NATIVE_PACKAGER_HOSTNAME):8081 avec Node $(& $node -v) ; journal $([IO.Path]::GetFileName($out))"
+  # Node directement (pas cmd /c) : pas de question « Terminer le programme de commandes (O/N) ? »
+  # qui bloque le process et son journal.
+  return Start-Process -FilePath $node -ArgumentList 'scripts\start-go.mjs' `
+    -WorkingDirectory $Repo -NoNewWindow -PassThru `
+    -RedirectStandardOutput $out -RedirectStandardError $err
 }
 
 function Stop-Metro($proc) {
@@ -73,6 +88,7 @@ function Update-Repo {
   }
   return $false
 }
+
 Log "=== Démarrage (dépôt $Repo, branche $Branch) ==="
 
 # 1. Tailscale : au démarrage de Windows, l'IP peut mettre un moment à arriver.
