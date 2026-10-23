@@ -24,8 +24,8 @@ async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFeedItem[
   const [authors, vehicles, likes, paths] = await Promise.all([
     supabase.from('public_profiles').select('id, username, display_name, avatar_url').in('id', ownerIds),
     vehicleIds.length
-      ? supabase.from('vehicles').select('id, make, model, year').in('id', vehicleIds)
-      : Promise.resolve({ data: [] as { id: string; make: string; model: string; year: number | null }[], error: null }),
+      ? supabase.from('vehicles').select('id, make, model, year, color').in('id', vehicleIds)
+      : Promise.resolve({ data: [] as { id: string; make: string; model: string; year: number | null; color: string | null }[], error: null }),
     supabase.from('likes').select('drive_id').eq('user_id', me).in('drive_id', rows.map((r) => r.id)),
     supabase.rpc('drive_path_previews', { p_drive_ids: rows.map((r) => r.id) }),
   ]);
@@ -42,7 +42,7 @@ async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFeedItem[
       ...r,
       max_speed_kmh: null,
       author: authorById.get(r.owner_id) ?? { id: r.owner_id, username: 'driver', display_name: null, avatar_url: null },
-      vehicle: v ? { make: v.make, model: v.model, year: v.year } : null,
+      vehicle: v ? { make: v.make, model: v.model, year: v.year, color: v.color } : null,
       liked_by_me: liked.has(r.id),
       path_preview: pathById.get(r.id) ?? [],
     };

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Picker } from '@/components/Picker';
 import { Button, Chip, TextField } from '@/components/ui';
+import { CAR_COLORS } from '@/data/carColors';
 import { YEARS } from '@/data/vehicles';
 import type { VehicleInput } from '@/features/auth/AuthProvider';
 import { catalogKey, fetchMakes, fetchModels, proposeVehicle, suggestModels, type CatalogItem } from '@/features/catalog/api';
@@ -16,7 +17,7 @@ const MANUAL = 'Autre (saisie manuelle)';
  * dédoublonnée par propose_vehicle. Utilisé par l'onboarding (80 %) et par le garage.
  */
 export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = false }: {
-  initial?: Pick<Vehicle, 'make' | 'model' | 'year' | 'nickname'> | null;
+  initial?: Pick<Vehicle, 'make' | 'model' | 'year' | 'nickname' | 'color'> | null;
   submitLabel: string;
   onSubmit: (v: VehicleInput) => Promise<void>;
   showNickname?: boolean;
@@ -32,6 +33,7 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
   const [suggestions, setSuggestions] = useState<CatalogItem[]>([]);
   const [year, setYear] = useState<string | null>(initial?.year ? String(initial.year) : null);
   const [nickname, setNickname] = useState(initial?.nickname ?? '');
+  const [color, setColor] = useState<string | null>(initial?.color ?? null);
   const [busy, setBusy] = useState(false);
 
   // Catalogue des marques ; en modification, on retrouve la marque du véhicule dans le catalogue.
@@ -84,7 +86,7 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
       const { modelId } = manual ? await proposeVehicle(makeName, modelName) : { modelId: model?.id ?? null };
       await onSubmit({
         make: makeName, model: modelName, year: year ? Number(year) : null, modelId,
-        nickname: nickname.trim() || null,
+        nickname: nickname.trim() || null, color,
       });
     } catch (e) {
       Alert.alert('Oups', e instanceof Error ? e.message : 'Enregistrement impossible');
@@ -137,6 +139,17 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
         <Text style={styles.hint}>Si ta voiture n'existe pas encore, elle sera ajoutée au catalogue après vérification par l'équipe.</Text>
       )}
       <Picker label="Year" placeholder="Select Year (e.g. 2016)" value={year} options={YEARS.map(String)} onChange={setYear} />
+      <View style={{ gap: 8 }}>
+        <Text style={styles.label}>Color</Text>
+        <View style={styles.swatches}>
+          {CAR_COLORS.map((c) => (
+            <Pressable key={c.value} onPress={() => setColor(color === c.value ? null : c.value)}
+              accessibilityRole="radio" accessibilityState={{ selected: color === c.value }} accessibilityLabel={c.label}
+              style={[styles.swatch, { backgroundColor: c.hex }, color === c.value && styles.swatchOn]} />
+          ))}
+        </View>
+        <Text style={styles.hint}>{CAR_COLORS.find((c) => c.value === color)?.label ?? 'No color selected'}</Text>
+      </View>
       {showNickname && (
         <TextField label="Nickname (optional)" icon="pricetag-outline" placeholder="ex. La Bleue" autoCapitalize="words"
           value={nickname} onChangeText={setNickname} maxLength={40} />
@@ -154,4 +167,8 @@ export function vehicleLabel(v: Pick<Vehicle, 'make' | 'model' | 'nickname'>) {
 const styles = StyleSheet.create({
   hint: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  label: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 13 },
+  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  swatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.border },
+  swatchOn: { borderWidth: 3, borderColor: colors.accent },
 });

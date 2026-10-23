@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CarThumb } from '@/components/CarThumb';
 import { OptionsSheet } from '@/components/OptionsSheet';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -41,6 +42,7 @@ export default function GarageScreen() {
 
       {vehicles?.map((v) => (
         <Card key={v.id} style={[styles.car, v.is_primary && styles.favorite]} onPress={() => setMenu(v)}>
+          <CarThumb vehicle={v} size={72} />
           <View style={{ flex: 1, gap: 2 }}>
             {v.is_primary && (
               <View style={styles.badge}>

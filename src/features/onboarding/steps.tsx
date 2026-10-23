@@ -2,11 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { Picker } from '@/components/Picker';
 import { Button, Card, TextField } from '@/components/ui';
-import { COUNTRIES } from '@/config';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VehicleForm } from '@/features/garage/VehicleForm';
+import { PlaceFields, type PlaceValue } from '@/features/places/PlaceFields';
 import { HomeZoneFields } from '@/features/privacy/HomeZoneFields';
 import { applyHomeZone, homeZoneInputError, type HomeZoneInput } from '@/features/privacy/homeZone';
 import { recorder } from '@/features/recording/recorder';
@@ -73,18 +72,17 @@ export function IdentityStep({ onNext }: StepProps) {
 // --- 60 % : localisation + zone privée autour du domicile ----------------------
 export function LocationStep({ onNext }: StepProps) {
   const { profile, updateProfile } = useAuth();
-  const initial = COUNTRIES.find((c) => c.code === profile?.country_code) ?? null;
-  const [country, setCountry] = useState(initial);
-  const [region, setRegion] = useState(profile?.region ?? '');
-  const [city, setCity] = useState(profile?.home_city ?? '');
+  const [place, setPlace] = useState<PlaceValue>({
+    countryCode: profile?.country_code ?? null, region: profile?.region ?? '', city: profile?.home_city ?? '',
+  });
   // Option activée par défaut.
   const [zone, setZone] = useState<HomeZoneInput>({ enabled: true, address: '', here: null });
   const { busy, run } = useSubmit(async () => {
-    await updateProfile({ country_code: country?.code ?? null, region: region.trim() || null, home_city: city.trim() });
+    await updateProfile({ country_code: place.countryCode, region: place.region.trim() || null, home_city: place.city.trim() });
     await applyHomeZone(zone, false);
   }, onNext);
   const submit = () => {
-    if (!country || !city.trim()) return Alert.alert('Presque', 'Le pays et la ville sont obligatoires.');
+    if (!place.countryCode || !place.city.trim()) return Alert.alert('Presque', 'Le pays et la ville sont obligatoires.');
     const e = homeZoneInputError(zone, false);
     if (e) return Alert.alert('Presque', e);
     run();
@@ -92,13 +90,7 @@ export function LocationStep({ onNext }: StepProps) {
   return (
     <>
       <StepTitle title="Your area" subtitle="Sert à te proposer les drives et les routes autour de toi." />
-      <Picker label="Country" placeholder="Select Country" value={country?.name ?? null}
-        options={COUNTRIES.map((c) => c.name)}
-        onChange={(name) => setCountry(COUNTRIES.find((c) => c.name === name) ?? null)} />
-      <TextField label={country?.regionLabel ?? 'Region'} icon="map-outline" placeholder="ex. Moselle"
-        autoCapitalize="words" value={region} onChangeText={setRegion} />
-      <TextField label="Home city" icon="home-outline" placeholder="ex. Metz" autoCapitalize="words"
-        value={city} onChangeText={setCity} />
+      <PlaceFields value={place} onChange={setPlace} />
       <HomeZoneFields value={zone} onChange={setZone} />
       <Button title="Continue" onPress={submit} loading={busy} />
     </>
