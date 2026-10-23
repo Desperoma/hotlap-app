@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DriveCard } from '@/components/DriveCard';
@@ -103,7 +103,9 @@ export default function CommunityScreen() {
           <View style={{ gap: spacing.lg, marginBottom: spacing.sm }}>
             <View style={styles.header}>
               <Text style={styles.title}>Community</Text>
-              <Ionicons name="search" size={22} color={colors.text} />
+              <Pressable onPress={() => router.push('/search')} hitSlop={12} accessibilityLabel="Search">
+                <Ionicons name="search" size={22} color={colors.text} />
+              </Pressable>
             </View>
             <View style={styles.filters}>
               <Chip label="World" active={filter === 'world'} onPress={() => choose('world')} />
@@ -133,7 +135,8 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   list: { padding: spacing.lg, paddingBottom: 120 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // paddingRight : place pour la cloche (NotificationBell)
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 52 },
   title: { ...type.h1, color: colors.text, fontSize: 28 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   empty: { color: colors.textMuted, fontFamily: fonts.regular, textAlign: 'center', marginTop: spacing.xxl, lineHeight: 20 },

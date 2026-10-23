@@ -4,12 +4,14 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { CarThumb } from '@/components/CarThumb';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { listMyCrews, type MyCrew } from '@/features/crews/api';
 import { vehicleLabel } from '@/features/garage/VehicleForm';
 import { deleteAccount } from '@/features/moderation/api';
+import { CheckInBar } from '@/features/profile/CheckInBar';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { listPeople } from '@/features/social/api';
 import { colors, fonts, radius, spacing, type } from '@/theme';
@@ -100,15 +102,8 @@ export default function ProfileScreen() {
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <Button title="Edit profile" icon="create-outline" style={{ flex: 1 }} onPress={() => router.push('/edit-profile')} />
-          <Pressable style={styles.shareBtn}><Ionicons name="share-outline" size={20} color={colors.text} /></Pressable>
         </View>
-        <View style={{ gap: 6 }}>
-          <View style={styles.progressHead}>
-            <Text style={styles.overline}>PROFILE CHECK-IN</Text>
-            <Text style={[styles.overline, { color: colors.accent }]}>{Math.round(completion * 100)}%</Text>
-          </View>
-          <View style={styles.track}><View style={[styles.fill, { width: `${completion * 100}%` }]} /></View>
-        </View>
+        <CheckInBar userId={userId} completion={completion} />
       </Card>
 
       <Card style={styles.counters}>
@@ -139,7 +134,7 @@ export default function ProfileScreen() {
           <Text style={styles.section}>FAVORITE MACHINE</Text>
           {primaryVehicle ? (
             <Card style={{ gap: 6 }} onPress={() => router.push({ pathname: '/garage/edit', params: { id: primaryVehicle.id } })}>
-              <Ionicons name="car-sport" size={44} color={colors.accent} style={{ alignSelf: 'flex-end' }} />
+              <CarThumb vehicle={primaryVehicle} size={140} style={{ alignSelf: 'center' }} />
               {primaryVehicle.nickname ? <Text style={styles.year}>{primaryVehicle.nickname}</Text> : null}
               {primaryVehicle.year ? <Text style={styles.year}>{primaryVehicle.year}</Text> : null}
               <Text style={styles.make}>{primaryVehicle.make.toUpperCase()}</Text>
@@ -156,7 +151,7 @@ export default function ProfileScreen() {
             <View style={{ gap: spacing.sm }}>
               {vehicles!.filter((v) => !v.is_primary).map((v) => (
                 <Card key={v.id} style={styles.otherCar} onPress={() => router.push({ pathname: '/garage/edit', params: { id: v.id } })}>
-                  <Ionicons name="car-sport-outline" size={18} color={colors.textMuted} />
+                  <CarThumb vehicle={v} size={40} />
                   <Text style={[styles.shortcutTitle, { flex: 1 }]} numberOfLines={1}>{vehicleLabel(v)}</Text>
                   {v.year ? <Text style={styles.year}>{v.year}</Text> : null}
                 </Card>
@@ -229,7 +224,8 @@ function TabLink({ icon, label, active, onPress }: {
 }
 
 const styles = StyleSheet.create({
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // paddingRight : place pour la cloche (NotificationBell)
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 52 },
   overline: { ...type.overline, color: colors.textMuted, fontSize: 10 },
   handle: { ...type.h1, color: colors.text, fontSize: 20 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
@@ -239,13 +235,6 @@ const styles = StyleSheet.create({
   otherCar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   badgeText: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
   bio: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
-  shareBtn: {
-    width: 54, height: 54, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  progressHead: { flexDirection: 'row', justifyContent: 'space-between' },
-  track: { height: 4, borderRadius: 2, backgroundColor: colors.border },
-  fill: { height: 4, borderRadius: 2, backgroundColor: colors.accent },
   counters: { flexDirection: 'row' },
   counterValue: { ...type.stat, color: colors.text, fontSize: 24 },
   shortcut: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

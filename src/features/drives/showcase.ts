@@ -64,11 +64,11 @@ function formatLap(ms: number) {
  * viendra du catalogue ; en attendant : surnom du véhicule, sinon son année.
  */
 export function vehicleHeading(
-  v: { make: string; model: string; year: number | null; nickname?: string | null } | null | undefined,
+  v: { make: string; model: string; year: number | null; nickname?: string | null; color?: string | null } | null | undefined,
   canPick: boolean,
 ) {
   if (!v) return { make: 'Garage', model: 'No car', category: canPick ? 'Tap + to choose one' : null };
-  return { make: v.make, model: v.model, category: v.nickname || (v.year ? String(v.year) : null) };
+  return { make: v.make, model: v.model, color: v.color ?? null, category: v.nickname || (v.year ? String(v.year) : null) };
 }
 
 /** Carte du bas : circuit ou route ouverte (les modes Sprint / chrono viendront plus tard). */

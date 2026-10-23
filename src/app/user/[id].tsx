@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { CarThumb } from '@/components/CarThumb';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Button, Card, Chip, Screen } from '@/components/ui';
@@ -28,7 +29,7 @@ export default function UserProfileScreen() {
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const [rel, setRel] = useState<'none' | 'following' | 'requested'>('none');
-  const [garage, setGarage] = useState<Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'is_primary'>[]>([]);
+  const [garage, setGarage] = useState<Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary'>[]>([]);
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
@@ -169,8 +170,9 @@ export default function UserProfileScreen() {
           <Card style={{ gap: spacing.sm }}>
             {garage.map((v) => (
               <View key={v.id} style={styles.garageRow}>
-                <Ionicons name={v.is_primary ? 'star' : 'car-sport-outline'} size={16} color={colors.accent} />
-                <Text style={styles.garageText}>{[v.year, v.make, v.model].filter(Boolean).join(' ')}</Text>
+                <CarThumb vehicle={v} size={44} />
+                <Text style={[styles.garageText, { flex: 1 }]}>{[v.year, v.make, v.model].filter(Boolean).join(' ')}</Text>
+                {v.is_primary && <Ionicons name="star" size={14} color={colors.accent} />}
               </View>
             ))}
           </Card>
@@ -198,13 +200,13 @@ function Counter({ value, label }: { value: number; label: string }) {
   );
 }
 
-/** Garage d'un autre conducteur : vide si son réglage ne me le montre pas (RLS). */
+/** Garage d'un autre conducteur : vide si son réglage ne me le montre pas. */
 async function loadGarage(userId: string) {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.from('vehicles').select('id, make, model, year, is_primary')
-    .eq('owner_id', userId).order('is_primary', { ascending: false }).order('created_at');
+  // Fonction dédiée : la lecture directe de vehicles inclut aussi les voitures de ses drives visibles.
+  const { data, error } = await supabase.rpc('user_garage', { p_user: userId });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary'>[];
 }
 
 const styles = StyleSheet.create({

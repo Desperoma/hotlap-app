@@ -21,6 +21,7 @@ export const colors = {
 
   routeBlue: '#3B82F6',
   routePurple: '#8B5CF6',
+  routeAmber: '#F59E0B', // drives publics sur la carte
   like: '#C6F432',
   danger: '#F05252',
   live: '#7BD13F',

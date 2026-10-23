@@ -5,11 +5,10 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { Avatar } from '@/components/Avatar';
 import { OptionsSheet } from '@/components/OptionsSheet';
-import { Picker } from '@/components/Picker';
 import { Button, Card, Screen, TextField } from '@/components/ui';
-import { COUNTRIES } from '@/config';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { isoToDisplay } from '@/features/onboarding/validation';
+import { PlaceFields, type PlaceValue } from '@/features/places/PlaceFields';
 import { pickAvatar, removeOldAvatars, uploadAvatar } from '@/features/profile/avatar';
 import { colors, fonts, spacing, type } from '@/theme';
 
@@ -23,9 +22,9 @@ export default function EditProfileScreen() {
   const { session, profile, updateProfile } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.display_name ?? profile?.username ?? '');
   const [bio, setBio] = useState(profile?.bio ?? '');
-  const [country, setCountry] = useState(COUNTRIES.find((c) => c.code === profile?.country_code) ?? null);
-  const [region, setRegion] = useState(profile?.region ?? '');
-  const [city, setCity] = useState(profile?.home_city ?? '');
+  const [place, setPlace] = useState<PlaceValue>({
+    countryCode: profile?.country_code ?? null, region: profile?.region ?? '', city: profile?.home_city ?? '',
+  });
   const [first, setFirst] = useState(profile?.first_name ?? '');
   const [last, setLast] = useState(profile?.last_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
@@ -65,15 +64,15 @@ export default function EditProfileScreen() {
 
   const save = async () => {
     if (!first.trim() || !last.trim()) return Alert.alert('Presque', 'Prénom et nom sont obligatoires.');
-    if (!country || !city.trim()) return Alert.alert('Presque', 'Le pays et la ville sont obligatoires.');
+    if (!place.countryCode || !place.city.trim()) return Alert.alert('Presque', 'Le pays et la ville sont obligatoires.');
     setSaving(true);
     try {
       await updateProfile({
         display_name: displayName.trim() || null,
         bio: bio.trim() || null,
-        country_code: country.code,
-        region: region.trim() || null,
-        home_city: city.trim(),
+        country_code: place.countryCode,
+        region: place.region.trim() || null,
+        home_city: place.city.trim(),
         first_name: first.trim(),
         last_name: last.trim(),
         phone: phone.trim() || null,
@@ -120,13 +119,7 @@ export default function EditProfileScreen() {
           value={bio} onChangeText={setBio} maxLength={BIO_MAX} multiline />
         <Text style={[styles.hint, { textAlign: 'right' }]}>{bio.length}/{BIO_MAX}</Text>
       </View>
-      <Picker label="Country" placeholder="Select Country" value={country?.name ?? null}
-        options={COUNTRIES.map((c) => c.name)}
-        onChange={(n) => setCountry(COUNTRIES.find((c) => c.name === n) ?? null)} />
-      <TextField label={country?.regionLabel ?? 'Region'} icon="map-outline" placeholder="ex. Moselle" autoCapitalize="words"
-        value={region} onChangeText={setRegion} />
-      <TextField label="Home city" icon="home-outline" placeholder="ex. Metz" autoCapitalize="words"
-        value={city} onChangeText={setCity} />
+      <PlaceFields value={place} onChange={setPlace} />
 
       <Text style={styles.section}>PRIVATE</Text>
       <Text style={styles.hint}>Visible par toi seul.</Text>

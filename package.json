@@ -33,6 +33,7 @@
     "@expo/ngrok": "^4.1.3",
     "@types/node": "^26.6.5",
     "@types/react": "~19.3.0",
+    "fflate": "^0.8.2",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -50,7 +51,11 @@
     "build:dev:android": "npx eas-cli@latest build --profile development --platform android",
     "build:dev:ios": "npx eas-cli@latest build --profile development --platform ios",
     "build:test:android": "npx eas-cli@latest build --profile preview --platform android",
-    "build:beta:android": "npx eas-cli@latest build --profile beta --platform android"
+    "build:beta:android": "npx eas-cli@latest build --profile beta --platform android",
+    "cars:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/car-images.test.ts",
+    "geo:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-geonames.ts",
+    "circuits:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-circuits.ts",
+    "circuits:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/circuits.test.ts"
   },
   "private": true,
   "engines": {

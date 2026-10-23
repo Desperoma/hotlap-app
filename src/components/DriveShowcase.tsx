@@ -6,11 +6,9 @@ import {
 } from 'react-native';
 
 import { placeholderOf, type ShowcaseStat } from '@/features/drives/showcase';
+import { carImageFor } from '@/features/garage/carImage';
 import { colors, fonts, spacing } from '@/theme';
 
-/** Silhouette générique, utilisée tant que le modèle n'a pas son visuel (assets/source/car-silhouette.svg). */
-export const CAR_SILHOUETTE: ImageSourcePropType = require('../../assets/car-silhouette.png');
-const SILHOUETTE_RATIO = 1500 / 720;
 
 const CARD_H = 100;
 const GAP = 6;
@@ -34,6 +32,9 @@ type Props = {
   /** Boutons ronds de la barre du haut */
   topLeft?: ReactNode;
   topRight?: ReactNode;
+  /** Couleur du véhicule : choisit la bonne image quand le modèle en a plusieurs */
+  color?: string | null;
+  /** Image imposée ; sinon celle du modèle (ou la voiture par défaut) */
   carImage?: ImageSourcePropType;
 };
 
@@ -42,7 +43,7 @@ type Props = {
  * puis les cartes de stats glissent depuis la droite une à une. Ensuite, la carte active défile
  * de haut en bas (3 cartes visibles) ; un toucher sur une carte la met en avant.
  */
-export function DriveShowcase({ make, model, category, stats, mode, onPressPlus, topLeft, topRight, carImage }: Props) {
+export function DriveShowcase({ make, model, category, stats, mode, onPressPlus, topLeft, topRight, color, carImage }: Props) {
   const { width: W } = useWindowDimensions();
   const car = useRef(new Animated.Value(0)).current;
   const info = useRef(new Animated.Value(0)).current;
@@ -117,8 +118,10 @@ export function DriveShowcase({ make, model, category, stats, mode, onPressPlus,
   };
 
   // Voiture : 1,15 × la largeur de l'écran, l'avant vers 62 % de la largeur, l'arrière coupé à gauche.
-  const imgW = W * 1.15;
-  const imgH = imgW / SILHOUETTE_RATIO;
+  // Photos de face / trois-quarts : la zone à gauche de la colonne de stats, image entière.
+  const imgW = W - 128 - spacing.md * 3;
+  const imgH = HERO_H;
+  const source = useMemo(() => carImage ?? carImageFor({ make, model, color }).source, [carImage, make, model, color]);
   const fadeUp = (v: Animated.Value, dy: number) => ({
     opacity: v,
     transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [dy, 0] }) }],
@@ -148,15 +151,15 @@ export function DriveShowcase({ make, model, category, stats, mode, onPressPlus,
 
       <View style={[styles.hero, { height: HERO_H }]}>
         <Animated.Image
-          source={carImage ?? CAR_SILHOUETTE}
+          source={source}
           resizeMode="contain"
           style={[
             styles.car,
             {
               width: imgW,
               height: imgH,
-              left: -W * 0.48,
-              top: (HERO_H - imgH) / 2 + 6,
+              left: spacing.md,
+              top: 0,
               opacity: car,
               transform: [{ translateX: car.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }],
             },

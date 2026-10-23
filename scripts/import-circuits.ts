@@ -1,0 +1,174 @@
+/**
+ * Import des circuits : OpenStreetMap (tracés, emprises ; ODbL) + Wikidata (noms, longueurs ; CC0).
+ *
+ *   npm run circuits:import -- --dry-run          télécharge, compte, écrit scripts/out/circuits.json
+ *   npm run circuits:import                       import complet (pays retenus)
+ *   npm run circuits:import -- --countries=FR,BE  seulement ces pays
+ *
+ * Besoin, dans .env.local : EXPO_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY.
+ * La clé service_role contourne la RLS : elle ne doit JAMAIS être dans l'app ni commitée.
+ * Lancer `npm run geo:import` avant : la ville de chaque circuit vient des villes GeoNames.
+ * Relançable : clés osm_ref et wikidata_id ; les circuits saisis à la main ne sont pas touchés.
+ * Attribution à afficher dans l'app : « © les contributeurs d'OpenStreetMap ».
+ */
+import { createClient } from '@supabase/supabase-js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+
+import { buildOsmCircuits, centersOf, mergeWikidata, type CircuitRow, type OsmElement, type WdCircuit } from './lib/circuits';
+
+const OVERPASS = 'https://overpass-api.de/api/interpreter';
+const WIKIDATA = 'https://query.wikidata.org/sparql';
+const USER_AGENT = 'HotLapCircuitImport/0.1 (contact: equipe HotLap)';
+
+// Pays retenus (cadrage, 22/10) : Europe + CA, US, AU, JP, QA, AE, SA.
+const EUROPE = ['AD', 'AL', 'AT', 'BA', 'BE', 'BG', 'BY', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FO', 'FR', 'GB', 'GG', 'GI',
+  'GR', 'HR', 'HU', 'IE', 'IM', 'IS', 'IT', 'JE', 'LI', 'LT', 'LU', 'LV', 'MC', 'MD', 'ME', 'MK', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO',
+  'RS', 'SE', 'SI', 'SK', 'SM', 'UA', 'VA', 'XK'];
+const DEFAULT = [...EUROPE, 'CA', 'US', 'AU', 'JP', 'QA', 'AE', 'SA'];
+
+const args = Object.fromEntries(
+  process.argv.slice(2).map((a: string) => {
+    const [k, v] = a.replace(/^--/, '').split('=');
+    return [k, v ?? 'true'];
+  }),
+);
+const DRY = args['dry-run'] === 'true';
+const COUNTRIES = args.countries ? String(args.countries).toUpperCase().split(',') : DEFAULT;
+
+loadEnv('.env.local');
+
+async function overpass(country: string): Promise<OsmElement[]> {
+  const query = `[out:json][timeout:600];
+area["ISO3166-1"="${country}"][admin_level=2]->.a;
+(
+  nwr["leisure"~"^(track|sports_centre|stadium)$"]["sport"~"(^|;)(motor|karting)(;|$)"](area.a);
+  way["highway"="raceway"](area.a);
+);
+out tags geom;`;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const res = await fetch(OVERPASS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+      body: new URLSearchParams({ data: query }),
+    });
+    if (res.ok) return ((await res.json()) as { elements: OsmElement[] }).elements;
+    if (res.status === 429 || res.status >= 500) {
+      const wait = attempt * 15_000;
+      console.warn(`  Overpass ${res.status} (${country}), nouvel essai dans ${wait / 1000} s`);
+      await sleep(wait);
+      continue;
+    }
+    throw new Error(`Overpass ${country} : HTTP ${res.status}`);
+  }
+  throw new Error(`Overpass ${country} : trop d'échecs`);
+}
+
+async function wikidata(countries: string[]): Promise<WdCircuit[]> {
+  const values = countries.map((c) => `"${c}"`).join(' ');
+  const query = `SELECT ?item ?itemLabel ?coord ?iso ?length ?site WHERE {
+  VALUES ?iso { ${values} }
+  ?country wdt:P297 ?iso .
+  ?item wdt:P31/wdt:P279* wd:Q2338524 ; wdt:P17 ?country ; wdt:P625 ?coord .
+  OPTIONAL { ?item wdt:P2043 ?length . }
+  OPTIONAL { ?item wdt:P856 ?site . }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,fr,de,es,it,ja". }
+}`;
+  const res = await fetch(WIKIDATA, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/sparql-results+json', 'User-Agent': USER_AGENT },
+    body: new URLSearchParams({ query }),
+  });
+  if (!res.ok) throw new Error(`Wikidata : HTTP ${res.status}`);
+  type B = { item: { value: string }; itemLabel: { value: string }; coord: { value: string }; iso: { value: string }; length?: { value: string }; site?: { value: string } };
+  const rows = ((await res.json()) as { results: { bindings: B[] } }).results.bindings;
+  const byQid = new Map<string, WdCircuit>();
+  for (const b of rows) {
+    const qid = b.item.value.split('/').pop()!;
+    const m = /Point\(([-\d.eE]+) ([-\d.eE]+)\)/.exec(b.coord.value);
+    if (!m || /^Q\d+$/.test(b.itemLabel.value) || byQid.has(qid)) continue; // sans libellé : ignoré
+    const len = b.length ? Number(b.length.value) : null;
+    byQid.set(qid, {
+      qid, name: b.itemLabel.value, lon: Number(m[1]), lat: Number(m[2]), country: b.iso.value,
+      // P2043 est parfois en km : une piste de moins de 50 « m » est une valeur en km.
+      lengthM: len == null || !Number.isFinite(len) ? null : Math.round(len < 50 ? len * 1000 : len),
+      website: b.site?.value ?? null,
+    });
+  }
+  return [...byQid.values()];
+}
+
+async function main() {
+  const osm: CircuitRow[] = [];
+  for (const c of COUNTRIES) {
+    const els = await overpass(c);
+    const rows = buildOsmCircuits(els, c);
+    console.log(`${c} : ${els.length} éléments OSM → ${rows.length} circuits`);
+    osm.push(...rows);
+    await sleep(2_000); // politesse envers le serveur Overpass public
+  }
+  // Un même site peut apparaître dans deux pays (frontière) : une seule fois.
+  const unique = [...new Map(osm.map((r) => [r.osm_ref!, r])).values()];
+  // Par lots de pays : une seule requête sur tous les pays dépasse le délai du service.
+  const wd: WdCircuit[] = [];
+  for (let i = 0; i < COUNTRIES.length; i += 8) {
+    wd.push(...(await wikidata(COUNTRIES.slice(i, i + 8))));
+    await sleep(1_000);
+  }
+  console.log(`Wikidata : ${wd.length} circuits`);
+  const rows = mergeWikidata(unique, wd, centersOf(unique));
+  console.log(`Total : ${rows.length} (${rows.filter((r) => r.source === 'wikidata').length} Wikidata seul)`);
+
+  if (DRY) {
+    mkdirSync('scripts/out', { recursive: true });
+    writeFileSync('scripts/out/circuits.json', JSON.stringify(rows, null, 1));
+    console.log('Aperçu : scripts/out/circuits.json');
+    return;
+  }
+
+  const db = client();
+  // Une entrée Wikidata seule désormais rattachée à un site OSM : on la remplace.
+  const matched = rows.filter((r) => r.osm_ref && r.wikidata_id).map((r) => r.wikidata_id!);
+  for (let i = 0; i < matched.length; i += 200) {
+    const { error } = await db.from('circuits').delete().eq('source', 'wikidata').in('wikidata_id', matched.slice(i, i + 200));
+    if (error) throw new Error(`circuits (nettoyage) : ${error.message}`);
+  }
+  const now = new Date().toISOString();
+  await upsert(db, rows.filter((r) => r.osm_ref).map((r) => ({ ...r, updated_at: now })), 'osm_ref');
+  await upsert(db, rows.filter((r) => !r.osm_ref).map((r) => ({ ...r, updated_at: now })), 'wikidata_id');
+  const { data, error } = await db.rpc('circuits_fill_places');
+  if (error) console.warn(`Villes non renseignées : ${error.message}`);
+  else console.log(`${data} circuits rattachés à une ville.`);
+  console.log('Import terminé.');
+}
+
+async function upsert(db: ReturnType<typeof client>, rows: object[], key: string) {
+  const SIZE = 200;
+  for (let i = 0; i < rows.length; i += SIZE) {
+    const { error } = await db.from('circuits').upsert(rows.slice(i, i + SIZE), { onConflict: key });
+    if (error) throw new Error(`circuits : ${error.message}`);
+    process.stdout.write(`\r  circuits (${key}) ${Math.min(i + SIZE, rows.length)}/${rows.length}`);
+  }
+  process.stdout.write('\n');
+}
+
+function client() {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('EXPO_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY requis dans .env.local');
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+function loadEnv(file: string) {
+  if (!existsSync(file)) return;
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
+  }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+main().catch((e) => {
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

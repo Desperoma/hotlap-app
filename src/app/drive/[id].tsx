@@ -75,7 +75,7 @@ export default function DriveDetailScreen() {
   const changeVehicle = async (vehicleId: string | null) => {
     const previous = drive;
     const v = vehicles?.find((x) => x.id === vehicleId);
-    setDrive({ ...drive, vehicleId, vehicle: v ? { make: v.make, model: v.model, year: v.year } : null });
+    setDrive({ ...drive, vehicleId, vehicle: v ? { make: v.make, model: v.model, year: v.year, color: v.color } : null });
     try {
       await updateDrive(drive.id, { vehicle_id: vehicleId });
     } catch (e) {

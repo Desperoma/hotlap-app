@@ -9,7 +9,11 @@ export type ProfilePatch = Partial<
   Pick<Profile, 'first_name' | 'last_name' | 'birth_date' | 'phone' | 'country_code' | 'region' | 'home_city' |
     'display_name' | 'bio' | 'avatar_url' | 'onboarded_at' | 'follow_policy' | 'details_visibility'>
 >;
-export type VehicleInput = { make: string; model: string; year: number | null; modelId?: number | null; nickname?: string | null };
+export type VehicleInput = {
+  make: string; model: string; year: number | null; modelId?: number | null; nickname?: string | null;
+  /** Une des couleurs de data/carColors.ts */
+  color?: string | null;
+};
 
 /**
  * Vérifications (voir « Onboarding » dans le doc de cadrage) :
@@ -226,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const { data, error } = await supabase
         .from('vehicles')
-        .insert({ owner_id: userId, make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, is_primary: false })
+        .insert({ owner_id: userId, make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, color: v.color ?? null, is_primary: false })
         .select()
         .single();
       if (error) throw garageError(error);
@@ -244,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateVehicle = useCallback<AuthState['updateVehicle']>(
     async (id, v) => {
-      const patch = { make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null };
+      const patch = { make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, color: v.color ?? null };
       if (isSupabaseConfigured) {
         const { error } = await supabase.from('vehicles').update(patch).eq('id', id);
         if (error) throw garageError(error);
@@ -359,7 +363,7 @@ function demoProfile(username: string): Profile {
 function demoVehicle(v: VehicleInput, primary: boolean): Vehicle {
   return {
     id: `demo-vehicle-${Date.now()}`, owner_id: 'demo-user', model_id: null, make: v.make, model: v.model, year: v.year,
-    nickname: v.nickname ?? null, photo_url: null, is_primary: primary, created_at: new Date().toISOString(),
+    nickname: v.nickname ?? null, color: v.color ?? null, photo_url: null, is_primary: primary, created_at: new Date().toISOString(),
   };
 }
 
