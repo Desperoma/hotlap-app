@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { buildSamples, downsample, nearestIndex, speedSegments, summarize, type RawPoint } from '../src/features/drives/telemetry';
+import { buildSamples, downsample, nearestIndex, speedBucket, speedScaleMax, speedSegments, summarize, type RawPoint } from '../src/features/drives/telemetry';
 
 // 61 points, 1 par seconde, vers le nord : 0 → 30 m/s puis freinage ; altitude qui monte de 0 à 60 m.
 const raw: RawPoint[] = [];
@@ -30,8 +30,15 @@ assert.equal(ds.at(-1), s.at(-1));
 
 assert.equal(nearestIndex(s, { latitude: s[42].lat, longitude: 2.0 }), 42);
 
-const segs = speedSegments(s, sum.maxSpeedKmh);
-assert.ok(segs.length >= 5);
+// Échelle fixe : 0-300 km/h, élargie par paliers de 50 au-delà.
+assert.equal(speedScaleMax(sum.maxSpeedKmh), 300);
+assert.equal(speedScaleMax(312), 350);
+assert.equal(speedBucket(50, 300), 0);
+assert.equal(speedBucket(100, 300), 1);
+assert.equal(speedBucket(299, 300), 4);
+assert.equal(speedBucket(400, 300), 4);
+const segs = speedSegments(s, speedScaleMax(sum.maxSpeedKmh));
+assert.ok(segs.length >= 3); // 0-108 km/h sur 0-300 : bleu, vert, puis retour
 // Tronçons jointifs : chaque tronçon commence là où finit le précédent.
 for (let i = 1; i < segs.length; i++) assert.deepEqual(segs[i].coords[0], segs[i - 1].coords.at(-1));
 

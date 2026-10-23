@@ -141,19 +141,27 @@ export function nearestIndex(samples: Sample[], p: { latitude: number; longitude
   return best;
 }
 
-/** Couleur d'une vitesse relative à la vitesse max du drive : bleu (lent) → vert → jaune → rouge (rapide). */
+/** Couleurs de vitesse sur une échelle fixe : bleu (lent) → vert → jaune → orange → rouge (rapide). */
 export const SPEED_COLORS = ['#3B82F6', '#22C55E', '#C6F432', '#F59E0B', '#EF4444'] as const;
-export function speedBucket(speedKmh: number, maxKmh: number): number {
-  if (maxKmh <= 0) return 0;
-  return Math.min(SPEED_COLORS.length - 1, Math.floor((speedKmh / maxKmh) * SPEED_COLORS.length));
+
+/**
+ * Échelle de vitesse commune à tous les drives : 0 à 300 km/h (tranches de 60 km/h), élargie par
+ * paliers de 50 km/h si le drive va plus vite. Deux drives se comparent donc d'un coup d'œil.
+ */
+export const SPEED_SCALE_KMH = 300;
+export const speedScaleMax = (maxKmh: number) => Math.max(SPEED_SCALE_KMH, Math.ceil(maxKmh / 50) * 50);
+
+export function speedBucket(speedKmh: number, scaleKmh: number): number {
+  if (scaleKmh <= 0) return 0;
+  return Math.max(0, Math.min(SPEED_COLORS.length - 1, Math.floor((speedKmh / scaleKmh) * SPEED_COLORS.length)));
 }
 
-/** Tronçons consécutifs de même couleur, pour dessiner le tracé coloré par la vitesse. */
-export function speedSegments(samples: Sample[], maxKmh: number) {
+/** Tronçons consécutifs de même couleur (échelle `scaleKmh`), pour dessiner le tracé coloré par la vitesse. */
+export function speedSegments(samples: Sample[], scaleKmh: number) {
   const segs: { color: string; coords: { latitude: number; longitude: number }[] }[] = [];
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i];
-    const color = SPEED_COLORS[speedBucket(s.speedKmh, maxKmh)];
+    const color = SPEED_COLORS[speedBucket(s.speedKmh, scaleKmh)];
     const c = { latitude: s.lat, longitude: s.lng };
     const last = segs.at(-1);
     if (last && last.color === color) last.coords.push(c);
