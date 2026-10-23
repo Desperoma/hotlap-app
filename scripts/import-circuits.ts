@@ -56,6 +56,7 @@ area["ISO3166-1"="${country}"][admin_level=2]->.a;
   way["highway"="raceway"](area.a);
 );
 out tags geom;`;
+  let emptyFrom: string | null = null;
   for (let attempt = 0; attempt < OVERPASS.length * 2; attempt++) {
     const url = OVERPASS[attempt % OVERPASS.length];
     const host = new URL(url).host;
@@ -69,7 +70,15 @@ out tags geom;`;
       if (res.ok) {
         const json = (await res.json()) as { elements?: OsmElement[]; remark?: string };
         // Overpass répond parfois 200 avec une erreur dans « remark » (délai dépassé) : on réessaie.
-        if (json.elements && !/error|timed out/i.test(json.remark ?? '')) return json.elements;
+        if (json.elements && !/error|timed out/i.test(json.remark ?? '')) {
+          if (json.elements.length) return json.elements;
+          // Un miroir surchargé ou incomplet peut répondre vide : on ne croit un pays vide
+          // que si un deuxième serveur le confirme.
+          if (emptyFrom && emptyFrom !== host) return [];
+          emptyFrom = host;
+          console.warn(`  ${host} : 0 élément, vérification sur un autre serveur (${country})`);
+          continue;
+        }
         console.warn(`  ${host} : réponse incomplète (${country})`);
       } else {
         console.warn(`  ${host} : HTTP ${res.status} (${country})`);
@@ -87,8 +96,14 @@ out tags geom;`;
 /** Lit le cache, sinon télécharge et met en cache. */
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   const file = `${CACHE}/${key}.json`;
-  if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8')) as T;
+  if (existsSync(file)) {
+    const data = JSON.parse(readFileSync(file, 'utf8')) as T;
+    // Ancienne version du script : un résultat vide a pu être mis en cache à tort.
+    if (!(Array.isArray(data) && data.length === 0)) return data;
+  }
   const data = await load();
+  // Un résultat vide n'est pas mis en cache : il est revérifié à la relance suivante.
+  if (Array.isArray(data) && data.length === 0) return data;
   mkdirSync(CACHE, { recursive: true });
   writeFileSync(file, JSON.stringify(data));
   return data;
@@ -145,7 +160,7 @@ async function main() {
   const osm: CircuitRow[] = [];
   const failed: string[] = [];
   for (const c of COUNTRIES) {
-    const fromCache = existsSync(`${CACHE}/osm-${c}.json`);
+    const fromCache = existsSync(`${CACHE}/osm-${c}.json`) && readFileSync(`${CACHE}/osm-${c}.json`, 'utf8').trim() !== '[]';
     let els: OsmElement[];
     try {
       els = await cached(`osm-${c}`, () => overpass(c));
