@@ -133,7 +133,8 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   list: { padding: spacing.lg, paddingBottom: 120 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // paddingRight : place pour la cloche (NotificationBell)
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 52 },
   title: { ...type.h1, color: colors.text, fontSize: 28 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   empty: { color: colors.textMuted, fontFamily: fonts.regular, textAlign: 'center', marginTop: spacing.xxl, lineHeight: 20 },

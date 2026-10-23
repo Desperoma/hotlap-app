@@ -100,7 +100,6 @@ export default function ProfileScreen() {
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <Button title="Edit profile" icon="create-outline" style={{ flex: 1 }} onPress={() => router.push('/edit-profile')} />
-          <Pressable style={styles.shareBtn}><Ionicons name="share-outline" size={20} color={colors.text} /></Pressable>
         </View>
         <View style={{ gap: 6 }}>
           <View style={styles.progressHead}>
@@ -229,7 +228,8 @@ function TabLink({ icon, label, active, onPress }: {
 }
 
 const styles = StyleSheet.create({
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // paddingRight : place pour la cloche (NotificationBell)
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 52 },
   overline: { ...type.overline, color: colors.textMuted, fontSize: 10 },
   handle: { ...type.h1, color: colors.text, fontSize: 20 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
@@ -239,10 +239,6 @@ const styles = StyleSheet.create({
   otherCar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   badgeText: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
   bio: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
-  shareBtn: {
-    width: 54, height: 54, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
   progressHead: { flexDirection: 'row', justifyContent: 'space-between' },
   track: { height: 4, borderRadius: 2, backgroundColor: colors.border },
   fill: { height: 4, borderRadius: 2, backgroundColor: colors.accent },

@@ -84,7 +84,7 @@ export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocke
           <Ionicons name="chatbubble-outline" size={18} color={colors.textMuted} />
           <Text style={styles.actionText}>{drive.comment_count}</Text>
         </Pressable>
-        <Ionicons name="paper-plane-outline" size={18} color={colors.textMuted} />
+        {/* Partage : désactivé tant qu'il n'y a pas de nom de domaine pour des liens cliquables partout. */}
       </View>
       <ModerationSheet target={menu} onClose={() => setMenu(null)} onBlocked={onBlocked} />
     </Card>
