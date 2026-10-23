@@ -86,6 +86,14 @@ function Update-Repo {
     npm ci --no-audit --no-fund 2>&1 | Out-Null
     return $true
   }
+  # Fichiers ajoutés, supprimés ou renommés : Metro garde l'ancienne liste en cache
+  # (« Unable to resolve module ») : redémarrage avec caches vidés.
+  $moved = git diff --name-status --diff-filter=ADR $local $remote
+  if ($moved) {
+    Log 'Fichiers ajoutés ou supprimés : redémarrage de Metro avec caches vidés'
+    Remove-Item -Recurse -Force "$env:TEMP\metro-*", "$env:TEMP\haste-map-*", (Join-Path $Repo 'node_modules\.cache'), (Join-Path $Repo '.expo') -ErrorAction SilentlyContinue
+    return $true
+  }
   return $false
 }
 

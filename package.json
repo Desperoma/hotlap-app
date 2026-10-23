@@ -41,6 +41,7 @@
     "start": "expo start --dev-client",
     "start:go": "node scripts/start-go.mjs",
     "start:go:tunnel": "expo start --go --tunnel",
+    "server:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/server/restart-expo.ps1",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
