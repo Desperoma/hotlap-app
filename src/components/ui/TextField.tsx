@@ -6,7 +6,7 @@ import { colors, fonts, radius } from '@/theme';
 
 type Props = TextInputProps & { label: string; icon: keyof typeof Ionicons.glyphMap; secure?: boolean };
 
-export function TextField({ label, icon, secure, style, ...rest }: Props) {
+export function TextField({ label, icon, secure, style, onFocus, onBlur, ...rest }: Props) {
   const [hidden, setHidden] = useState(secure ?? false);
   const [focused, setFocused] = useState(false);
   return (
@@ -19,9 +19,9 @@ export function TextField({ label, icon, secure, style, ...rest }: Props) {
           style={[styles.input, style]}
           secureTextEntry={secure ? hidden : false}
           autoCapitalize="none"
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
           {...rest}
+          onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+          onBlur={(e) => { setFocused(false); onBlur?.(e); }}
         />
         {secure && (
           <Pressable onPress={() => setHidden((h) => !h)} hitSlop={10}>

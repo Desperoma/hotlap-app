@@ -49,6 +49,8 @@ export interface Vehicle {
   model: string;
   year: number | null;
   nickname: string | null;
+  /** Une des couleurs de data/carColors.ts, ou null */
+  color: string | null;
   photo_url: string | null;
   is_primary: boolean;
   created_at: string;
@@ -114,7 +116,7 @@ export interface Drive {
 
 export interface DriveFeedItem extends Drive {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url'>;
-  vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
+  vehicle: Pick<Vehicle, 'make' | 'model' | 'year' | 'color'> | null;
   liked_by_me: boolean;
   /** Aperçu du tracé (simplifié, sans les zones de confidentialité pour les autres). Vide si masqué. */
   /** Un tracé, ou plusieurs morceaux quand la zone privée du domicile le coupe */

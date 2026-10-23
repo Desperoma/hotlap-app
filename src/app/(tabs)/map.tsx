@@ -1,18 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions,
+  ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions,
   type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type MapPressEvent } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type MapPressEvent, type Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/features/auth/AuthProvider';
 import type { LatLng } from '@/features/drives/api';
-import { fetchDrivePath, fetchMapDrives, type MapDrive, type MapSource } from '@/features/drives/map';
+import {
+  fetchDrivePath, fetchMapCircuits, fetchMapDrives, fetchPublicDrives,
+  type BBox, type MapCircuit, type MapDrive, type MapSource,
+} from '@/features/drives/map';
 import { formatKm } from '@/features/recording/geo';
 import { useRecorder } from '@/features/recording/useRecorder';
 import { MAPS_AVAILABLE } from '@/lib/maps';
@@ -20,7 +23,9 @@ import { colors, fonts, radius, spacing, type } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
 /**
- * Onglet Map : carte libre, avec un repère par drive (les miens, mon crew, mes amis).
+ * Onglet Map : carte libre, avec un repère par drive (les miens, mon crew, mes amis, et les
+ * drives publics de la zone affichée, chargés au fil des déplacements) et les circuits.
+ * Barre de recherche en haut : lieux et circuits (écran /search?mode=map).
  * Toucher un repère met le tracé du drive en surbrillance et ouvre sa carte en bas.
  * Plusieurs drives au même endroit (ex. départs de chez soi) = un seul repère avec un compteur ;
  * on passe de l'un à l'autre en faisant glisser la carte du bas.
@@ -30,11 +35,12 @@ const SOURCE: Record<MapSource, { label: string; color: string }> = {
   me: { label: 'Me', color: colors.accent },
   crew: { label: 'Crew', color: colors.routePurple },
   friend: { label: 'Friends', color: colors.routeBlue },
+  public: { label: 'Public', color: colors.routeAmber },
 };
 type Filter = 'all' | MapSource;
-const FILTERS: Filter[] = ['all', 'me', 'crew', 'friend'];
+const FILTERS: Filter[] = ['all', 'me', 'crew', 'friend', 'public'];
 
-/** Repère : drives regroupés dans une case d'environ 150 m. */
+/** Repère : drives regroupés dans une même case (taille selon le zoom). */
 type Pin = { key: string; coordinate: LatLng; drives: MapDrive[] };
 
 export default function MapScreen() {
@@ -51,6 +57,44 @@ export default function MapScreen() {
   const [selected, setSelected] = useState<{ pinKey: string; index: number } | null>(null);
   const [paths, setPaths] = useState<Record<string, LatLng[][] | 'loading' | 'none'>>({});
   const fitted = useRef(false);
+  // Couche publique et circuits : rechargés pour la zone affichée.
+  const [publicDrives, setPublicDrives] = useState<MapDrive[]>([]);
+  const [circuits, setCircuits] = useState<MapCircuit[]>([]);
+  const [region, setRegion] = useState<Region | null>(null);
+  const [circuitId, setCircuitId] = useState<string | null>(null);
+  const [searched, setSearched] = useState<{ coordinate: LatLng; label: string } | null>(null);
+  const areaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const areaSeq = useRef(0);
+  const params = useLocalSearchParams<{ lat?: string; lng?: string; zoom?: string; label?: string; t?: string }>();
+
+  // Retour de la recherche : on se place sur le lieu choisi.
+  useEffect(() => {
+    const lat = Number(params.lat), lng = Number(params.lng);
+    if (!params.t || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    fitted.current = true;
+    setSelected(null);
+    setCircuitId(null);
+    setSearched({ coordinate: { latitude: lat, longitude: lng }, label: params.label ?? '' });
+    setTimeout(() => mapRef.current?.animateCamera({ center: { latitude: lat, longitude: lng }, zoom: Number(params.zoom) || 12 }, { duration: 600 }), 250);
+  }, [params.t]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadArea = useCallback((r: Region) => {
+    // Zone affichée, élargie de moitié pour ne pas recharger au moindre glissement.
+    const b: BBox = {
+      minLat: r.latitude - r.latitudeDelta, maxLat: r.latitude + r.latitudeDelta,
+      minLng: r.longitude - r.longitudeDelta, maxLng: r.longitude + r.longitudeDelta,
+    };
+    const id = ++areaSeq.current;
+    fetchPublicDrives(b).then((d) => { if (id === areaSeq.current) setPublicDrives(d); }).catch(() => {});
+    fetchMapCircuits(b).then((c) => { if (id === areaSeq.current) setCircuits(c); }).catch(() => {});
+  }, []);
+
+  const onRegionChangeComplete = (r: Region) => {
+    setRegion(r);
+    if (areaTimer.current) clearTimeout(areaTimer.current);
+    areaTimer.current = setTimeout(() => loadArea(r), 450);
+  };
+  useEffect(() => () => { if (areaTimer.current) clearTimeout(areaTimer.current); }, []);
 
   useEffect(() => {
     Location.requestForegroundPermissionsAsync().then(({ status: s }) => setGps(s === 'granted'));
@@ -75,20 +119,36 @@ export default function MapScreen() {
     setDrives(null);
     setSelected(null);
     setPaths({});
+    setPublicDrives([]);
     fitted.current = false;
     load();
   }, [userId, load]);
 
+  // Mes drives et ceux de mes proches gardent leur couleur ; les publics complètent.
+  const allDrives = useMemo(() => {
+    const own = drives ?? [];
+    const known = new Set(own.map((d) => d.id));
+    return [...own, ...publicDrives.filter((d) => !known.has(d.id))];
+  }, [drives, publicDrives]);
+
   const counts = useMemo(() => {
-    const c = { all: 0, me: 0, crew: 0, friend: 0 };
-    for (const d of drives ?? []) {
+    const c = { all: 0, me: 0, crew: 0, friend: 0, public: 0 };
+    for (const d of allDrives) {
       c.all++;
       c[d.source]++;
     }
     return c;
-  }, [drives]);
+  }, [allDrives]);
 
-  const pins = useMemo(() => groupPins((drives ?? []).filter((d) => filter === 'all' || d.source === filter)), [drives, filter]);
+  const latDelta = region?.latitudeDelta ?? 0.1;
+  // Case de regroupement : environ 1/14 de la hauteur affichée (150 m au minimum).
+  const cell = Math.max(0.0014, latDelta / 14);
+  const cellKey = Math.round(Math.log2(cell / 0.0014) * 2); // évite de regrouper à chaque petit zoom
+  const pins = useMemo(
+    () => groupPins(allDrives.filter((d) => filter === 'all' || d.source === filter), 0.0014 * 2 ** (cellKey / 2)),
+    [allDrives, filter, cellKey],
+  );
+  const selectedCircuit = circuitId ? circuits.find((c) => c.id === circuitId) ?? null : null;
   const selectedPin = selected ? pins.find((p) => p.key === selected.pinKey) ?? null : null;
   const selectedDrive = selectedPin ? selectedPin.drives[Math.min(selected!.index, selectedPin.drives.length - 1)] : null;
   const selectedPath = selectedDrive ? paths[selectedDrive.id] : undefined;
@@ -119,7 +179,7 @@ export default function MapScreen() {
     setTracking(true);
     const t = setTimeout(() => setTracking(false), 800);
     return () => clearTimeout(t);
-  }, [pins, selected?.pinKey]);
+  }, [pins, selected?.pinKey, circuits, circuitId]);
 
   // Tracé du drive affiché : chargé une fois, puis la caméra se cale dessus (au-dessus de la carte du bas).
   useEffect(() => {
@@ -151,6 +211,7 @@ export default function MapScreen() {
     // Sur iOS, toucher un repère déclenche aussi le toucher de la carte.
     if (e.nativeEvent.action === 'marker-press') return;
     setSelected(null);
+    setCircuitId(null);
   };
 
   const cardWidth = width - spacing.lg * 2;
@@ -158,6 +219,17 @@ export default function MapScreen() {
     if (!selected) return;
     const index = Math.round(e.nativeEvent.contentOffset.x / (cardWidth + spacing.sm));
     if (index !== selected.index) setSelected({ ...selected, index });
+  };
+
+  // Gros groupe vu de loin : on zoome dessus plutôt que d'ouvrir des dizaines de cartes.
+  const onPinPress = (pin: Pin, isSelected: boolean) => {
+    setCircuitId(null);
+    if (!isSelected && pin.drives.length > 3 && latDelta > 0.08) {
+      const coords = pin.drives.map((d) => d.coordinate);
+      mapRef.current?.fitToCoordinates(coords, { edgePadding: { top: 200, right: 80, bottom: 200, left: 80 }, animated: true });
+      if (new Set(coords.map((c) => `${c.latitude.toFixed(3)}:${c.longitude.toFixed(3)}`)).size > 1) return;
+    }
+    setSelected(isSelected ? null : { pinKey: pin.key, index: 0 });
   };
 
   const recording = status !== 'idle';
@@ -179,6 +251,7 @@ export default function MapScreen() {
           toolbarEnabled={false}
           moveOnMarkerPress={false}
           onPress={onMapPress}
+          onRegionChangeComplete={onRegionChangeComplete}
         >
           {Array.isArray(selectedPath) && (
             <>
@@ -210,12 +283,31 @@ export default function MapScreen() {
                 anchor={{ x: 0.5, y: 1 }}
                 tracksViewChanges={tracking}
                 zIndex={isSelected ? 10 : 5}
-                onPress={() => setSelected(isSelected ? null : { pinKey: pin.key, index: 0 })}
+                onPress={() => onPinPress(pin, isSelected)}
               >
                 <DrivePin pin={pin} selected={isSelected} dimmed={!!selected && !isSelected} />
               </Marker>
             );
           })}
+
+          {(filter === 'all' || filter === 'public') && circuits.map((c) => (
+            <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
+              zIndex={c.id === circuitId ? 9 : 4}
+              onPress={() => { setSelected(null); setCircuitId(c.id === circuitId ? null : c.id); }}>
+              <View style={[styles.circuitPin, c.id === circuitId && styles.pinSelected]}>
+                <Ionicons name="flag" size={14} color={colors.accentText} />
+              </View>
+            </Marker>
+          ))}
+
+          {searched && (
+            <Marker coordinate={searched.coordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={tracking} zIndex={3}
+              onPress={() => setSearched(null)}>
+              <View style={{ alignItems: 'center' }}>
+                <Ionicons name="location" size={34} color={colors.text} />
+              </View>
+            </Marker>
+          )}
         </MapView>
       ) : (
         <View style={styles.noMap}>
@@ -224,6 +316,17 @@ export default function MapScreen() {
       )}
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
+        <Pressable style={styles.searchBar} onPress={() => router.push({ pathname: '/search', params: { mode: 'map' } })}
+          accessibilityRole="search" accessibilityLabel="Search a place or a circuit">
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <Text style={styles.searchText} numberOfLines={1}>{searched?.label || 'Search a place or a circuit'}</Text>
+          {searched && (
+            <Pressable onPress={() => setSearched(null)} hitSlop={10} accessibilityLabel="Clear search">
+              <Ionicons name="close" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+        </Pressable>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingRight: spacing.lg }}>
         <View style={styles.filterBar}>
           {FILTERS.map((f) => {
             const active = filter === f;
@@ -238,6 +341,7 @@ export default function MapScreen() {
             );
           })}
         </View>
+        </ScrollView>
 
         <View style={styles.sideButtons} pointerEvents="box-none">
           {!drives && !error && <View style={styles.roundBtn}><ActivityIndicator size="small" color={colors.accent} /></View>}
@@ -290,10 +394,33 @@ export default function MapScreen() {
         </View>
       )}
 
-      {drives && drives.length === 0 && !selected && (
+      {selectedCircuit && !selectedPin && (
+        <View style={[styles.cards, { paddingHorizontal: spacing.lg }]}>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.circuitPin}><Ionicons name="flag" size={14} color={colors.accentText} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardName} numberOfLines={1}>{selectedCircuit.name}</Text>
+                <Text style={styles.cardMeta} numberOfLines={1}>
+                  {[selectedCircuit.city, selectedCircuit.countryCode].filter(Boolean).join(' · ') || 'Circuit'}
+                </Text>
+              </View>
+              <Pressable onPress={() => setCircuitId(null)} hitSlop={10} accessibilityLabel="Close">
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <View style={styles.statsRow}>
+              <Stat value={selectedCircuit.lapLengthM ? formatKm(selectedCircuit.lapLengthM) : '—'} unit={selectedCircuit.lapLengthM ? 'km' : undefined} label="LAP" />
+              <Stat value={selectedCircuit.kind === 'closed_road' ? 'Closed road' : 'Track'} label="TYPE" />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {drives && allDrives.length === 0 && !selected && !selectedCircuit && (
         <View style={styles.hint} pointerEvents="none">
           <Ionicons name="map-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.hintText}>Your drives, your crew’s and your friends’ will show up here.</Text>
+          <Text style={styles.hintText}>Your drives, your friends’ and public drives around will show up here.</Text>
         </View>
       )}
     </View>
@@ -384,11 +511,11 @@ function Stat({ value, unit, label }: { value: string; unit?: string; label: str
   );
 }
 
-/** Regroupe les drives proches (case d'environ 150 m), le plus récent en premier. */
-function groupPins(drives: MapDrive[]): Pin[] {
+/** Regroupe les drives proches (case de `cell` degrés de latitude), dans l'ordre reçu. */
+function groupPins(drives: MapDrive[], cell = 0.0014): Pin[] {
   const byCell = new Map<string, Pin>();
   for (const d of drives) {
-    const key = `${(d.coordinate.latitude / 0.0014).toFixed(0)}:${(d.coordinate.longitude / 0.002).toFixed(0)}`;
+    const key = `${(d.coordinate.latitude / cell).toFixed(0)}:${(d.coordinate.longitude / (cell * 1.4)).toFixed(0)}`;
     const pin = byCell.get(key);
     if (pin) pin.drives.push(d);
     else byCell.set(key, { key, coordinate: d.coordinate, drives: [d] });
@@ -423,6 +550,15 @@ const styles = StyleSheet.create({
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13 },
 
   top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
+  searchBar: {
+    ...glass, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, height: 46,
+    borderRadius: radius.pill, paddingHorizontal: spacing.md,
+  },
+  searchText: { flex: 1, color: colors.textMuted, fontFamily: fonts.regular, fontSize: 14 },
+  circuitPin: {
+    width: 28, height: 28, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.bg,
+  },
   filterBar: { ...glass, flexDirection: 'row', alignSelf: 'flex-start', borderRadius: radius.pill, padding: 4, gap: 2 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
   chipActive: { backgroundColor: colors.accentSoft },

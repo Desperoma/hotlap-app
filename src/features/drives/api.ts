@@ -40,7 +40,7 @@ export type DriveDetail = {
   commentCount: number;
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
   vehicleId: string | null;
-  vehicle: Pick<Vehicle, 'make' | 'model' | 'year'> | null;
+  vehicle: Pick<Vehicle, 'make' | 'model' | 'year' | 'color'> | null;
   circuitName: string | null;
   /** Drive simulé (outils de test), repérable pour être supprimé avant l'ouverture au public */
   isSimulated: boolean;
@@ -157,7 +157,7 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
   const [author, vehicle, circuit, path, priv] = await Promise.all([
     supabase.from('public_profiles').select('id, username, display_name, avatar_url').eq('id', row.owner_id).maybeSingle(),
     row.vehicle_id
-      ? supabase.from('vehicles').select('make, model, year').eq('id', row.vehicle_id).maybeSingle()
+      ? supabase.from('vehicles').select('make, model, year, color').eq('id', row.vehicle_id).maybeSingle()
       : Promise.resolve({ data: null }),
     row.circuit_id
       ? supabase.from('circuits').select('name').eq('id', row.circuit_id).maybeSingle()

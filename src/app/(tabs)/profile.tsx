@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { CarThumb } from '@/components/CarThumb';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -138,7 +139,7 @@ export default function ProfileScreen() {
           <Text style={styles.section}>FAVORITE MACHINE</Text>
           {primaryVehicle ? (
             <Card style={{ gap: 6 }} onPress={() => router.push({ pathname: '/garage/edit', params: { id: primaryVehicle.id } })}>
-              <Ionicons name="car-sport" size={44} color={colors.accent} style={{ alignSelf: 'flex-end' }} />
+              <CarThumb vehicle={primaryVehicle} size={140} style={{ alignSelf: 'center' }} />
               {primaryVehicle.nickname ? <Text style={styles.year}>{primaryVehicle.nickname}</Text> : null}
               {primaryVehicle.year ? <Text style={styles.year}>{primaryVehicle.year}</Text> : null}
               <Text style={styles.make}>{primaryVehicle.make.toUpperCase()}</Text>
@@ -155,7 +156,7 @@ export default function ProfileScreen() {
             <View style={{ gap: spacing.sm }}>
               {vehicles!.filter((v) => !v.is_primary).map((v) => (
                 <Card key={v.id} style={styles.otherCar} onPress={() => router.push({ pathname: '/garage/edit', params: { id: v.id } })}>
-                  <Ionicons name="car-sport-outline" size={18} color={colors.textMuted} />
+                  <CarThumb vehicle={v} size={40} />
                   <Text style={[styles.shortcutTitle, { flex: 1 }]} numberOfLines={1}>{vehicleLabel(v)}</Text>
                   {v.year ? <Text style={styles.year}>{v.year}</Text> : null}
                 </Card>
