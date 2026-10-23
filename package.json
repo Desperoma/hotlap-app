@@ -37,7 +37,7 @@
   },
   "scripts": {
     "start": "expo start --dev-client",
-    "start:go": "expo start --go",
+    "start:go": "node scripts/start-go.mjs",
     "start:go:tunnel": "expo start --go --tunnel",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -52,5 +52,8 @@
     "build:test:android": "npx eas-cli@latest build --profile preview --platform android",
     "build:beta:android": "npx eas-cli@latest build --profile beta --platform android"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": "^22.13.0 || ^24.3.0 || >=26.0.0"
+  }
 }
