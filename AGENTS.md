@@ -52,7 +52,8 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   Temps en départ arrêté (0-100, 0-200 km/h, 500 / 1 000 / 2 000 m) calculés PAR LA BASE depuis `drive_points`
   (`sprint_times`, appelée par `record_drive_sprints`) ; `src/features/sprint/sprint.ts` est le même algorithme pour
   l'affichage en direct : modifier les deux ensemble (`npm run sprint:test`). Drives simulés acceptés mais exclus des
-  classements des autres. Classements : `leaderboard_sprint`, `leaderboard_laps` (meilleur par conducteur, drives visibles).
+  classements des autres. Classements : `leaderboard_score` (0025 : meilleur score sur route ouverte, toutes voitures), `leaderboard_sprint`,
+  `leaderboard_laps` (meilleur par conducteur, drives visibles, drives simulés exclus).
 - Zone privée du domicile (migration 0014, `features/privacy`) : option activée par défaut, désactivable,
   demandée à l'étape localisation de l'onboarding et réglable depuis le profil. L'adresse est géocodée sur le
   téléphone ; la base ne garde qu'un centre décalé au hasard (≤ 300 m) et masque 1 300 m autour, donc au

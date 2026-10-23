@@ -8,13 +8,17 @@ import { Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { flagOf } from '@/features/places/format';
 import {
-  circuitsWithLaps, leaderboardLaps, leaderboardSprint, type LapCircuit, type LeaderRow, type LeaderScope,
+  circuitsWithLaps, leaderboardLaps, leaderboardScore, leaderboardSprint, type LapCircuit, type LeaderRow, type LeaderScope,
 } from '@/features/sprint/api';
 import { formatSprint, SPRINTS, type SprintKind } from '@/features/sprint/sprint';
 import { colors, fonts, spacing, type } from '@/theme';
 
-type Board = SprintKind | 'laps';
-const BOARDS: { key: Board; label: string }[] = [...SPRINTS.map((s) => ({ key: s.kind as Board, label: s.label })), { key: 'laps', label: 'Laps' }];
+type Board = 'score' | SprintKind | 'laps';
+const BOARDS: { key: Board; label: string }[] = [
+  { key: 'score', label: 'Score' },
+  ...SPRINTS.map((s) => ({ key: s.kind as Board, label: s.label })),
+  { key: 'laps', label: 'Laps' },
+];
 const MEDALS = ['#F5C542', '#C9CED6', '#D08A4E'];
 
 /**
@@ -25,7 +29,7 @@ const MEDALS = ['#F5C542', '#C9CED6', '#D08A4E'];
 export default function LeaderboardScreen() {
   const params = useLocalSearchParams<{ kind?: string; circuit?: string; circuitName?: string }>();
   const { profile, vehicles, primaryVehicle } = useAuth();
-  const [board, setBoard] = useState<Board>(params.circuit ? 'laps' : (SPRINTS.some((s) => s.kind === params.kind) ? params.kind as SprintKind : '0_100'));
+  const [board, setBoard] = useState<Board>(params.circuit ? 'laps' : (SPRINTS.some((s) => s.kind === params.kind) ? params.kind as SprintKind : 'score'));
   const [scope, setScope] = useState<LeaderScope>('world');
   const [picked, setVehicleId] = useState<string | null>(null);
   const vehicleId = picked ?? primaryVehicle?.id ?? vehicles?.[0]?.id ?? null;
@@ -40,8 +44,10 @@ export default function LeaderboardScreen() {
     ...(country ? [{ key: 'country' as const, label: `${flagOf(country)} ${country}` }] : []),
     { key: 'friends', label: 'Friends' },
     { key: 'crews', label: 'Crews' },
-    ...(vehicles?.length ? [{ key: 'model' as const, label: 'My model' }] : []),
+    // Score : toutes voitures confondues, donc pas de classement par modèle.
+    ...(vehicles?.length && board !== 'score' ? [{ key: 'model' as const, label: 'My model' }] : []),
   ];
+  useEffect(() => { if (board === 'score' && scope === 'model') setScope('world'); }, [board, scope]);
 
   useEffect(() => {
     circuitsWithLaps().then((list) => {
@@ -57,7 +63,9 @@ export default function LeaderboardScreen() {
     setRows(null);
     setError(false);
     const f = { scope, country, vehicleId: scope === 'model' ? vehicleId : null };
-    const q = board === 'laps' ? (circuitId ? leaderboardLaps(circuitId, f) : Promise.resolve([])) : leaderboardSprint(board, f);
+    if (board === 'score' && scope === 'model') return;
+    const q = board === 'score' ? leaderboardScore(f)
+      : board === 'laps' ? (circuitId ? leaderboardLaps(circuitId, f) : Promise.resolve([])) : leaderboardSprint(board, f);
     q.then((r) => live && setRows(r)).catch(() => live && (setRows([]), setError(true)));
     return () => { live = false; };
   }, [board, scope, country, vehicleId, circuitId]);
@@ -78,7 +86,8 @@ export default function LeaderboardScreen() {
         <Text style={styles.overline}>LEADERBOARD</Text>
         <Text style={styles.title}>{BOARDS.find((b) => b.key === board)?.label}</Text>
         <Text style={styles.muted}>
-          {board === 'laps' ? 'Meilleur tour par conducteur sur ce circuit.' : 'Départ arrêté, mode Sprint, sur circuit ou route chronométrée validée.'}
+          {board === 'score' ? 'Meilleur score d’un drive sur route ouverte, toutes voitures confondues.'
+            : board === 'laps' ? 'Meilleur tour par conducteur sur ce circuit.' : 'Départ arrêté, mode Sprint, sur circuit ou route chronométrée validée.'}
         </Text>
       </View>
 
@@ -102,16 +111,18 @@ export default function LeaderboardScreen() {
         <View style={styles.empty}>
           <Ionicons name="podium-outline" size={28} color={colors.textMuted} />
           <Text style={styles.muted}>
-            {error ? 'Classement indisponible pour le moment.' : 'Personne ici pour l’instant. Lance un Sprint sur circuit pour ouvrir le classement.'}
+            {error ? 'Classement indisponible pour le moment.'
+              : board === 'score' ? 'Personne ici pour l’instant. Publie un drive sur route ouverte (visibilité autre que Private) pour entrer au classement.'
+              : 'Personne ici pour l’instant. Lance un Sprint sur circuit pour ouvrir le classement.'}
           </Text>
         </View>
       ) : (
         <View style={{ gap: spacing.sm }}>
-          {top.map((r) => <Line key={r.userId} r={r} lap={board === 'laps'} />)}
+          {top.map((r) => <Line key={r.userId} r={r} lap={board === 'laps'} score={board === 'score'} />)}
           {meOutside && (
             <>
               <Text style={[styles.muted, { textAlign: 'center' }]}>···</Text>
-              <Line r={meOutside} lap={board === 'laps'} />
+              <Line r={meOutside} lap={board === 'laps'} score={board === 'score'} />
             </>
           )}
         </View>
@@ -120,12 +131,12 @@ export default function LeaderboardScreen() {
   );
 }
 
-function Line({ r, lap }: { r: LeaderRow; lap: boolean }) {
+function Line({ r, lap, score }: { r: LeaderRow; lap: boolean; score?: boolean }) {
   const name = r.isMe ? 'You' : r.displayName ?? r.username;
   const medal = MEDALS[r.rank - 1];
   return (
     <Pressable style={[styles.row, r.isMe && styles.me]} onPress={() => router.push(`/drive/${r.driveId}`)}
-      accessibilityLabel={`Rank ${r.rank}, ${name}, ${formatSprint(r.timeMs)}`}>
+      accessibilityLabel={`Rank ${r.rank}, ${name}, ${score ? `${r.score} points` : formatSprint(r.timeMs)}`}>
       <View style={[styles.rank, medal ? { backgroundColor: medal } : null]}>
         <Text style={[styles.rankText, medal ? { color: colors.bg } : null]}>{r.rank}</Text>
       </View>
@@ -135,8 +146,11 @@ function Line({ r, lap }: { r: LeaderRow; lap: boolean }) {
         <Text style={styles.car} numberOfLines={1}>{r.car ?? '—'}</Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={[styles.time, r.rank === 1 && { color: colors.accent }]}>{lap ? lapTime(r.timeMs) : formatSprint(r.timeMs)}</Text>
-        {!lap && r.exitSpeedKmh != null ? <Text style={styles.car}>{Math.round(r.exitSpeedKmh)} km/h</Text> : null}
+        <Text style={[styles.time, r.rank === 1 && { color: colors.accent }]}>
+          {score ? `${r.score} pts` : lap ? lapTime(r.timeMs) : formatSprint(r.timeMs)}
+        </Text>
+        {score && r.distanceM != null ? <Text style={styles.car}>{(r.distanceM / 1000).toFixed(1)} km</Text>
+          : !lap && r.exitSpeedKmh != null ? <Text style={styles.car}>{Math.round(r.exitSpeedKmh)} km/h</Text> : null}
       </View>
     </Pressable>
   );
