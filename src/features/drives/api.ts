@@ -9,13 +9,13 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { RawPoint } from './telemetry';
 
 /**
- * Colonnes de drives lisibles par l'app (migration 0002). max_speed_kmh, path et
- * start_point ne sont PAS lisibles directement : ne jamais faire select('*') sur drives.
+ * Colonnes de drives lisibles par l'app (migrations 0002, 0023). path et start_point ne sont
+ * PAS lisibles directement : ne jamais faire select('*') sur drives. max_speed_kmh l'est depuis 0023.
  */
 export const DRIVE_COLUMNS =
   'id, owner_id, vehicle_id, route_id, circuit_id, title, description, started_at, ended_at, ' +
   'distance_m, duration_s, avg_speed_kmh, max_lateral_g, score, score_breakdown, score_version, ' +
-  'lap_time_ms, visibility, like_count, comment_count, created_at, is_simulated';
+  'lap_time_ms, visibility, like_count, comment_count, created_at, is_simulated, max_speed_kmh';
 
 export type LatLng = { latitude: number; longitude: number };
 
@@ -179,7 +179,8 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
     distanceM: row.distance_m,
     durationS: row.duration_s,
     avgSpeedKmh: isMine ? row.avg_speed_kmh : null,
-    maxSpeedKmh: isMine ? ((priv.data as { max_speed_kmh: number | null }[] | null)?.[0]?.max_speed_kmh ?? null) : null,
+    // Visible par tous depuis 0023 ; my_drive_private reste la source pour le propriétaire.
+    maxSpeedKmh: (isMine ? (priv.data as { max_speed_kmh: number | null }[] | null)?.[0]?.max_speed_kmh : null) ?? row.max_speed_kmh ?? null,
     maxLateralG: row.max_lateral_g,
     score: row.score,
     scoreBreakdown: row.score_breakdown,
@@ -227,6 +228,7 @@ type DriveRow = {
   distance_m: number; duration_s: number; avg_speed_kmh: number | null; max_lateral_g: number | null;
   score: number | null; score_breakdown: ScoreBreakdown | null; lap_time_ms: number | null;
   visibility: Visibility; like_count: number; comment_count: number; is_simulated?: boolean;
+  max_speed_kmh?: number | null;
 };
 
 /** GeoJSON LineString ou MultiLineString (tracé coupé par la zone privée) -> morceaux de tracé. */

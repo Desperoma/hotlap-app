@@ -28,8 +28,8 @@ jobs:
         run: npm run typecheck
       - name: Tests du catalogue
         run: npm run catalog:test
-      - name: Tests des scripts (circuits, télémétrie)
-        run: npm run circuits:test && npm run telemetry:test
+      - name: Tests des scripts (circuits, télémétrie, G-force)
+        run: npm run circuits:test && npm run telemetry:test && npm run gforce:test
       - name: Audit des dépendances livrées dans l'app (bloquant si critique)
         run: npm audit --omit=dev --audit-level=critical
       - name: Rapport d'audit complet (non bloquant)

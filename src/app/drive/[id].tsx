@@ -123,7 +123,7 @@ export default function DriveDetailScreen() {
             durationS: drive.durationS,
             distanceM: drive.distanceM,
             avgSpeedKmh: drive.isMine ? drive.avgSpeedKmh : null, // privées : propriétaire uniquement
-            maxSpeedKmh: drive.isMine ? drive.maxSpeedKmh : null,
+            maxSpeedKmh: drive.maxSpeedKmh, // visible par tous (0023)
             score: drive.score,
             maxLateralG: drive.maxLateralG,
             lapTimeMs: drive.lapTimeMs,
@@ -179,7 +179,7 @@ export default function DriveDetailScreen() {
 
       {drive.isMine && (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.muted}>Speeds and telemetry are only shown to you.</Text>
+          <Text style={styles.muted}>Top speed is public. Avg. speed and telemetry are only shown to you.</Text>
           <VehicleSelect label="Car" value={drive.vehicleId} onChange={changeVehicle} />
           <Text style={styles.label}>Who can see it</Text>
           <SegmentedControl options={VISIBILITY_OPTIONS} value={drive.visibility} onChange={changeVisibility} />

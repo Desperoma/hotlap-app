@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { Avatar } from '@/components/Avatar';
 import { GarageCarCard } from '@/components/GarageCarCard';
+import { userVehicleStats, type VehicleStats } from '@/features/garage/stats';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Button, Card, Chip, Screen } from '@/components/ui';
@@ -31,6 +32,7 @@ export default function UserProfileScreen() {
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const [rel, setRel] = useState<'none' | 'following' | 'requested'>('none');
   const [garage, setGarage] = useState<Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary' | 'power_kw' | 'weight_kg'>[]>([]);
+  const [carStats, setCarStats] = useState<Map<string, VehicleStats>>(new Map());
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
@@ -50,6 +52,7 @@ export default function UserProfileScreen() {
     }).catch(() => {});
     listDrives(id).then(setDrives).catch(() => setDrives([]));
     loadGarage(id).then(setGarage).catch(() => setGarage([]));
+    userVehicleStats(id).then(setCarStats).catch(() => setCarStats(new Map()));
     isBlocked(me, id).then(setBlocked).catch(() => {});
     listUserCrews(id).then(setCrews).catch(() => setCrews([]));
   }, [id, me]);
@@ -169,7 +172,7 @@ export default function UserProfileScreen() {
       {garage.length > 0 && (
         <>
           <Text style={styles.section}>GARAGE</Text>
-          {garage.map((v, i) => <GarageCarCard key={v.id} car={v} flip={i % 2 === 1} index={i} />)}
+          {garage.map((v, i) => <GarageCarCard key={v.id} car={v} stats={carStats.get(v.id)} flip={i % 2 === 1} index={i} />)}
         </>
       )}
 

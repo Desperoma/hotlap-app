@@ -56,7 +56,8 @@
     "geo:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-geonames.ts",
     "circuits:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-circuits.ts",
     "circuits:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/circuits.test.ts",
-    "telemetry:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/telemetry.test.ts"
+    "telemetry:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/telemetry.test.ts",
+    "gforce:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/gforce.test.ts"
   },
   "private": true,
   "engines": {
