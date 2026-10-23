@@ -16,7 +16,7 @@ const TABS: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string
  * Barre d'onglets de la maquette : onglet actif = pastille citron surélevée,
  * bouton central « + » toujours mis en avant.
  */
-export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
+export function TabBar({ state, emitter, navigateToTab, insets }: BottomTabBarProps) {
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
       {state.routes.map((route, index) => {
@@ -25,8 +25,8 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         const focused = state.index === index;
         const isCenter = route.name === 'record';
         const onPress = () => {
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+          const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          if (!focused && !event.defaultPrevented) navigateToTab(route.key);
         };
 
         if (isCenter) {
