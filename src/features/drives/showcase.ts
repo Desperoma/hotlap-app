@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 
 /**
  * Données de la vitrine d'un drive (récap et détail) : cartes de stats et carte de mode.
- * Règles : vitesses moyenne et max montrées au propriétaire seulement (jamais aux autres).
+ * Règles : vitesse moyenne montrée au propriétaire seulement ; vitesse max visible par tous (23/10).
  */
 export type ShowcaseIcon = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -14,7 +14,7 @@ export type ShowcaseInput = {
   distanceM: number;
   /** null si le spectateur n'est pas le propriétaire */
   avgSpeedKmh: number | null;
-  /** null si le spectateur n'est pas le propriétaire */
+  /** Visible par tous */
   maxSpeedKmh?: number | null;
   score: number | null;
   maxLateralG: number | null;

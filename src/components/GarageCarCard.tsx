@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
-import { AccessibilityInfo, Animated, Easing, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { carImageFor } from '@/features/garage/carImage';
 import type { VehicleStats } from '@/features/garage/stats';
@@ -13,12 +13,12 @@ type Car = {
 };
 type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 
-const H = 210;
+const H = 240;
 
 /**
- * Voiture du garage en grand, avec ses infos à côté (comme la vitrine d'un drive). `flip` met la
- * photo à droite : le garage alterne photo | infos puis infos | photo. La vitesse max n'apparaît
- * que si la voiture a déjà fait un drive (et uniquement pour son propriétaire : `stats` absent sinon).
+ * Voiture du garage en grand, sans cadre (la photo se fond dans le fond de page), avec ses infos
+ * posées par-dessus l'image. `flip` met la photo à droite : le garage alterne photo | infos puis infos | photo. La vitesse max n'apparaît
+ * que si la voiture a déjà fait un drive (visible par tous depuis 0023, sur les drives qu'on peut voir).
  */
 export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: {
   car: Car;
@@ -28,6 +28,9 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
   /** Rang dans la liste : décale l'animation d'entrée */
   index?: number;
 }) {
+  const { width: W } = useWindowDimensions();
+  const photoW = W * 0.72; // la photo occupe ~3/4 de la largeur…
+  const infoW = W * 0.5;   // …et les infos la chevauchent d'environ un quart
   const appear = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     let live = true;
@@ -53,63 +56,78 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
     rows.push({ key: 'ratio', icon: 'scale-balance', label: 'Weight / power', value: (car.weight_kg / kwToHp(car.power_kw)).toFixed(1), unit: 'kg/hp' });
   }
 
-  const slide = appear.interpolate({ inputRange: [0, 1], outputRange: [flip ? 30 : -30, 0] });
+  const slide = appear.interpolate({ inputRange: [0, 1], outputRange: [flip ? 40 : -40, 0] });
   const slideInfo = appear.interpolate({ inputRange: [0, 1], outputRange: [flip ? -24 : 24, 0] });
+  // Fondu du bord intérieur de la photo vers le fond de page : la voiture n'a pas de cadre.
+  const fade = Array.from({ length: FADE_STEPS }, (_, i) => (i + 1) / FADE_STEPS);
 
   return (
     <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`${car.make} ${car.model}`}
-      style={({ pressed }) => [styles.root, car.is_primary && styles.favorite, pressed && { opacity: 0.85 }]}>
-      <View style={[styles.row, flip && { flexDirection: 'row-reverse' }]}>
-        <Animated.View style={[styles.photo, { opacity: appear, transform: [{ translateX: slide }] }]}>
-          <Image source={source} resizeMode="contain" style={styles.img} accessibilityIgnoresInvertColors />
-        </Animated.View>
+      style={({ pressed }) => [styles.root, { width: W, height: H }, pressed && { opacity: 0.85 }]}>
+      <Animated.View pointerEvents="none" style={[styles.photo, { width: photoW, height: H }, flip ? { right: 0 } : { left: 0 },
+        { opacity: appear, transform: [{ translateX: slide }] }]}>
+        <Image source={source} resizeMode="cover" style={{ width: photoW, height: H }} accessibilityIgnoresInvertColors />
+        {/* Fondus : bord intérieur (large), haut et bas (fins) */}
+        <View style={[styles.fadeRow, flip ? { left: 0, flexDirection: 'row' } : { right: 0, flexDirection: 'row-reverse' }, { width: photoW * 0.45 }]}>
+          {fade.map((o) => <View key={o} style={{ flex: 1, backgroundColor: colors.bg, opacity: o * o }} />)}
+        </View>
+        <View style={[styles.fadeCol, { top: 0 }]}>{fade.slice(0, 6).map((o, i) => <View key={o} style={{ flex: 1, backgroundColor: colors.bg, opacity: 1 - (i + 1) / 6 }} />)}</View>
+        <View style={[styles.fadeCol, { bottom: 0 }]}>{fade.slice(0, 6).map((o, i) => <View key={o} style={{ flex: 1, backgroundColor: colors.bg, opacity: (i + 1) / 6 }} />)}</View>
+      </Animated.View>
 
-        <Animated.View style={[styles.info, { opacity: appear, transform: [{ translateX: slideInfo }] }]}>
-          {car.is_primary && (
-            <View style={styles.badge}>
-              <Ionicons name="star" size={10} color={colors.accent} />
-              <Text style={styles.badgeText}>FAVORITE</Text>
-            </View>
-          )}
-          <Text style={styles.make} numberOfLines={1}>{car.make}</Text>
-          <Text style={styles.model} numberOfLines={2} adjustsFontSizeToFit>{car.model}</Text>
-          <Text style={styles.sub} numberOfLines={1}>{[car.nickname, car.year].filter(Boolean).join(' · ') || ' '}</Text>
-          <View style={styles.stats}>
-            {rows.slice(0, 4).map((r) => (
-              <View key={r.key} style={[styles.stat, r.accent && styles.statAccent]}>
-                <MaterialCommunityIcons name={r.icon} size={14} color={r.accent ? colors.accent : colors.textMuted} />
-                <Text style={styles.statLabel} numberOfLines={1}>{r.label}</Text>
-                <Text style={[styles.statValue, r.accent && { color: colors.accent }]} numberOfLines={1}>
-                  {r.value}{r.unit ? <Text style={styles.statUnit}> {r.unit}</Text> : null}
-                </Text>
-              </View>
-            ))}
-            {rows.length === 0 && <Text style={styles.sub}>Ajoute puissance et poids dans « Edit details ».</Text>}
+      <Animated.View style={[styles.info, { width: infoW }, flip ? { left: spacing.lg } : { right: spacing.lg },
+        { opacity: appear, transform: [{ translateX: slideInfo }] }]}>
+        {car.is_primary && (
+          <View style={styles.badge}>
+            <Ionicons name="star" size={10} color={colors.accent} />
+            <Text style={styles.badgeText}>FAVORITE</Text>
           </View>
-        </Animated.View>
-      </View>
+        )}
+        <Text style={[styles.make, styles.shadow]} numberOfLines={1}>{car.make}</Text>
+        <Text style={[styles.model, styles.shadow]} numberOfLines={2} adjustsFontSizeToFit>{car.model}</Text>
+        {[car.nickname, car.year].some(Boolean) ? (
+          <Text style={[styles.sub, styles.shadow]} numberOfLines={1}>{[car.nickname, car.year].filter(Boolean).join(' · ')}</Text>
+        ) : null}
+        <View style={styles.stats}>
+          {rows.slice(0, 4).map((r) => (
+            <View key={r.key} style={[styles.stat, r.accent && styles.statAccent]}>
+              <MaterialCommunityIcons name={r.icon} size={14} color={r.accent ? colors.accent : colors.textMuted} />
+              <Text style={styles.statLabel} numberOfLines={1}>{r.label}</Text>
+              <Text style={[styles.statValue, r.accent && { color: colors.accent }]} numberOfLines={1}>
+                {r.value}{r.unit ? <Text style={styles.statUnit}> {r.unit}</Text> : null}
+              </Text>
+            </View>
+          ))}
+          {rows.length === 0 && <Text style={[styles.sub, styles.shadow]}>Ajoute puissance et poids dans « Edit details ».</Text>}
+        </View>
+      </Animated.View>
     </Pressable>
   );
 }
 
-const glass = 'rgba(27,30,27,0.78)';
+const glass = 'rgba(14,16,14,0.72)';
+const FADE_STEPS = 14;
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.card, borderRadius: 20, borderWidth: 1, borderColor: 'transparent', overflow: 'hidden' },
-  favorite: { borderColor: colors.accent },
-  row: { flexDirection: 'row', minHeight: H },
-  photo: { flex: 1.1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs },
-  img: { width: '100%', height: H - 20 },
-  info: { flex: 1, paddingVertical: spacing.md, paddingHorizontal: spacing.md, gap: 2, justifyContent: 'center' },
+  // Pleine largeur de l'écran : la photo touche le bord, sans carte autour.
+  root: { marginHorizontal: -spacing.lg },
+  photo: { position: 'absolute', top: 0, overflow: 'hidden' },
+  fadeRow: { position: 'absolute', top: 0, bottom: 0 },
+  fadeCol: { position: 'absolute', left: 0, right: 0, height: 24 },
+  info: { position: 'absolute', top: 0, bottom: 0, justifyContent: 'center', gap: 2 },
+  shadow: { textShadowColor: 'rgba(0,0,0,0.85)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
   badgeText: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 1 },
-  make: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 12 },
-  model: { color: colors.text, fontFamily: fonts.medium, fontSize: 20, lineHeight: 24 },
+  make: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 13 },
+  model: { color: colors.text, fontFamily: fonts.medium, fontSize: 26, lineHeight: 30 },
   sub: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12 },
   stats: { gap: 5, marginTop: spacing.sm },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: glass, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 5 },
-  statAccent: { borderWidth: 1, borderColor: colors.accent },
+  stat: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: glass, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+  },
+  statAccent: { borderColor: colors.accent },
   statLabel: { flex: 1, color: colors.textMuted, fontFamily: fonts.regular, fontSize: 11 },
   statValue: { color: colors.text, fontFamily: fonts.semibold, fontSize: 13 },
   statUnit: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 10 },

@@ -26,7 +26,7 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   Le chrono n'entre dans le score que sur circuit, ou sur une Route avec `timing_enabled` (ex. autobahn
   sans limitation), drapeau géré côté admin. La base refuse un `lap_time_ms` ailleurs. Priorité : passer
   la revue App Store et Google Play.
-- `max_speed_kmh` n'est jamais affichée aux autres : seul le propriétaire voit sa vitesse max (rapport du drive, garage via `my_vehicle_stats`) et la télémétrie point par point (`drive_points`, composant `DriveTelemetry`). Depuis la migration 0002, `max_speed_kmh`, `path` et
+- Vitesse max visible par tous depuis la migration 0023 (décision du 23/10, à revoir si les stores l'exigent) : `drives.max_speed_kmh` lisible selon la RLS, garage via `user_vehicle_stats` (drives visibles seulement). La vitesse moyenne et la télémétrie point par point (`drive_points`, composant `DriveTelemetry`) restent au seul propriétaire. Depuis la migration 0002, `path` et
   `start_point` ne sont pas lisibles directement (privilèges par colonne) : ne jamais faire `select('*')` sur
   `drives`, utiliser `DRIVE_COLUMNS` (`features/drives/api.ts`). Le tracé s'obtient par `drive_path_public`
   (complet pour le propriétaire ; pour les autres, `path_public`, sans la zone privée du domicile, en
