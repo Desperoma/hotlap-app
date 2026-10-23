@@ -411,8 +411,9 @@ export default function MapScreen() {
             </View>
             <View style={styles.statsRow}>
               <Stat value={selectedCircuit.lapLengthM ? formatKm(selectedCircuit.lapLengthM) : '—'} unit={selectedCircuit.lapLengthM ? 'km' : undefined} label="LAP" />
-              <Stat value={selectedCircuit.kind === 'closed_road' ? 'Closed road' : 'Track'} label="TYPE" />
+              <Stat value={selectedCircuit.kind === 'closed_road' ? 'Closed road' : selectedCircuit.kind === 'karting' ? 'Karting' : 'Track'} label="TYPE" />
             </View>
+            <Text style={styles.cardHint}>Circuit data © OpenStreetMap contributors, Wikidata</Text>
           </View>
         </View>
       )}

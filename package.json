@@ -53,7 +53,9 @@
     "build:test:android": "npx eas-cli@latest build --profile preview --platform android",
     "build:beta:android": "npx eas-cli@latest build --profile beta --platform android",
     "cars:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/car-images.test.ts",
-    "geo:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-geonames.ts"
+    "geo:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-geonames.ts",
+    "circuits:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-circuits.ts",
+    "circuits:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/circuits.test.ts"
   },
   "private": true,
   "engines": {
