@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 
 /**
  * Données de la vitrine d'un drive (récap et détail) : cartes de stats et carte de mode.
- * Règles : la vitesse moyenne n'est montrée qu'au propriétaire ; la vitesse max jamais.
+ * Règles : vitesses moyenne et max montrées au propriétaire seulement (jamais aux autres).
  */
 export type ShowcaseIcon = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -14,6 +14,8 @@ export type ShowcaseInput = {
   distanceM: number;
   /** null si le spectateur n'est pas le propriétaire */
   avgSpeedKmh: number | null;
+  /** null si le spectateur n'est pas le propriétaire */
+  maxSpeedKmh?: number | null;
   score: number | null;
   maxLateralG: number | null;
   lapTimeMs: number | null;
@@ -29,6 +31,9 @@ export function showcaseStats(d: ShowcaseInput): ShowcaseStat[] {
   stats.push({ key: 'distance', icon: 'map-marker-distance', label: 'Distance', ...formatDistance(d.distanceM) });
   if (d.avgSpeedKmh != null) {
     stats.push({ key: 'avg', icon: 'speedometer-medium', label: 'Avg. Speed', value: d.avgSpeedKmh < 100 ? d.avgSpeedKmh.toFixed(1) : String(Math.round(d.avgSpeedKmh)), unit: 'km/h' });
+  }
+  if (d.maxSpeedKmh != null && d.maxSpeedKmh > 0) {
+    stats.push({ key: 'vmax', icon: 'speedometer', label: 'Top Speed', value: String(Math.round(d.maxSpeedKmh)), unit: 'km/h' });
   }
   if (d.score != null) stats.push({ key: 'score', icon: 'trophy-outline', label: 'Score', value: String(d.score), unit: 'pts' });
   if (d.turns != null) stats.push({ key: 'turns', icon: 'routes', label: 'Turns', value: String(d.turns) });

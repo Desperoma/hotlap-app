@@ -36,6 +36,17 @@ export function acceptPoint(prev: TrackPoint | undefined, next: TrackPoint) {
   return d >= GPS_FILTER.minMoveM;
 }
 
+/**
+ * Vitesse du point : celle du GPS, sinon (iOS renvoie -1 quand il ne la connaît pas) la vitesse
+ * moyenne depuis le point précédent retenu.
+ */
+export function speedOf(prev: TrackPoint | undefined, p: TrackPoint): number | null {
+  if (p.speed != null && p.speed >= 0 && p.speed <= GPS_FILTER.maxSpeedMs) return p.speed;
+  if (!prev) return null;
+  const dt = (p.ts - prev.ts) / 1000;
+  return dt > 0 ? Math.min(haversine(prev, p) / dt, GPS_FILTER.maxSpeedMs) : null;
+}
+
 export type DriveStats = { distanceM: number; durationS: number; avgSpeedKmh: number; maxSpeedKmh: number };
 
 export function computeStats(points: TrackPoint[], startedAt: number, now = Date.now()): DriveStats {
@@ -43,7 +54,8 @@ export function computeStats(points: TrackPoint[], startedAt: number, now = Date
   let maxSpeed = 0;
   for (let i = 1; i < points.length; i++) {
     distanceM += haversine(points[i - 1], points[i]);
-    maxSpeed = Math.max(maxSpeed, points[i].speed ?? 0);
+    const v = points[i].speed ?? 0;
+    if (v <= GPS_FILTER.maxSpeedMs) maxSpeed = Math.max(maxSpeed, v);
   }
   const durationS = Math.max(0, Math.round((now - startedAt) / 1000));
   return {

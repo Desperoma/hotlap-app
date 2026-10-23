@@ -134,7 +134,7 @@ export async function getPublicProfile(userId: string): Promise<PublicProfile | 
   if (!isSupabaseConfigured) return null;
   const { data, error } = await supabase
     .from('public_profiles')
-    .select('id, username, display_name, avatar_url, bio, country_code, home_city, created_at, follow_policy')
+    .select('id, username, display_name, avatar_url, bio, country_code, region, home_city, created_at, follow_policy')
     .eq('id', userId).maybeSingle();
   if (error) throw error;
   return data;

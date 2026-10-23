@@ -75,12 +75,14 @@ HAVING (COUNT(DISTINCT ?model) >= ${MIN_MODELS})`;
 const modelsQuery = (makeQid: string) => `
 SELECT ?model ?modelLabel
        (GROUP_CONCAT(DISTINCT ?alt; separator="|") AS ?alts)
-       (MIN(YEAR(?s)) AS ?from) (MAX(YEAR(?e)) AS ?to)
+       (MIN(YEAR(?s)) AS ?from) (MAX(YEAR(?e)) AS ?to) (MIN(?pw) AS ?power) (MIN(?kg) AS ?mass)
 WHERE {
   ?model wdt:P31 wd:Q3231690 ; (wdt:P1716|wdt:P176) wd:${makeQid} .
   OPTIONAL { ?model (wdt:P2031|wdt:P571|wdt:P580) ?s }
   OPTIONAL { ?model (wdt:P2032|wdt:P582|wdt:P730) ?e }
   OPTIONAL { ?model skos:altLabel ?alt . FILTER(LANG(?alt) IN ("fr", "en")) }
+  OPTIONAL { ?model p:P2109/psn:P2109/wikibase:quantityAmount ?pw }
+  OPTIONAL { ?model p:P2067/psn:P2067/wikibase:quantityAmount ?kg }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en". ?model rdfs:label ?modelLabel . }
 }
 GROUP BY ?model ?modelLabel`;
@@ -163,9 +165,13 @@ async function upsertMake(db: Db, make: { qid: string; name: string }, models: R
       if (m.yearTo) patch.year_to = m.yearTo;
       const { error } = await db.from('vehicle_models').update(patch).eq('id', id).is('wikidata_qid', null);
       if (!error) res.linked++;
+      // Puissance et poids théoriques : complétés sans écraser une valeur existante.
+      if (m.powerKw) await db.from('vehicle_models').update({ power_kw: m.powerKw }).eq('id', id).is('power_kw', null);
+      if (m.weightKg) await db.from('vehicle_models').update({ weight_kg: m.weightKg }).eq('id', id).is('weight_kg', null);
     } else {
       const { data, error } = await db.from('vehicle_models').insert({
         make_id: makeId, name: m.name, wikidata_qid: m.qid, year_from: m.yearFrom, year_to: m.yearTo,
+        power_kw: m.powerKw, weight_kg: m.weightKg,
         source: 'wikidata', is_verified: true,
       }).select('id').single();
       if (error) { console.warn(`    ${m.name} ignoré : ${error.message}`); continue; }

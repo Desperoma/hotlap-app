@@ -16,6 +16,8 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   s'affiche « Followers ».
 - **Crew** : groupe de conducteurs (tables `crews`, `crew_members`), ouvert ou sur demande, rôles owner / admin /
   member. Écritures uniquement via les fonctions SQL (`create_crew`, `join_crew`…), fil `feed_crews`.
+  Invitations (0022) : `invite_to_crew` (admin, ou tout membre d'un crew ouvert), `respond_crew_invite` (entrée
+  directe, même dans un crew sur demande), `cancel_crew_invite` ; notification `crew_invite`.
 
 ## Règles produit à respecter
 
@@ -24,7 +26,7 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   Le chrono n'entre dans le score que sur circuit, ou sur une Route avec `timing_enabled` (ex. autobahn
   sans limitation), drapeau géré côté admin. La base refuse un `lap_time_ms` ailleurs. Priorité : passer
   la revue App Store et Google Play.
-- `max_speed_kmh` n'est jamais affichée publiquement. Depuis la migration 0002, `max_speed_kmh`, `path` et
+- `max_speed_kmh` n'est jamais affichée aux autres : seul le propriétaire voit sa vitesse max (rapport du drive, garage via `my_vehicle_stats`) et la télémétrie point par point (`drive_points`, composant `DriveTelemetry`). Depuis la migration 0002, `max_speed_kmh`, `path` et
   `start_point` ne sont pas lisibles directement (privilèges par colonne) : ne jamais faire `select('*')` sur
   `drives`, utiliser `DRIVE_COLUMNS` (`features/drives/api.ts`). Le tracé s'obtient par `drive_path_public`
   (complet pour le propriétaire ; pour les autres, `path_public`, sans la zone privée du domicile, en
@@ -58,7 +60,7 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
 - Abonnements (0013) : passer par `follow_user` (direct si `profiles.follow_policy = 'open'`, sinon demande
   dans `follow_requests`, acceptée par `answer_follow_request`). Les listes followers / following ne sont
   lisibles que par la personne concernée (`my_people`) ; les nombres d'un profil viennent de `profile_stats`.
-- Garage et ville suivent `profiles.details_visibility` (public / followers / private) via `can_see_details` ;
+- Garage (dont puissance et poids, `user_garage`), ville et région suivent `profiles.details_visibility` (public / followers / private) via `can_see_details` ;
   pseudo, nom affiché, bio et photo sont toujours publics.
 - Modération (exigée par les stores) : tout contenu d'un autre utilisateur (drive, commentaire, profil, crew) doit
   offrir « Signaler » et « Bloquer » (`ModerationSheet`, table `reports`, table `blocks`). Le blocage est

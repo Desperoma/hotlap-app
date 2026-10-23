@@ -6,6 +6,8 @@ import { removeDrivePhotos } from './media';
 import type { PublicProfile, ScoreBreakdown, Vehicle, Visibility } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+import type { RawPoint } from './telemetry';
+
 /**
  * Colonnes de drives lisibles par l'app (migration 0002). max_speed_kmh, path et
  * start_point ne sont PAS lisibles directement : ne jamais faire select('*') sur drives.
@@ -248,4 +250,27 @@ function demoFromFeed(id: string): DriveDetail | null {
     likeCount: f.like_count, commentCount: f.comment_count, author: f.author, vehicleId: f.vehicle_id, vehicle: f.vehicle,
     circuitName: null, path: [], isSimulated: false,
   };
+}
+
+/**
+ * Points bruts d'un drive (propriétaire uniquement, RLS de drive_points), par pages de 1 000
+ * (limite de lignes de l'API). Vide pour un drive d'un autre conducteur.
+ */
+export async function getDrivePoints(id: string): Promise<RawPoint[]> {
+  if (!isSupabaseConfigured) {
+    const d = demoDrives.get(id);
+    return (d?.path.flat() ?? []).map((p, i) => ({ ts: i * 1000, lat: p.latitude, lng: p.longitude, altitude: null, speed: null }));
+  }
+  const PAGE = 1000;
+  const out: RawPoint[] = [];
+  for (let from = 0; from < 50_000; from += PAGE) {
+    const { data, error } = await supabase.from('drive_points')
+      .select('ts, lat, lng, altitude, speed')
+      .eq('drive_id', id).order('ts').range(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { ts: string; lat: number; lng: number; altitude: number | null; speed: number | null }[];
+    for (const r of rows) out.push({ ts: Date.parse(r.ts), lat: r.lat, lng: r.lng, altitude: r.altitude, speed: r.speed });
+    if (rows.length < PAGE) break;
+  }
+  return out;
 }

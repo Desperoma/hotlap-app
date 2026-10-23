@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { CarThumb } from '@/components/CarThumb';
+import { GarageCarCard } from '@/components/GarageCarCard';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Button, Card, Chip, Screen } from '@/components/ui';
@@ -14,6 +14,7 @@ import { block, isBlocked, unblock } from '@/features/moderation/api';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { displayName, follow, getPublicProfile, unfollow } from '@/features/social/api';
 import type { PublicProfile, Vehicle } from '@/lib/database.types';
+import { placeLine } from '@/features/places/format';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
 
@@ -29,7 +30,7 @@ export default function UserProfileScreen() {
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const [rel, setRel] = useState<'none' | 'following' | 'requested'>('none');
-  const [garage, setGarage] = useState<Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary'>[]>([]);
+  const [garage, setGarage] = useState<Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary' | 'power_kw' | 'weight_kg'>[]>([]);
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
@@ -130,8 +131,9 @@ export default function UserProfileScreen() {
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={styles.name}>{name}</Text>
             <Text style={styles.muted}>
-              @{profile.username}{profile.home_city ? ` · ${profile.home_city}` : ''}
+              @{profile.username}
             </Text>
+            {placeLine(profile) ? <Text style={styles.muted} numberOfLines={1}>{placeLine(profile)}</Text> : null}
           </View>
         </View>
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
@@ -167,15 +169,7 @@ export default function UserProfileScreen() {
       {garage.length > 0 && (
         <>
           <Text style={styles.section}>GARAGE</Text>
-          <Card style={{ gap: spacing.sm }}>
-            {garage.map((v) => (
-              <View key={v.id} style={styles.garageRow}>
-                <CarThumb vehicle={v} size={44} />
-                <Text style={[styles.garageText, { flex: 1 }]}>{[v.year, v.make, v.model].filter(Boolean).join(' ')}</Text>
-                {v.is_primary && <Ionicons name="star" size={14} color={colors.accent} />}
-              </View>
-            ))}
-          </Card>
+          {garage.map((v, i) => <GarageCarCard key={v.id} car={v} flip={i % 2 === 1} index={i} />)}
         </>
       )}
 
@@ -206,7 +200,7 @@ async function loadGarage(userId: string) {
   // Fonction dédiée : la lecture directe de vehicles inclut aussi les voitures de ses drives visibles.
   const { data, error } = await supabase.rpc('user_garage', { p_user: userId });
   if (error) throw error;
-  return (data ?? []) as Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary'>[];
+  return (data ?? []) as Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary' | 'power_kw' | 'weight_kg'>[];
 }
 
 const styles = StyleSheet.create({

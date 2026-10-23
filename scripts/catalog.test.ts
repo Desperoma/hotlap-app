@@ -1,7 +1,7 @@
 // Test hors ligne de la transformation Wikidata -> catalogue : npm run catalog:test
 import assert from 'node:assert/strict';
 
-import { buildModels, catalogKey, stripMake } from './lib/catalog';
+import { buildModels, catalogKey, powerKwOf, stripMake, weightKgOf } from './lib/catalog';
 
 const b = (qid: string, label: string, extra: { alts?: string; from?: string; to?: string } = {}) => ({
   model: { value: `http://www.wikidata.org/entity/${qid}` },
@@ -33,4 +33,10 @@ assert.ok(megane.aliases.includes('Sport Mégane') || megane.aliases.includes('R
 assert.ok(!megane.aliases.some((a) => catalogKey(a) === 'meganers'));
 assert.equal(models.find((m) => m.name === 'Clio')!.yearTo, null);
 assert.equal(models.find((m) => m.name === '5')!.yearFrom, 1890);
+// Puissance (W normalisés -> kW) et masse (kg), valeurs absurdes écartées.
+assert.equal(powerKwOf({ value: '221000' }), 221);
+assert.equal(powerKwOf({ value: '12' }), null);
+assert.equal(weightKgOf({ value: '1395.4' }), 1395);
+assert.equal(weightKgOf({ value: '12' }), null);
+assert.equal(megane.powerKw, null);
 console.log('catalog: tous les tests passent');

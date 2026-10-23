@@ -4,12 +4,13 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { CarThumb } from '@/components/CarThumb';
+import { GarageCarCard } from '@/components/GarageCarCard';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { placeLine } from '@/features/places/format';
 import { listMyCrews, type MyCrew } from '@/features/crews/api';
-import { vehicleLabel } from '@/features/garage/VehicleForm';
+import { myVehicleStats, type VehicleStats } from '@/features/garage/stats';
 import { deleteAccount } from '@/features/moderation/api';
 import { CheckInBar } from '@/features/profile/CheckInBar';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
@@ -20,6 +21,7 @@ import { colors, fonts, radius, spacing, type } from '@/theme';
 export default function ProfileScreen() {
   const { session, profile, vehicles, primaryVehicle, signOut } = useAuth();
   const [tab, setTab] = useState<'garage' | 'log'>('garage');
+  const [carStats, setCarStats] = useState<Map<string, VehicleStats>>(new Map());
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
   const [requests, setRequests] = useState(0);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
@@ -65,6 +67,7 @@ export default function ProfileScreen() {
       listPeople('requests').then((r) => setRequests(r.length)).catch(() => {});
       listDrives(userId).then(setDrives).catch(() => setDrives([]));
       listMyCrews(userId).then((c) => setCrews(c.filter((x) => x.myStatus === 'active'))).catch(() => {});
+      myVehicleStats().then(setCarStats).catch(() => {});
     }, [userId]),
   );
   const name = profile?.display_name ?? profile?.username ?? 'Driver';
@@ -89,6 +92,7 @@ export default function ProfileScreen() {
           <Avatar url={profile?.avatar_url} name={name} size={72} ring />
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={styles.name}>{name}</Text>
+            {profile && placeLine(profile) ? <Text style={styles.place} numberOfLines={1}>{placeLine(profile)}</Text> : null}
             <Pressable style={styles.badge} onPress={() => router.push(crews.length === 1 ? `/crews/${crews[0].id}` : '/crews')}>
               <Ionicons name="people-outline" size={12} color={colors.accent} />
               <Text style={styles.badgeText} numberOfLines={1}>
@@ -131,32 +135,17 @@ export default function ProfileScreen() {
 
       {tab === 'garage' ? (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.section}>FAVORITE MACHINE</Text>
-          {primaryVehicle ? (
-            <Card style={{ gap: 6 }} onPress={() => router.push({ pathname: '/garage/edit', params: { id: primaryVehicle.id } })}>
-              <CarThumb vehicle={primaryVehicle} size={140} style={{ alignSelf: 'center' }} />
-              {primaryVehicle.nickname ? <Text style={styles.year}>{primaryVehicle.nickname}</Text> : null}
-              {primaryVehicle.year ? <Text style={styles.year}>{primaryVehicle.year}</Text> : null}
-              <Text style={styles.make}>{primaryVehicle.make.toUpperCase()}</Text>
-              <Text style={styles.model}>{primaryVehicle.model}</Text>
-              <Text style={styles.edit}>Edit car details →</Text>
-            </Card>
+          <Text style={styles.section}>MY MACHINES</Text>
+          {vehicles && vehicles.length > 0 ? (
+            vehicles.map((v, i) => (
+              <GarageCarCard key={v.id} car={v} stats={carStats.get(v.id)} flip={i % 2 === 1} index={i}
+                onPress={() => router.push({ pathname: '/garage/edit', params: { id: v.id } })} />
+            ))
           ) : (
             <Card style={{ alignItems: 'center', gap: spacing.md }}>
               <Text style={styles.bio}>No car in your garage yet.</Text>
               <Button title="Add a vehicle" icon="add" onPress={() => router.push('/garage/edit')} />
             </Card>
-          )}
-          {(vehicles?.length ?? 0) > 1 && (
-            <View style={{ gap: spacing.sm }}>
-              {vehicles!.filter((v) => !v.is_primary).map((v) => (
-                <Card key={v.id} style={styles.otherCar} onPress={() => router.push({ pathname: '/garage/edit', params: { id: v.id } })}>
-                  <CarThumb vehicle={v} size={40} />
-                  <Text style={[styles.shortcutTitle, { flex: 1 }]} numberOfLines={1}>{vehicleLabel(v)}</Text>
-                  {v.year ? <Text style={styles.year}>{v.year}</Text> : null}
-                </Card>
-              ))}
-            </View>
           )}
           <Button title={`Open my garage (${vehicles?.length ?? 0})`} variant="secondary" icon="construct-outline"
             onPress={() => router.push('/garage')} />
@@ -224,6 +213,7 @@ function TabLink({ icon, label, active, onPress }: {
 }
 
 const styles = StyleSheet.create({
+  place: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13 },
   // paddingRight : place pour la cloche (NotificationBell)
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 52 },
   overline: { ...type.overline, color: colors.textMuted, fontSize: 10 },

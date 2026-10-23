@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
  * Catalogue marques / modèles (Wikidata + saisie manuelle dédoublonnée).
  * En mode démo, le petit catalogue local de src/data/vehicles.ts le remplace.
  */
-export type CatalogItem = { id: number | null; name: string };
+export type CatalogItem = { id: number | null; name: string; powerKw?: number | null; weightKg?: number | null };
 
 /** Même normalisation que public.catalog_key côté base. */
 export const catalogKey = (t: string) =>
@@ -22,9 +22,10 @@ export async function fetchModels(make: CatalogItem): Promise<CatalogItem[]> {
   if (!isSupabaseConfigured || make.id == null) {
     return (VEHICLE_CATALOG[make.name] ?? []).map((name) => ({ id: null, name }));
   }
-  const { data, error } = await supabase.from('vehicle_models').select('id, name').eq('make_id', make.id).order('name');
+  const { data, error } = await supabase.from('vehicle_models').select('id, name, power_kw, weight_kg').eq('make_id', make.id).order('name');
   if (error) throw error;
-  return data as CatalogItem[];
+  return ((data ?? []) as { id: number; name: string; power_kw: number | null; weight_kg: number | null }[])
+    .map((m) => ({ id: m.id, name: m.name, powerKw: m.power_kw, weightKg: m.weight_kg }));
 }
 
 /** Modèles proches de ce que l'utilisateur tape, pour éviter un doublon. */

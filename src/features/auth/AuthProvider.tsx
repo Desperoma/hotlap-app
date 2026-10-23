@@ -13,6 +13,8 @@ export type VehicleInput = {
   make: string; model: string; year: number | null; modelId?: number | null; nickname?: string | null;
   /** Une des couleurs de data/carColors.ts */
   color?: string | null;
+  powerKw?: number | null;
+  weightKg?: number | null;
 };
 
 /**
@@ -230,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const { data, error } = await supabase
         .from('vehicles')
-        .insert({ owner_id: userId, make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, color: v.color ?? null, is_primary: false })
+        .insert({ owner_id: userId, make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, color: v.color ?? null, power_kw: v.powerKw ?? null, weight_kg: v.weightKg ?? null, is_primary: false })
         .select()
         .single();
       if (error) throw garageError(error);
@@ -248,7 +250,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateVehicle = useCallback<AuthState['updateVehicle']>(
     async (id, v) => {
-      const patch = { make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, color: v.color ?? null };
+      const patch = {
+        make: v.make, model: v.model, year: v.year, model_id: v.modelId ?? null, nickname: v.nickname ?? null, color: v.color ?? null,
+        power_kw: v.powerKw ?? null, weight_kg: v.weightKg ?? null,
+      };
       if (isSupabaseConfigured) {
         const { error } = await supabase.from('vehicles').update(patch).eq('id', id);
         if (error) throw garageError(error);
@@ -363,7 +368,7 @@ function demoProfile(username: string): Profile {
 function demoVehicle(v: VehicleInput, primary: boolean): Vehicle {
   return {
     id: `demo-vehicle-${Date.now()}`, owner_id: 'demo-user', model_id: null, make: v.make, model: v.model, year: v.year,
-    nickname: v.nickname ?? null, color: v.color ?? null, photo_url: null, is_primary: primary, created_at: new Date().toISOString(),
+    nickname: v.nickname ?? null, color: v.color ?? null, power_kw: v.powerKw ?? null, weight_kg: v.weightKg ?? null, photo_url: null, is_primary: primary, created_at: new Date().toISOString(),
   };
 }
 

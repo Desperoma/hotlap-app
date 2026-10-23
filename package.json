@@ -55,7 +55,8 @@
     "cars:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/car-images.test.ts",
     "geo:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-geonames.ts",
     "circuits:import": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/import-circuits.ts",
-    "circuits:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/circuits.test.ts"
+    "circuits:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/circuits.test.ts",
+    "telemetry:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/telemetry.test.ts"
   },
   "private": true,
   "engines": {
