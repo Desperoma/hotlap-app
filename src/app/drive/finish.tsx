@@ -6,6 +6,7 @@ import { DriveMap } from '@/components/DriveMap';
 import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
+import { SprintResults } from '@/components/SprintResults';
 import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Screen, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -16,6 +17,8 @@ import { MAX_PHOTOS, pickPhotos, uploadDrivePhotos } from '@/features/drives/med
 import { clearPendingDrive, getPendingDrive, type PendingDrive } from '@/features/drives/pending';
 import { computeStats } from '@/features/recording/geo';
 import { computeScore } from '@/features/scoring/score';
+import { recordDriveSprints } from '@/features/sprint/api';
+import { detectSprints } from '@/features/sprint/sprint';
 import { VISIBILITY_HINT, VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -64,6 +67,7 @@ export default function FinishDriveScreen() {
     );
   }
 
+  const sprints = drive.mode === 'sprint' ? detectSprints(drive.points) : [];
   const tooShort = drive.points.length < 2;
   // Véhicule choisi avant le départ, sinon le favori ; un véhicule retiré du garage entre-temps est ignoré.
   const picked = vehicleId === undefined ? primaryVehicle?.id ?? null : vehicleId;
@@ -86,8 +90,14 @@ export default function FinishDriveScreen() {
         endedAt: drive.endedAt,
         points: drive.points,
         simulated: drive.simulated,
+        mode: drive.mode ?? 'free',
       });
       await clearPendingDrive();
+      if (drive.mode === 'sprint') {
+        // Les temps officiels sont recalculés par la base depuis les points enregistrés.
+        await recordDriveSprints(id, drive.points).catch((e) =>
+          Alert.alert('Sprint times not recorded', e instanceof Error ? e.message : String(e)));
+      }
       if (photos.length) {
         try {
           await uploadDrivePhotos(session.user.id, id, photos);
@@ -143,7 +153,7 @@ export default function FinishDriveScreen() {
             turns: summary.metrics.turns.length,
             elevationChangeM: summary.metrics.elevationChangeM,
           })}
-          mode={driveMode(drive.circuitName)}
+          mode={driveMode(drive.circuitName, drive.mode)}
           onPressPlus={() => setCarSheet(true)}
           topLeft={<ShowcaseButton icon="close" label="Discard drive" onPress={discard} />}
         />
@@ -152,6 +162,10 @@ export default function FinishDriveScreen() {
 
       <Text style={styles.overline}>DRIVE COMPLETE · NICE DRIVE</Text>
       <DriveMap path={summary.path} emptyLabel="Not enough GPS points for a route" />
+
+      {drive.mode === 'sprint' && (
+        <SprintResults results={sprints} note="Temps calculés sur ce téléphone ; la base les recalcule à l’enregistrement (GPS 1 Hz, environ ±0,3 s)." />
+      )}
 
       <ScoreCard score={summary.score} breakdown={summary.breakdown} />
 

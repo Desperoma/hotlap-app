@@ -75,6 +75,7 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="settings/privacy" />
         <Stack.Screen name="people/[kind]" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="leaderboard" />
       </Stack.Protected>
     </Stack>
   );

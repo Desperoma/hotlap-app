@@ -15,7 +15,7 @@ import type { RawPoint } from './telemetry';
 export const DRIVE_COLUMNS =
   'id, owner_id, vehicle_id, route_id, circuit_id, title, description, started_at, ended_at, ' +
   'distance_m, duration_s, avg_speed_kmh, max_lateral_g, score, score_breakdown, score_version, ' +
-  'lap_time_ms, visibility, like_count, comment_count, created_at, is_simulated, max_speed_kmh';
+  'lap_time_ms, visibility, like_count, comment_count, created_at, is_simulated, max_speed_kmh, mode';
 
 export type LatLng = { latitude: number; longitude: number };
 
@@ -46,6 +46,8 @@ export type DriveDetail = {
   circuitName: string | null;
   /** Drive simulé (outils de test), repérable pour être supprimé avant l'ouverture au public */
   isSimulated: boolean;
+  /** Mode choisi au départ (migration 0024) */
+  mode: 'free' | 'sprint';
   /**
    * Tracé affichable, en un ou plusieurs morceaux : complet pour le propriétaire ; pour les autres,
    * sans la zone privée autour du domicile (un drive qui la traverse est coupé en deux).
@@ -58,6 +60,8 @@ type SaveDriveInput = {
   vehicleId: string | null;
   /** Circuit sur lequel le drive a démarré (contexte renvoyé par recording_context) */
   circuitId?: string | null;
+  /** 'sprint' : les temps sont ensuite calculés par la base (record_drive_sprints) */
+  mode?: 'free' | 'sprint';
   title: string;
   description?: string;
   visibility: Visibility;
@@ -89,7 +93,7 @@ export async function saveDrive(input: SaveDriveInput) {
       distanceM: Math.round(stats.distanceM), durationS: stats.durationS, avgSpeedKmh: stats.avgSpeedKmh,
       maxSpeedKmh: stats.maxSpeedKmh, maxLateralG: null, score, scoreBreakdown: breakdown, lapTimeMs: null,
       visibility: input.visibility, likeCount: 0, commentCount: 0, author: null, vehicleId: input.vehicleId, vehicle: null, circuitName: null,
-      isSimulated: !!input.simulated,
+      isSimulated: !!input.simulated, mode: input.mode ?? 'free',
       path: [input.points.map((p) => ({ latitude: p.lat, longitude: p.lng }))],
     });
     return { id, stats, score };
@@ -108,6 +112,7 @@ export async function saveDrive(input: SaveDriveInput) {
       description: input.description ?? null,
       visibility: input.visibility,
       is_simulated: !!input.simulated,
+      mode: input.mode ?? 'free',
       started_at: new Date(input.startedAt).toISOString(),
       ended_at: new Date(input.endedAt).toISOString(),
       distance_m: Math.round(stats.distanceM),
@@ -193,6 +198,7 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
     vehicle: vehicle.data ?? null,
     circuitName: (circuit.data as { name: string } | null)?.name ?? null,
     isSimulated: !!row.is_simulated,
+    mode: row.mode === 'sprint' ? 'sprint' : 'free',
     path: geojsonToPath(path.data),
   };
 }
@@ -229,6 +235,7 @@ type DriveRow = {
   score: number | null; score_breakdown: ScoreBreakdown | null; lap_time_ms: number | null;
   visibility: Visibility; like_count: number; comment_count: number; is_simulated?: boolean;
   max_speed_kmh?: number | null;
+  mode?: string;
 };
 
 /** GeoJSON LineString ou MultiLineString (tracé coupé par la zone privée) -> morceaux de tracé. */
@@ -250,7 +257,7 @@ function demoFromFeed(id: string): DriveDetail | null {
     avgSpeedKmh: null, maxSpeedKmh: null, maxLateralG: f.max_lateral_g, score: f.score,
     scoreBreakdown: f.score_breakdown, lapTimeMs: f.lap_time_ms, visibility: f.visibility,
     likeCount: f.like_count, commentCount: f.comment_count, author: f.author, vehicleId: f.vehicle_id, vehicle: f.vehicle,
-    circuitName: null, path: [], isSimulated: false,
+    circuitName: null, path: [], isSimulated: false, mode: 'free',
   };
 }
 

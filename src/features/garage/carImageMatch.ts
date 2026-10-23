@@ -52,6 +52,25 @@ export function matchCarImage(
     if (len > bestLen) { best = [img]; bestLen = len; }
     else if (len === bestLen) best.push(img);
   }
-  if (best.length === 0) return null;
+  if (best.length === 0) return closestOfMake(v);
   return best.find((b) => b.color === v.color) ?? best[0];
+}
+
+/** Préfixe commun entre deux noms de modèle normalisés (« C63 » / « CLA » → 1). */
+const commonPrefix = (a: string, b: string) => { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; };
+
+/**
+ * Modèle sans image : le modèle le plus proche de la même marque (nom qui commence pareil,
+ * puis même couleur), plutôt que la voiture par défaut.
+ */
+function closestOfMake(v: { make: string; model: string; color?: string | null }): CarImageEntry | null {
+  const user = words(v.model).join('');
+  let best: CarImageEntry | null = null, score = -1;
+  for (const img of CAR_IMAGE_INDEX) {
+    if (!sameMake(img.make, v.make)) continue;
+    const name = Math.max(0, ...img.models.map((m) => commonPrefix(words(m).join(''), user)));
+    const s = name * 10 + (img.color === v.color ? 1 : 0);
+    if (s > score) { best = img; score = s; }
+  }
+  return best;
 }

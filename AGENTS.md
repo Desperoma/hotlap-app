@@ -48,6 +48,11 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   ou circuit) : table `country_rules`, fonction `recording_context`, côté app `features/recording/authorization.ts`.
   La date de naissance est verrouillée une fois saisie. Ne jamais contourner ce contrôle.
 - Routes chronométrées : choisies par l'équipe, `timing_enabled` exige `legal_basis` + `legal_checked_at`.
+- Mode Sprint (0024) : choisi avant le départ (`drives.mode = 'sprint'`), refusé hors circuit / route chronométrée.
+  Temps en départ arrêté (0-100, 0-200 km/h, 500 / 1 000 / 2 000 m) calculés PAR LA BASE depuis `drive_points`
+  (`sprint_times`, appelée par `record_drive_sprints`) ; `src/features/sprint/sprint.ts` est le même algorithme pour
+  l'affichage en direct : modifier les deux ensemble (`npm run sprint:test`). Drives simulés acceptés mais exclus des
+  classements des autres. Classements : `leaderboard_sprint`, `leaderboard_laps` (meilleur par conducteur, drives visibles).
 - Zone privée du domicile (migration 0014, `features/privacy`) : option activée par défaut, désactivable,
   demandée à l'étape localisation de l'onboarding et réglable depuis le profil. L'adresse est géocodée sur le
   téléphone ; la base ne garde qu'un centre décalé au hasard (≤ 300 m) et masque 1 300 m autour, donc au

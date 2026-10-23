@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated, Easing, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
@@ -44,22 +45,17 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
 
   const { source } = carImageFor(car);
   const rows: { key: string; icon: Icon; label: string; value: string; unit?: string; accent?: boolean }[] = [];
-  if (stats && stats.driveCount > 0 && stats.maxSpeedKmh != null && stats.maxSpeedKmh > 0) {
-    rows.push({ key: 'vmax', icon: 'speedometer', label: 'Top speed', value: String(Math.round(stats.maxSpeedKmh)), unit: 'km/h', accent: true });
-  }
-  if (car.power_kw) rows.push({ key: 'hp', icon: 'flash', label: 'Power', value: String(kwToHp(car.power_kw)), unit: 'hp' });
-  if (car.weight_kg) rows.push({ key: 'kg', icon: 'weight', label: 'Weight', value: car.weight_kg.toLocaleString('en-US'), unit: 'kg' });
+  // Toujours : vitesse max (— tant que la voiture n'a pas roulé), puissance, poids.
+  const vmax = stats && stats.driveCount > 0 && stats.maxSpeedKmh != null && stats.maxSpeedKmh > 0 ? stats.maxSpeedKmh : null;
+  rows.push({ key: 'vmax', icon: 'speedometer', label: 'Top speed', value: vmax != null ? String(Math.round(vmax)) : '—', unit: vmax != null ? 'km/h' : undefined, accent: vmax != null });
+  rows.push({ key: 'hp', icon: 'flash', label: 'Power', value: car.power_kw ? String(kwToHp(car.power_kw)) : '—', unit: car.power_kw ? 'hp' : undefined });
+  rows.push({ key: 'kg', icon: 'weight', label: 'Weight', value: car.weight_kg ? car.weight_kg.toLocaleString('en-US') : '—', unit: car.weight_kg ? 'kg' : undefined });
   if (stats && stats.driveCount > 0) {
     rows.push({ key: 'drives', icon: 'map-marker-distance', label: `${stats.driveCount} ${stats.driveCount === 1 ? 'drive' : 'drives'}`, value: (stats.distanceM / 1000).toFixed(stats.distanceM < 10_000 ? 1 : 0), unit: 'km' });
-  }
-  if (car.power_kw && car.weight_kg && rows.length < 4) {
-    rows.push({ key: 'ratio', icon: 'scale-balance', label: 'Weight / power', value: (car.weight_kg / kwToHp(car.power_kw)).toFixed(1), unit: 'kg/hp' });
   }
 
   const slide = appear.interpolate({ inputRange: [0, 1], outputRange: [flip ? 40 : -40, 0] });
   const slideInfo = appear.interpolate({ inputRange: [0, 1], outputRange: [flip ? -24 : 24, 0] });
-  // Fondu du bord intérieur de la photo vers le fond de page : la voiture n'a pas de cadre.
-  const fade = Array.from({ length: FADE_STEPS }, (_, i) => (i + 1) / FADE_STEPS);
 
   return (
     <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
@@ -68,12 +64,13 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
       <Animated.View pointerEvents="none" style={[styles.photo, { width: photoW, height: H }, flip ? { right: 0 } : { left: 0 },
         { opacity: appear, transform: [{ translateX: slide }] }]}>
         <Image source={source} resizeMode="cover" style={{ width: photoW, height: H }} accessibilityIgnoresInvertColors />
-        {/* Fondus : bord intérieur (large), haut et bas (fins) */}
-        <View style={[styles.fadeRow, flip ? { left: 0, flexDirection: 'row' } : { right: 0, flexDirection: 'row-reverse' }, { width: photoW * 0.45 }]}>
-          {fade.map((o) => <View key={o} style={{ flex: 1, backgroundColor: colors.bg, opacity: o * o }} />)}
-        </View>
-        <View style={[styles.fadeCol, { top: 0 }]}>{fade.slice(0, 6).map((o, i) => <View key={o} style={{ flex: 1, backgroundColor: colors.bg, opacity: 1 - (i + 1) / 6 }} />)}</View>
-        <View style={[styles.fadeCol, { bottom: 0 }]}>{fade.slice(0, 6).map((o, i) => <View key={o} style={{ flex: 1, backgroundColor: colors.bg, opacity: (i + 1) / 6 }} />)}</View>
+        {/* Fondus vers le fond de page : bord intérieur (large), haut et bas (fins) — la voiture n'a pas de cadre */}
+        <LinearGradient pointerEvents="none" colors={[TRANSPARENT, colors.bg]} start={{ x: flip ? 1 : 0, y: 0.5 }} end={{ x: flip ? 0 : 1, y: 0.5 }}
+          locations={[0.35, 0.95]} style={StyleSheet.absoluteFill} />
+        <LinearGradient pointerEvents="none" colors={[colors.bg, TRANSPARENT]} style={[styles.fadeCol, { top: 0 }]} />
+        <LinearGradient pointerEvents="none" colors={[TRANSPARENT, colors.bg]} style={[styles.fadeCol, { bottom: 0 }]} />
+        <LinearGradient pointerEvents="none" colors={[colors.bg, TRANSPARENT]} start={{ x: flip ? 1 : 0, y: 0.5 }} end={{ x: flip ? 0.85 : 0.15, y: 0.5 }}
+          style={StyleSheet.absoluteFill} />
       </Animated.View>
 
       <Animated.View style={[styles.info, { width: infoW }, flip ? { left: spacing.lg } : { right: spacing.lg },
@@ -99,7 +96,9 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
               </Text>
             </View>
           ))}
-          {rows.length === 0 && <Text style={[styles.sub, styles.shadow]}>Ajoute puissance et poids dans « Edit details ».</Text>}
+          {onPress && (!car.power_kw || !car.weight_kg) && (
+            <Text style={[styles.hint, styles.shadow]}>Puissance et poids : « Edit details »</Text>
+          )}
         </View>
       </Animated.View>
     </Pressable>
@@ -107,14 +106,14 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
 }
 
 const glass = 'rgba(14,16,14,0.72)';
-const FADE_STEPS = 14;
+const TRANSPARENT = 'rgba(14,16,14,0)'; // colors.bg transparent (évite le gris d'un dégradé vers « transparent »)
 
 const styles = StyleSheet.create({
   // Pleine largeur de l'écran : la photo touche le bord, sans carte autour.
   root: { marginHorizontal: -spacing.lg },
   photo: { position: 'absolute', top: 0, overflow: 'hidden' },
-  fadeRow: { position: 'absolute', top: 0, bottom: 0 },
-  fadeCol: { position: 'absolute', left: 0, right: 0, height: 24 },
+  fadeCol: { position: 'absolute', left: 0, right: 0, height: 36 },
+  hint: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 10, marginTop: 2 },
   info: { position: 'absolute', top: 0, bottom: 0, justifyContent: 'center', gap: 2 },
   shadow: { textShadowColor: 'rgba(0,0,0,0.85)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
