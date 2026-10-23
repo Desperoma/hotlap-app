@@ -6,13 +6,14 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SprintPanel } from '@/components/SprintPanel';
 import { VehicleSelect } from '@/components/VehicleSelect';
-import { Button } from '@/components/ui';
+import { Button, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { MAPS_AVAILABLE } from '@/lib/maps';
 import { setPendingDrive } from '@/features/drives/pending';
 import { OptionsSheet } from '@/components/OptionsSheet';
-import { SIM_STYLES, simulatedDrive, TEST_TOOLS, type SimStyle } from '@/features/drives/simulate';
+import { SIM_STYLES, simulatedDrive, simulatedSprint, TEST_TOOLS, type SimStyle } from '@/features/drives/simulate';
 import { checkRecording, refusalMessage, type RecordingContext } from '@/features/recording/authorization';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import { useRecorder } from '@/features/recording/useRecorder';
@@ -25,7 +26,9 @@ import { darkMapStyle } from '@/theme/mapStyle';
  */
 export default function LiveDriveScreen() {
   const { profile, primaryVehicle, vehicles } = useAuth();
-  const { status, points, stats, recorder } = useRecorder();
+  const { status, points, stats, recorder, mode: activeMode } = useRecorder();
+  // Mode du prochain drive (avant le départ) ; pendant l'enregistrement, celui du recorder.
+  const [nextMode, setNextMode] = useState<'free' | 'sprint'>('free');
   const mapRef = useRef<MapView>(null);
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
   const [traffic, setTraffic] = useState(false);
@@ -71,6 +74,11 @@ export default function LiveDriveScreen() {
       const ctx = await checkRecording(pos.coords, profile);
       setWhere(ctx);
       if (!ctx.allowed) return Alert.alert('Enregistrement indisponible ici', refusalMessage(ctx));
+      // Chrono : circuit (ou route chronométrée validée par l'équipe) uniquement, comme lap_time_ms.
+      if (nextMode === 'sprint' && ctx.context !== 'circuit') {
+        return Alert.alert('Sprint indisponible ici',
+          'Le mode Sprint n’est disponible que sur un circuit ou une route chronométrée validée. Lance un drive libre, ou rends-toi sur un circuit.');
+      }
     } catch (e) {
       return Alert.alert('Vérification impossible', e instanceof Error ? e.message : String(e));
     } finally {
@@ -81,7 +89,7 @@ export default function LiveDriveScreen() {
       Alert.alert('Arrière-plan', 'Sans « Toujours », le tracé s’arrête quand l’écran se verrouille.');
     }
     try {
-      await recorder.start();
+      await recorder.start(nextMode);
     } catch {
       Alert.alert(
         'Enregistrement impossible',
@@ -91,11 +99,11 @@ export default function LiveDriveScreen() {
   };
 
   const [simMenu, setSimMenu] = useState(false);
-  const simulate = async (style?: SimStyle) => {
+  const simulate = async (style?: SimStyle | 'sprint') => {
     const pos = await Location.getLastKnownPositionAsync().catch(() => null);
     // À défaut de position : départ de la route du col de Turini.
     const origin = pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : { lat: 43.991, lng: 7.336 };
-    await setPendingDrive(simulatedDrive(origin, chosenVehicle, { style }));
+    await setPendingDrive(style === 'sprint' ? simulatedSprint(origin, chosenVehicle) : simulatedDrive(origin, chosenVehicle, { style }));
     router.replace('/drive/finish');
   };
 
@@ -111,6 +119,7 @@ export default function LiveDriveScreen() {
       circuitId: where?.circuitId ?? null,
       circuitName: where?.circuitName ?? null,
       vehicleId: chosenVehicle,
+      mode: finished.mode ?? 'free',
     });
     router.replace('/drive/finish');
   };
@@ -183,14 +192,18 @@ export default function LiveDriveScreen() {
         {recording && stats ? (
           <>
             <Text style={styles.overline}>
-              {status === 'paused' ? 'PAUSED' : 'RECORDING'}
+              {status === 'paused' ? 'PAUSED' : activeMode === 'sprint' ? 'SPRINT' : 'RECORDING'}
               {where ? ` · ${where.context === 'circuit' ? `CIRCUIT${where.circuitName ? ` ${where.circuitName.toUpperCase()}` : ''}` : 'OPEN ROAD'}${where.countryCode ? ` · ${where.countryCode}` : ''}` : ''}
             </Text>
-            <View style={styles.statsRow}>
-              <Stat label="DISTANCE" value={`${formatKm(stats.distanceM)} km`} />
-              <Stat label="TIME" value={formatDuration(stats.durationS)} />
-              <Stat label="AVG" value={`${Math.round(stats.avgSpeedKmh)} km/h`} />
-            </View>
+            {activeMode === 'sprint' ? (
+              <SprintPanel points={points} />
+            ) : (
+              <View style={styles.statsRow}>
+                <Stat label="DISTANCE" value={`${formatKm(stats.distanceM)} km`} />
+                <Stat label="TIME" value={formatDuration(stats.durationS)} />
+                <Stat label="AVG" value={`${Math.round(stats.avgSpeedKmh)} km/h`} />
+              </View>
+            )}
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <Button
                 title={status === 'paused' ? 'Resume' : 'Pause'}
@@ -208,9 +221,17 @@ export default function LiveDriveScreen() {
             <Text style={styles.panelText}>
               Start a drive to draw your route live. HotLap ignores weak GPS fixes for a cleaner track.
             </Text>
+            <SegmentedControl value={nextMode} onChange={setNextMode}
+              options={[{ value: 'free', label: 'Free drive' }, { value: 'sprint', label: 'Sprint' }]} />
+            {nextMode === 'sprint' && (
+              <Text style={styles.panelText}>
+                0-100, 0-200 km/h, 500 m, 1 000 m, 2 000 m en départ arrêté. Circuit ou route chronométrée validée uniquement.
+                Arrête-toi : le chrono part seul au démarrage.
+              </Text>
+            )}
             <VehicleSelect compact label="Car for this drive" value={chosenVehicle} onChange={setVehicleId} />
-            <Button title="START DRIVE" icon="radio-button-on" trailingIcon="arrow-forward" onPress={start}
-              disabled={gps === 'denied'} loading={checking} />
+            <Button title={nextMode === 'sprint' ? 'START SPRINT' : 'START DRIVE'} icon={nextMode === 'sprint' ? 'flag' : 'radio-button-on'}
+              trailingIcon="arrow-forward" onPress={start} disabled={gps === 'denied'} loading={checking} />
             <Text style={styles.footnote}>Precise GPS · Live route · Private by default</Text>
             {/* Tests sans rouler : versions de développement et builds « preview » uniquement,
                 jamais dans l'app publiée (voir TEST_TOOLS). */}
@@ -227,6 +248,7 @@ export default function LiveDriveScreen() {
           onClose={() => setSimMenu(false)}
           options={[
             { label: 'Random', onPress: () => simulate() },
+            { label: 'Sprint run (0-100, 500 m…)', onPress: () => simulate('sprint') },
             ...SIM_STYLES.map((s) => ({ label: s.label, onPress: () => simulate(s.value) })),
           ]}
         />

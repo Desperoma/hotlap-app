@@ -1,0 +1,85 @@
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+
+import { detectSprints, type SprintKind, type SprintPoint } from './sprint';
+
+/** Sprints et classements (migration 0024). */
+export type DriveSprint = { kind: SprintKind; timeMs: number; exitSpeedKmh: number | null };
+
+// Mode démo : les sprints sont calculés sur le téléphone et gardés en mémoire.
+const demo = new Map<string, DriveSprint[]>();
+
+/** Après la sauvegarde d'un drive Sprint : la base calcule et enregistre les temps. */
+export async function recordDriveSprints(driveId: string, points: SprintPoint[]): Promise<DriveSprint[]> {
+  if (!isSupabaseConfigured) {
+    const r = detectSprints(points).map((s) => ({ kind: s.kind, timeMs: s.timeMs, exitSpeedKmh: s.exitSpeedKmh }));
+    demo.set(driveId, r);
+    return r;
+  }
+  const { data, error } = await supabase.rpc('record_drive_sprints', { p_drive: driveId });
+  if (error) throw sprintError(error);
+  return ((data ?? []) as { kind: SprintKind; time_ms: number; exit_speed_kmh: number | null }[])
+    .map((r) => ({ kind: r.kind, timeMs: r.time_ms, exitSpeedKmh: r.exit_speed_kmh }));
+}
+
+export async function listDriveSprints(driveId: string): Promise<DriveSprint[]> {
+  if (!isSupabaseConfigured) return demo.get(driveId) ?? [];
+  const { data, error } = await supabase.from('sprint_results').select('kind, time_ms, exit_speed_kmh').eq('drive_id', driveId);
+  if (error) return [];
+  const order: SprintKind[] = ['0_100', '0_200', '500m', '1000m', '2000m'];
+  return ((data ?? []) as { kind: SprintKind; time_ms: number; exit_speed_kmh: number | null }[])
+    .map((r) => ({ kind: r.kind, timeMs: r.time_ms, exitSpeedKmh: r.exit_speed_kmh }))
+    .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+}
+
+export type LeaderScope = 'world' | 'country' | 'friends' | 'crews' | 'model';
+export type LeaderRow = {
+  rank: number; userId: string; username: string; displayName: string | null; avatarUrl: string | null;
+  car: string | null; timeMs: number; exitSpeedKmh: number | null; driveId: string; achievedAt: string;
+  isMe: boolean; isSimulated: boolean;
+};
+type Row = {
+  rank: number; user_id: string; username: string; display_name: string | null; avatar_url: string | null;
+  make: string | null; model: string | null; time_ms: number; exit_speed_kmh?: number | null; drive_id: string;
+  achieved_at: string; is_me: boolean; is_simulated?: boolean;
+};
+const toRow = (r: Row): LeaderRow => ({
+  rank: r.rank, userId: r.user_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url,
+  car: r.make ? `${r.make} ${r.model ?? ''}`.trim() : null, timeMs: r.time_ms, exitSpeedKmh: r.exit_speed_kmh ?? null,
+  driveId: r.drive_id, achievedAt: r.achieved_at, isMe: r.is_me, isSimulated: !!r.is_simulated,
+});
+
+export type LeaderFilter = { scope: LeaderScope; country?: string | null; vehicleId?: string | null };
+
+export async function leaderboardSprint(kind: SprintKind, f: LeaderFilter): Promise<LeaderRow[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('leaderboard_sprint', {
+    p_kind: kind, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50,
+  });
+  if (error) throw error;
+  return ((data ?? []) as Row[]).map(toRow);
+}
+
+export async function leaderboardLaps(circuitId: string, f: LeaderFilter): Promise<LeaderRow[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('leaderboard_laps', {
+    p_circuit: circuitId, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50,
+  });
+  if (error) throw error;
+  return ((data ?? []) as Row[]).map(toRow);
+}
+
+export type LapCircuit = { id: string; name: string; city: string | null; countryCode: string | null; laps: number };
+export async function circuitsWithLaps(): Promise<LapCircuit[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('circuits_with_laps', { p_limit: 50 });
+  if (error) return [];
+  return ((data ?? []) as { id: string; name: string; city: string | null; country_code: string | null; laps: number }[])
+    .map((c) => ({ id: c.id, name: c.name, city: c.city, countryCode: c.country_code, laps: c.laps }));
+}
+
+function sprintError(error: { message: string }) {
+  const m = error.message;
+  if (m.includes('sprint_place_not_allowed')) return new Error('Le chrono Sprint n’est accepté que sur circuit ou sur une route chronométrée validée.');
+  if (m.includes('sprint_mode_required')) return new Error('Ce drive n’a pas été enregistré en mode Sprint.');
+  return new Error(m);
+}

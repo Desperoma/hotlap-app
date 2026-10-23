@@ -221,3 +221,33 @@ function rng(seed: number): Rng {
     },
   };
 }
+
+/**
+ * Run Sprint simulé (outils de test) : arrêt de 5 s, accélération réaliste qui décroît avec la
+ * vitesse (≈ 0-100 en 5 à 7 s), jusqu'à 2,2 km, puis freinage. Ligne droite, 1 point par seconde.
+ * La base l'accepte hors circuit parce qu'il est marqué simulé, et l'exclut des classements des autres.
+ */
+export function simulatedSprint(start: { lat: number; lng: number }, vehicleId: string | null = null, now = Date.now()): PendingDrive {
+  const r = rng(Math.floor(Math.random() * 2 ** 31));
+  const a0 = r.range(5.2, 6.6); // m/s² au départ
+  const heading = r.range(0, 2 * Math.PI);
+  const points: PendingDrive['points'] = [];
+  const startedAt = now - 120_000;
+  let d = 0, v = 0, braking = false;
+  for (let i = 0; i < 110; i++) {
+    if (i >= 5) {
+      if (d > 2200) braking = true;
+      const a = braking ? -7 : a0 * Math.max(0.15, 1 - v / 85);
+      const nv = Math.max(0, v + a);
+      d += (v + nv) / 2; v = nv;
+      if (braking && v === 0 && i > 10) break;
+    }
+    const dLat = (d * Math.cos(heading)) / 111_195;
+    const dLng = (d * Math.sin(heading)) / (111_195 * Math.cos((start.lat * Math.PI) / 180));
+    points.push({ ts: startedAt + i * 1000, lat: start.lat + dLat, lng: start.lng + dLng, altitude: 200, speed: v, accuracy: 4 });
+  }
+  return {
+    startedAt, endedAt: points.at(-1)!.ts, points, circuitId: null, circuitName: null, vehicleId,
+    simulated: true, simStyle: 'sprint', mode: 'sprint',
+  };
+}

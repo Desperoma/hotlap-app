@@ -412,7 +412,13 @@ export default function MapScreen() {
               <Stat value={selectedCircuit.lapLengthM ? formatKm(selectedCircuit.lapLengthM) : '—'} unit={selectedCircuit.lapLengthM ? 'km' : undefined} label="LAP" />
               <Stat value={selectedCircuit.kind === 'closed_road' ? 'Closed road' : selectedCircuit.kind === 'karting' ? 'Karting' : 'Track'} label="TYPE" />
             </View>
-            <Text style={styles.cardHint}>Circuit data © OpenStreetMap contributors, Wikidata</Text>
+            <View style={styles.cardFooter}>
+              <Text style={[styles.cardHint, { flex: 1 }]} numberOfLines={2}>Circuit data © OpenStreetMap contributors, Wikidata</Text>
+              <Pressable style={styles.openBtn} onPress={() => router.push({ pathname: '/leaderboard', params: { circuit: selectedCircuit.id, circuitName: selectedCircuit.name } })}>
+                <Text style={styles.openText}>Leaderboard</Text>
+                <Ionicons name="podium-outline" size={14} color={colors.accentText} />
+              </Pressable>
+            </View>
           </View>
         </View>
       )}

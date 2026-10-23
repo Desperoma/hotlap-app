@@ -9,6 +9,7 @@ import { DriveTelemetry } from '@/components/DriveTelemetry';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
+import { SprintResults } from '@/components/SprintResults';
 import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Screen, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -16,6 +17,7 @@ import { deleteDrive, getDrive, getDrivePoints, updateDrive, type DriveDetail } 
 import { listDrivePhotos } from '@/features/drives/media';
 import { driveMode, showcaseStats, vehicleHeading } from '@/features/drives/showcase';
 import { buildSamples, type Sample } from '@/features/drives/telemetry';
+import { listDriveSprints, type DriveSprint } from '@/features/sprint/api';
 import { VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -30,6 +32,7 @@ export default function DriveDetailScreen() {
   const [menu, setMenu] = useState<ModerationTarget | null>(null);
   const [carSheet, setCarSheet] = useState(false);
   const [samples, setSamples] = useState<Sample[] | null>(null);
+  const [sprints, setSprints] = useState<DriveSprint[]>([]);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -38,6 +41,7 @@ export default function DriveDetailScreen() {
       .then(setDrive)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
     listDrivePhotos(id).then(setPhotos).catch(() => setPhotos([]));
+    listDriveSprints(id).then(setSprints).catch(() => setSprints([]));
   }, [id, session?.user.id]);
 
   useEffect(load, [load]);
@@ -128,7 +132,7 @@ export default function DriveDetailScreen() {
             maxLateralG: drive.maxLateralG,
             lapTimeMs: drive.lapTimeMs,
           })}
-          mode={driveMode(drive.circuitName)}
+          mode={driveMode(drive.circuitName, drive.mode)}
           onPressPlus={drive.isMine ? () => setCarSheet(true) : undefined}
           topLeft={<ShowcaseButton icon="arrow-back" label="Back" onPress={back} />}
           topRight={drive.isMine ? undefined : (
@@ -168,6 +172,11 @@ export default function DriveDetailScreen() {
       )}
 
       <PhotoStrip uris={photos} size={140} />
+
+      {(drive.mode === 'sprint' || sprints.length > 0) && (
+        <SprintResults results={sprints}
+          note={drive.isSimulated ? 'Drive simulé : visible par toi seul dans les classements.' : undefined} />
+      )}
 
       <ScoreCard score={drive.score} breakdown={drive.scoreBreakdown} />
 

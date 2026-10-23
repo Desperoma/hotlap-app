@@ -21,6 +21,8 @@ export type RecorderState = {
   status: 'idle' | 'recording' | 'paused';
   startedAt: number | null;
   points: TrackPoint[];
+  /** Mode choisi avant le départ (Sprint : chrono en départ arrêté) */
+  mode?: 'free' | 'sprint';
 };
 
 let state: RecorderState = { status: 'idle', startedAt: null, points: [] };
@@ -79,8 +81,8 @@ export const recorder = {
     }
   },
 
-  async start() {
-    state = { status: 'recording', startedAt: Date.now(), points: [] };
+  async start(mode: 'free' | 'sprint' = 'free') {
+    state = { status: 'recording', startedAt: Date.now(), points: [], mode };
     emit();
     try {
       await this.startUpdates();

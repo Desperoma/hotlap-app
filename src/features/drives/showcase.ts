@@ -77,5 +77,6 @@ export function vehicleHeading(
 }
 
 /** Carte du bas : circuit ou route ouverte (les modes Sprint / chrono viendront plus tard). */
-export const driveMode = (circuitName: string | null | undefined) =>
-  circuitName ? { title: 'Circuit', subtitle: circuitName } : { title: 'Open road', subtitle: 'Free drive' };
+export const driveMode = (circuitName: string | null | undefined, mode?: 'free' | 'sprint' | null) =>
+  mode === 'sprint' ? { title: 'Sprint', subtitle: circuitName ?? 'Standing start' }
+  : circuitName ? { title: 'Circuit', subtitle: circuitName } : { title: 'Open road', subtitle: 'Free drive' };

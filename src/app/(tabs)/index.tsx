@@ -75,6 +75,8 @@ export default function DiscoverScreen() {
 
       <Button title="Record a Drive" icon="add-circle" trailingIcon="chevron-forward"
         onPress={() => router.push('/record')} style={{ justifyContent: 'center' }} />
+      <Button title="Leaderboard" variant="secondary" icon="podium-outline" trailingIcon="chevron-forward"
+        onPress={() => router.push('/leaderboard')} style={{ justifyContent: 'center' }} />
 
       <SegmentedControl value={tab} onChange={setTab}
         options={[{ value: 'explore', label: 'Explore' }, { value: 'mine', label: 'My Routes' }]} />
