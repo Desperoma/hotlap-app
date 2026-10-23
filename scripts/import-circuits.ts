@@ -129,9 +129,12 @@ async function wikidata(countries: string[]): Promise<WdCircuit[]> {
         signal: AbortSignal.timeout(120_000),
       });
       if (res.ok) break;
-      console.warn(`  Wikidata : HTTP ${res.status}`);
+      console.warn(`  Wikidata : HTTP ${res.status} (${countries.join(',')})`);
+      // Trop de requêtes : le service dit combien de temps attendre.
+      const retryAfter = Number(res.headers.get('retry-after'));
+      if (res.status === 429 && retryAfter > 0) { await sleep(Math.min(retryAfter, 120) * 1000); continue; }
     } catch (e) {
-      console.warn(`  Wikidata : ${e instanceof Error ? e.message : e}`);
+      console.warn(`  Wikidata : ${e instanceof Error ? e.message : e} (${countries.join(',')})`);
       res = null;
     }
     await sleep(attempt * 10_000);
@@ -177,14 +180,30 @@ async function main() {
   // Un même site peut apparaître dans deux pays (frontière) : une seule fois.
   const unique = [...new Map(osm.map((r) => [r.osm_ref!, r])).values()];
   // Par lots de pays : une seule requête sur tous les pays dépasse le délai du service.
+  // Lot en échec (gros pays : DE, FR, GB, US…) : on réessaie pays par pays.
   const wd: WdCircuit[] = [];
+  const wdFailed: string[] = [];
   for (let i = 0; i < COUNTRIES.length; i += 8) {
     const batch = COUNTRIES.slice(i, i + 8);
+    const batchFile = `${CACHE}/wd-${batch.join('-')}.json`;
+    const perCountryCached = batch.every((c) => existsSync(`${CACHE}/wd-${c}.json`));
+    if (!existsSync(batchFile) && perCountryCached) {
+      for (const c of batch) wd.push(...(await cached(`wd-${c}`, () => wikidata([c]))));
+      continue;
+    }
     try {
       wd.push(...(await cached(`wd-${batch.join('-')}`, () => wikidata(batch))));
-    } catch (e) {
-      // Sans Wikidata, les circuits OSM restent importés (sans noms/longueurs Wikidata).
-      console.warn(`${e instanceof Error ? e.message : e} : lot sauté, relancer plus tard`);
+    } catch {
+      console.warn(`  Wikidata (${batch.join(',')}) : lot trop lourd, pays par pays`);
+      for (const c of batch) {
+        try {
+          wd.push(...(await cached(`wd-${c}`, () => wikidata([c]))));
+        } catch (e) {
+          // Sans Wikidata, les circuits OSM du pays restent importés (sans noms/longueurs Wikidata).
+          console.warn(`  ${e instanceof Error ? e.message : e}`);
+          wdFailed.push(c);
+        }
+      }
     }
   }
   console.log(`Wikidata : ${wd.length} circuits`);
@@ -193,6 +212,7 @@ async function main() {
 
   const retry = () => {
     if (failed.length) console.warn(`\nPays sautés (serveurs saturés) : ${failed.join(',')}\nRelancer plus tard : npm run circuits:import -- --countries=${failed.join(',')}`);
+    if (wdFailed.length) console.warn(`Wikidata indisponible pour : ${wdFailed.join(',')} (circuits OSM importés quand même ; relancer plus tard, le reste vient du cache)`);
   };
 
   if (DRY) {

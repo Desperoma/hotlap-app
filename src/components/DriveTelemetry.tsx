@@ -4,7 +4,7 @@ import { PanResponder, Platform, Pressable, StyleSheet, Text, View, type LayoutC
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import {
-  downsample, nearestIndex, SPEED_COLORS, speedBucket, speedSegments, summarize, type Sample,
+  downsample, nearestIndex, SPEED_COLORS, speedBucket, speedScaleMax, speedSegments, summarize, type Sample,
 } from '@/features/drives/telemetry';
 import { MAPS_AVAILABLE } from '@/lib/maps';
 import { colors, fonts, radius, spacing, type } from '@/theme';
@@ -30,7 +30,9 @@ export function DriveTelemetry({ samples }: { samples: Sample[] }) {
   const [metric, setMetric] = useState<Metric>('speed');
   const summary = useMemo(() => summarize(samples), [samples]);
   const chart = useMemo(() => downsample(samples, COLUMNS), [samples]);
-  const segments = useMemo(() => speedSegments(downsample(samples, 800), summary.maxSpeedKmh), [samples, summary.maxSpeedKmh]);
+  // Échelle fixe 0-300 km/h (élargie si le drive va plus vite) : couleurs du tracé, du graphique et légende.
+  const scale = speedScaleMax(summary.maxSpeedKmh);
+  const segments = useMemo(() => speedSegments(downsample(samples, 800), scale), [samples, scale]);
   const [cursor, setCursor] = useState<number | null>(null);
   const hasAlt = summary.minAltM != null;
 
@@ -93,7 +95,7 @@ export function DriveTelemetry({ samples }: { samples: Sample[] }) {
           <View style={styles.legend} pointerEvents="none">
             <Text style={styles.legendText}>0</Text>
             {SPEED_COLORS.map((c) => <View key={c} style={[styles.legendSwatch, { backgroundColor: c }]} />)}
-            <Text style={styles.legendText}>{summary.maxSpeedKmh.toFixed(0)} km/h</Text>
+            <Text style={styles.legendText}>{scale} km/h</Text>
           </View>
         </View>
       ) : null}
@@ -107,7 +109,7 @@ export function DriveTelemetry({ samples }: { samples: Sample[] }) {
         ))}
       </View>
 
-      <Chart samples={chart} metric={m} maxSpeed={summary.maxSpeedKmh} cursor={cursor} onCursor={setCursor} />
+      <Chart samples={chart} metric={m} speedScale={scale} cursor={cursor} onCursor={setCursor} />
 
       <View style={styles.readout}>
         {at ? (
@@ -128,10 +130,10 @@ export function DriveTelemetry({ samples }: { samples: Sample[] }) {
   );
 }
 
-const Chart = memo(function Chart({ samples, metric, maxSpeed, cursor, onCursor }: {
+const Chart = memo(function Chart({ samples, metric, speedScale, cursor, onCursor }: {
   samples: Sample[];
   metric: (typeof METRICS)[number];
-  maxSpeed: number;
+  speedScale: number;
   cursor: number | null;
   onCursor: (i: number) => void;
 }) {
@@ -141,6 +143,8 @@ const Chart = memo(function Chart({ samples, metric, maxSpeed, cursor, onCursor 
   let lo = Math.min(0, ...nums), hi = Math.max(0, ...nums);
   // Altitude : l'échelle part du point le plus bas, sinon le relief est écrasé.
   if (metric.key === 'alt' && nums.length) { lo = Math.min(...nums) - 5; hi = Math.max(...nums) + 5; }
+  // Vitesse : toujours 0 à 300 km/h (ou plus si le drive dépasse), pour comparer les drives entre eux.
+  if (metric.key === 'speed') { lo = 0; hi = speedScale; }
   if (hi - lo < 1e-6) hi = lo + 1;
   const y = (v: number) => CHART_H - ((v - lo) / (hi - lo)) * CHART_H;
   const zero = metric.key === 'alt' ? CHART_H : y(0);
@@ -166,7 +170,7 @@ const Chart = memo(function Chart({ samples, metric, maxSpeed, cursor, onCursor 
         {w > 0 && values.map((v, i) => {
           if (v == null) return null;
           const top = Math.min(y(v), zero), h = Math.max(1, Math.abs(zero - y(v)));
-          const color = metric.key === 'speed' ? SPEED_COLORS[speedBucket(v, maxSpeed)]
+          const color = metric.key === 'speed' ? SPEED_COLORS[speedBucket(v, speedScale)]
             : metric.key === 'accel' ? (v >= 0 ? colors.accent : '#EF4444') : colors.accent;
           return <View key={i} style={{ position: 'absolute', left: i * colW, width: Math.max(1, colW - 0.5), top, height: h, backgroundColor: color, opacity: cursor == null || cursor === i ? 0.9 : 0.55 }} />;
         })}
