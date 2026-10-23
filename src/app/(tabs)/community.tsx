@@ -120,7 +120,7 @@ export default function CommunityScreen() {
             <Text style={styles.empty}>{error ?? EMPTY[filter]}</Text>
           )
         }
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} /> : undefined}
         renderItem={({ item }) => (
           <DriveCard drive={item} onBlocked={(uid) => setItems((list) => list?.filter((d) => d.owner_id !== uid) ?? null)} />
         )}
