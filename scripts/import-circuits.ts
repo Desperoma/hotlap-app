@@ -9,14 +9,24 @@
  * La clé service_role contourne la RLS : elle ne doit JAMAIS être dans l'app ni commitée.
  * Lancer `npm run geo:import` avant : la ville de chaque circuit vient des villes GeoNames.
  * Relançable : clés osm_ref et wikidata_id ; les circuits saisis à la main ne sont pas touchés.
+ * Les téléchargements sont mis en cache dans scripts/out/cache/ : une relance (ou l'import réel
+ * après un --dry-run) ne retélécharge que les pays manquants. --refresh vide ce cache.
+ * Un pays qui échoue sur tous les serveurs Overpass est sauté ; la liste est affichée à la fin.
  * Attribution à afficher dans l'app : « © les contributeurs d'OpenStreetMap ».
  */
 import { createClient } from '@supabase/supabase-js';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 import { buildOsmCircuits, centersOf, mergeWikidata, type CircuitRow, type OsmElement, type WdCircuit } from './lib/circuits';
 
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+// Serveur public principal puis miroirs : on passe au suivant quand l'un est saturé.
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
+const CACHE = 'scripts/out/cache';
 const WIKIDATA = 'https://query.wikidata.org/sparql';
 const USER_AGENT = 'HotLapCircuitImport/0.1 (contact: equipe HotLap)';
 
@@ -33,6 +43,7 @@ const args = Object.fromEntries(
   }),
 );
 const DRY = args['dry-run'] === 'true';
+const REFRESH = args.refresh === 'true';
 const COUNTRIES = args.countries ? String(args.countries).toUpperCase().split(',') : DEFAULT;
 
 loadEnv('.env.local');
@@ -45,22 +56,42 @@ area["ISO3166-1"="${country}"][admin_level=2]->.a;
   way["highway"="raceway"](area.a);
 );
 out tags geom;`;
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    const res = await fetch(OVERPASS, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
-      body: new URLSearchParams({ data: query }),
-    });
-    if (res.ok) return ((await res.json()) as { elements: OsmElement[] }).elements;
-    if (res.status === 429 || res.status >= 500) {
-      const wait = attempt * 15_000;
-      console.warn(`  Overpass ${res.status} (${country}), nouvel essai dans ${wait / 1000} s`);
-      await sleep(wait);
-      continue;
+  for (let attempt = 0; attempt < OVERPASS.length * 2; attempt++) {
+    const url = OVERPASS[attempt % OVERPASS.length];
+    const host = new URL(url).host;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+        body: new URLSearchParams({ data: query }),
+        signal: AbortSignal.timeout(660_000),
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { elements?: OsmElement[]; remark?: string };
+        // Overpass répond parfois 200 avec une erreur dans « remark » (délai dépassé) : on réessaie.
+        if (json.elements && !/error|timed out/i.test(json.remark ?? '')) return json.elements;
+        console.warn(`  ${host} : réponse incomplète (${country})`);
+      } else {
+        console.warn(`  ${host} : HTTP ${res.status} (${country})`);
+        if (res.status !== 429 && res.status < 500 && res.status !== 406) throw new Error(`Overpass ${country} : HTTP ${res.status}`);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith('Overpass ')) throw e;
+      console.warn(`  ${host} : ${e instanceof Error ? e.message : e} (${country})`);
     }
-    throw new Error(`Overpass ${country} : HTTP ${res.status}`);
+    await sleep(attempt < OVERPASS.length ? 5_000 : 30_000);
   }
-  throw new Error(`Overpass ${country} : trop d'échecs`);
+  throw new Error(`Overpass ${country} : tous les serveurs ont échoué`);
+}
+
+/** Lit le cache, sinon télécharge et met en cache. */
+async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const file = `${CACHE}/${key}.json`;
+  if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8')) as T;
+  const data = await load();
+  mkdirSync(CACHE, { recursive: true });
+  writeFileSync(file, JSON.stringify(data));
+  return data;
 }
 
 async function wikidata(countries: string[]): Promise<WdCircuit[]> {
@@ -73,12 +104,24 @@ async function wikidata(countries: string[]): Promise<WdCircuit[]> {
   OPTIONAL { ?item wdt:P856 ?site . }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,fr,de,es,it,ja". }
 }`;
-  const res = await fetch(WIKIDATA, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/sparql-results+json', 'User-Agent': USER_AGENT },
-    body: new URLSearchParams({ query }),
-  });
-  if (!res.ok) throw new Error(`Wikidata : HTTP ${res.status}`);
+  let res: Response | null = null;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      res = await fetch(WIKIDATA, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/sparql-results+json', 'User-Agent': USER_AGENT },
+        body: new URLSearchParams({ query }),
+        signal: AbortSignal.timeout(120_000),
+      });
+      if (res.ok) break;
+      console.warn(`  Wikidata : HTTP ${res.status}`);
+    } catch (e) {
+      console.warn(`  Wikidata : ${e instanceof Error ? e.message : e}`);
+      res = null;
+    }
+    await sleep(attempt * 10_000);
+  }
+  if (!res?.ok) throw new Error(`Wikidata (${countries.join(',')}) : échec`);
   type B = { item: { value: string }; itemLabel: { value: string }; coord: { value: string }; iso: { value: string }; length?: { value: string }; site?: { value: string } };
   const rows = ((await res.json()) as { results: { bindings: B[] } }).results.bindings;
   const byQid = new Map<string, WdCircuit>();
@@ -98,30 +141,50 @@ async function wikidata(countries: string[]): Promise<WdCircuit[]> {
 }
 
 async function main() {
+  if (REFRESH) rmSync(CACHE, { recursive: true, force: true });
   const osm: CircuitRow[] = [];
+  const failed: string[] = [];
   for (const c of COUNTRIES) {
-    const els = await overpass(c);
+    const fromCache = existsSync(`${CACHE}/osm-${c}.json`);
+    let els: OsmElement[];
+    try {
+      els = await cached(`osm-${c}`, () => overpass(c));
+    } catch (e) {
+      console.warn(`${c} : sauté (${e instanceof Error ? e.message : e})`);
+      failed.push(c);
+      continue;
+    }
     const rows = buildOsmCircuits(els, c);
-    console.log(`${c} : ${els.length} éléments OSM → ${rows.length} circuits`);
+    console.log(`${c} : ${els.length} éléments OSM → ${rows.length} circuits${fromCache ? ' (cache)' : ''}`);
     osm.push(...rows);
-    await sleep(2_000); // politesse envers le serveur Overpass public
+    if (!fromCache) await sleep(2_000); // politesse envers les serveurs Overpass publics
   }
   // Un même site peut apparaître dans deux pays (frontière) : une seule fois.
   const unique = [...new Map(osm.map((r) => [r.osm_ref!, r])).values()];
   // Par lots de pays : une seule requête sur tous les pays dépasse le délai du service.
   const wd: WdCircuit[] = [];
   for (let i = 0; i < COUNTRIES.length; i += 8) {
-    wd.push(...(await wikidata(COUNTRIES.slice(i, i + 8))));
-    await sleep(1_000);
+    const batch = COUNTRIES.slice(i, i + 8);
+    try {
+      wd.push(...(await cached(`wd-${batch.join('-')}`, () => wikidata(batch))));
+    } catch (e) {
+      // Sans Wikidata, les circuits OSM restent importés (sans noms/longueurs Wikidata).
+      console.warn(`${e instanceof Error ? e.message : e} : lot sauté, relancer plus tard`);
+    }
   }
   console.log(`Wikidata : ${wd.length} circuits`);
   const rows = mergeWikidata(unique, wd, centersOf(unique));
   console.log(`Total : ${rows.length} (${rows.filter((r) => r.source === 'wikidata').length} Wikidata seul)`);
 
+  const retry = () => {
+    if (failed.length) console.warn(`\nPays sautés (serveurs saturés) : ${failed.join(',')}\nRelancer plus tard : npm run circuits:import -- --countries=${failed.join(',')}`);
+  };
+
   if (DRY) {
     mkdirSync('scripts/out', { recursive: true });
     writeFileSync('scripts/out/circuits.json', JSON.stringify(rows, null, 1));
     console.log('Aperçu : scripts/out/circuits.json');
+    retry();
     return;
   }
 
@@ -139,6 +202,7 @@ async function main() {
   if (error) console.warn(`Villes non renseignées : ${error.message}`);
   else console.log(`${data} circuits rattachés à une ville.`);
   console.log('Import terminé.');
+  retry();
 }
 
 async function upsert(db: ReturnType<typeof client>, rows: object[], key: string) {
