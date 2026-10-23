@@ -11,6 +11,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { listMyCrews, type MyCrew } from '@/features/crews/api';
 import { vehicleLabel } from '@/features/garage/VehicleForm';
 import { deleteAccount } from '@/features/moderation/api';
+import { CheckInBar } from '@/features/profile/CheckInBar';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { listPeople } from '@/features/social/api';
 import { colors, fonts, radius, spacing, type } from '@/theme';
@@ -102,13 +103,7 @@ export default function ProfileScreen() {
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <Button title="Edit profile" icon="create-outline" style={{ flex: 1 }} onPress={() => router.push('/edit-profile')} />
         </View>
-        <View style={{ gap: 6 }}>
-          <View style={styles.progressHead}>
-            <Text style={styles.overline}>PROFILE CHECK-IN</Text>
-            <Text style={[styles.overline, { color: colors.accent }]}>{Math.round(completion * 100)}%</Text>
-          </View>
-          <View style={styles.track}><View style={[styles.fill, { width: `${completion * 100}%` }]} /></View>
-        </View>
+        <CheckInBar userId={userId} completion={completion} />
       </Card>
 
       <Card style={styles.counters}>
@@ -240,9 +235,6 @@ const styles = StyleSheet.create({
   otherCar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   badgeText: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
   bio: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
-  progressHead: { flexDirection: 'row', justifyContent: 'space-between' },
-  track: { height: 4, borderRadius: 2, backgroundColor: colors.border },
-  fill: { height: 4, borderRadius: 2, backgroundColor: colors.accent },
   counters: { flexDirection: 'row' },
   counterValue: { ...type.stat, color: colors.text, fontSize: 24 },
   shortcut: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

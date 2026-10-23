@@ -200,13 +200,13 @@ function Counter({ value, label }: { value: number; label: string }) {
   );
 }
 
-/** Garage d'un autre conducteur : vide si son réglage ne me le montre pas (RLS). */
+/** Garage d'un autre conducteur : vide si son réglage ne me le montre pas. */
 async function loadGarage(userId: string) {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.from('vehicles').select('id, make, model, year, color, is_primary')
-    .eq('owner_id', userId).order('is_primary', { ascending: false }).order('created_at');
+  // Fonction dédiée : la lecture directe de vehicles inclut aussi les voitures de ses drives visibles.
+  const { data, error } = await supabase.rpc('user_garage', { p_user: userId });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'color' | 'is_primary'>[];
 }
 
 const styles = StyleSheet.create({
