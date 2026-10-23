@@ -120,7 +120,7 @@ export default function ProfileScreen() {
         <Shortcut icon="radio-button-on" title="Record a drive" text="Log a new road session" onPress={() => router.push('/record')} />
         <Shortcut icon="map-outline" title="Explore the map" text="Find roads and drivers nearby" onPress={() => router.push('/map')} />
         <Shortcut icon="people-outline" title="Crews" text="Create, join or manage your crews" onPress={() => router.push('/crews')} />
-        <Shortcut icon="podium-outline" title="Leaderboard" text="Sprints and lap times" onPress={() => router.push('/leaderboard')} />
+        <Shortcut icon="podium-outline" title="Leaderboard" text="Score, sprints and lap times" onPress={() => router.push('/leaderboard')} />
         {requests > 0 && (
           <Shortcut icon="person-add-outline" title={`Follow requests (${requests})`} text="Accept or decline"
             onPress={() => router.push('/people/requests')} />

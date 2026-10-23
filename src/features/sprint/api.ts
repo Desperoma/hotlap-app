@@ -36,6 +36,8 @@ export type LeaderRow = {
   rank: number; userId: string; username: string; displayName: string | null; avatarUrl: string | null;
   car: string | null; timeMs: number; exitSpeedKmh: number | null; driveId: string; achievedAt: string;
   isMe: boolean; isSimulated: boolean;
+  /** Classement Score : points et distance du drive */
+  score?: number; distanceM?: number;
 };
 type Row = {
   rank: number; user_id: string; username: string; display_name: string | null; avatar_url: string | null;
@@ -66,6 +68,15 @@ export async function leaderboardLaps(circuitId: string, f: LeaderFilter): Promi
   });
   if (error) throw error;
   return ((data ?? []) as Row[]).map(toRow);
+}
+
+/** Meilleur score sur route ouverte, toutes voitures confondues (migration 0025). */
+export async function leaderboardScore(f: LeaderFilter): Promise<LeaderRow[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('leaderboard_score', { p_scope: f.scope, p_country: f.country ?? null, p_limit: 50 });
+  if (error) throw error;
+  return ((data ?? []) as (Omit<Row, 'time_ms'> & { score: number; distance_m: number })[])
+    .map((r) => ({ ...toRow({ ...r, time_ms: 0 }), score: r.score, distanceM: r.distance_m }));
 }
 
 export type LapCircuit = { id: string; name: string; city: string | null; countryCode: string | null; laps: number };
