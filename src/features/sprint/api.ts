@@ -34,7 +34,7 @@ export async function listDriveSprints(driveId: string): Promise<DriveSprint[]> 
 export type LeaderScope = 'world' | 'country' | 'friends' | 'crews' | 'model';
 export type LeaderRow = {
   rank: number; userId: string; username: string; displayName: string | null; avatarUrl: string | null;
-  car: string | null; timeMs: number; exitSpeedKmh: number | null; driveId: string; achievedAt: string;
+  car: string | null; make: string | null; model: string | null; timeMs: number; exitSpeedKmh: number | null; driveId: string; achievedAt: string;
   isMe: boolean; isSimulated: boolean;
   /** Classement Score : points et distance du drive */
   score?: number; distanceM?: number;
@@ -46,7 +46,7 @@ type Row = {
 };
 const toRow = (r: Row): LeaderRow => ({
   rank: r.rank, userId: r.user_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url,
-  car: r.make ? `${r.make} ${r.model ?? ''}`.trim() : null, timeMs: r.time_ms, exitSpeedKmh: r.exit_speed_kmh ?? null,
+  car: r.make ? `${r.make} ${r.model ?? ''}`.trim() : null, make: r.make, model: r.model, timeMs: r.time_ms, exitSpeedKmh: r.exit_speed_kmh ?? null,
   driveId: r.drive_id, achievedAt: r.achieved_at, isMe: r.is_me, isSimulated: !!r.is_simulated,
 });
 
