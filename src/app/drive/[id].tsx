@@ -9,6 +9,7 @@ import { DriveTelemetry } from '@/components/DriveTelemetry';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
+import { LapList } from '@/components/LapList';
 import { SprintResults } from '@/components/SprintResults';
 import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Screen, SegmentedControl } from '@/components/ui';
@@ -18,6 +19,8 @@ import { listDrivePhotos } from '@/features/drives/media';
 import { driveMode, showcaseStats, vehicleHeading } from '@/features/drives/showcase';
 import { buildSamples, type Sample } from '@/features/drives/telemetry';
 import { listDriveSprints, type DriveSprint } from '@/features/sprint/api';
+import { listDriveLaps } from '@/features/circuit/api';
+import type { Lap } from '@/features/circuit/laps';
 import { VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -33,6 +36,7 @@ export default function DriveDetailScreen() {
   const [carSheet, setCarSheet] = useState(false);
   const [samples, setSamples] = useState<Sample[] | null>(null);
   const [sprints, setSprints] = useState<DriveSprint[]>([]);
+  const [laps, setLaps] = useState<Lap[]>([]);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -42,6 +46,7 @@ export default function DriveDetailScreen() {
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
     listDrivePhotos(id).then(setPhotos).catch(() => setPhotos([]));
     listDriveSprints(id).then(setSprints).catch(() => setSprints([]));
+    listDriveLaps(id).then(setLaps).catch(() => setLaps([]));
   }, [id, session?.user.id]);
 
   useEffect(load, [load]);
@@ -173,6 +178,9 @@ export default function DriveDetailScreen() {
 
       <PhotoStrip uris={photos} size={140} />
 
+      {(drive.mode === 'circuit' || laps.length > 0) && (
+        <LapList laps={laps} circuitId={drive.circuitId} circuitName={drive.circuitName} />
+      )}
       {(drive.mode === 'sprint' || sprints.length > 0) && (
         <SprintResults results={sprints}
           note={drive.isSimulated ? 'Drive simulé : visible par toi seul dans les classements.' : undefined} />

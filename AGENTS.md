@@ -48,6 +48,13 @@ Local Discover, World, Crews). App mobile Expo + backend Supabase. Lire README.m
   ou circuit) : table `country_rules`, fonction `recording_context`, côté app `features/recording/authorization.ts`.
   La date de naissance est verrouillée une fois saisie. Ne jamais contourner ce contrôle.
 - Routes chronométrées : choisies par l'équipe, `timing_enabled` exige `legal_basis` + `legal_checked_at`.
+- Drive sur circuit (0026) : lancé depuis la fiche du circuit (`/circuit/[id]`, bouton Drive), départ obligatoire
+  dans l'emprise ; écran `/circuit/live` (plan fixe du circuit, tours en direct). La ligne de départ se place au
+  premier point du drive, perpendiculaire au tracé (`circuit_start_line`), ou à la direction des 30 premiers mètres
+  sans tracé. Tours calculés PAR LA BASE (`record_drive_laps` → `drive_laps`, meilleur tour dans `lap_time_ms`) ;
+  `src/features/circuit/laps.ts` est le même algorithme pour le direct (`npm run laps:test`). Un circuit sans tracé
+  prend le meilleur tour du premier vrai drive (`path_source = 'drive'`, conservé si l'import est relancé).
+  Catégories `circuits.category` (racing, dirt, offroad, drag, karting, drift) : import + `circuit_category_guess`.
 - Mode Sprint (0024) : choisi avant le départ (`drives.mode = 'sprint'`), refusé hors circuit / route chronométrée.
   Temps en départ arrêté (0-100, 0-200 km/h, 500 / 1 000 / 2 000 m) calculés PAR LA BASE depuis `drive_points`
   (`sprint_times`, appelée par `record_drive_sprints`) ; `src/features/sprint/sprint.ts` est le même algorithme pour

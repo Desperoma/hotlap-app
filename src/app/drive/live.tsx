@@ -43,6 +43,11 @@ export default function LiveDriveScreen() {
     if (vehicleId && vehicles && !vehicles.some((v) => v.id === vehicleId)) setVehicleId(undefined);
   }, [vehicleId, vehicles]);
 
+  // Drive sur circuit en cours : il a son propre écran (plan fixe du circuit, tours).
+  useEffect(() => {
+    if (status !== 'idle' && activeMode === 'circuit') router.replace('/circuit/live');
+  }, [status, activeMode]);
+
   // Permission « pendant l'utilisation » à l'ouverture de la carte (pas avant, cf. maquette).
   useEffect(() => {
     Location.requestForegroundPermissionsAsync().then(({ status: s }) => setGps(s === 'granted' ? 'ok' : 'denied'));

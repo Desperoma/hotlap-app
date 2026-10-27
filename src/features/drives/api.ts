@@ -46,8 +46,9 @@ export type DriveDetail = {
   circuitName: string | null;
   /** Drive simulé (outils de test), repérable pour être supprimé avant l'ouverture au public */
   isSimulated: boolean;
+  circuitId: string | null;
   /** Mode choisi au départ (migration 0024) */
-  mode: 'free' | 'sprint';
+  mode: 'free' | 'sprint' | 'circuit';
   /**
    * Tracé affichable, en un ou plusieurs morceaux : complet pour le propriétaire ; pour les autres,
    * sans la zone privée autour du domicile (un drive qui la traverse est coupé en deux).
@@ -61,7 +62,7 @@ type SaveDriveInput = {
   /** Circuit sur lequel le drive a démarré (contexte renvoyé par recording_context) */
   circuitId?: string | null;
   /** 'sprint' : les temps sont ensuite calculés par la base (record_drive_sprints) */
-  mode?: 'free' | 'sprint';
+  mode?: 'free' | 'sprint' | 'circuit';
   title: string;
   description?: string;
   visibility: Visibility;
@@ -93,7 +94,7 @@ export async function saveDrive(input: SaveDriveInput) {
       distanceM: Math.round(stats.distanceM), durationS: stats.durationS, avgSpeedKmh: stats.avgSpeedKmh,
       maxSpeedKmh: stats.maxSpeedKmh, maxLateralG: null, score, scoreBreakdown: breakdown, lapTimeMs: null,
       visibility: input.visibility, likeCount: 0, commentCount: 0, author: null, vehicleId: input.vehicleId, vehicle: null, circuitName: null,
-      isSimulated: !!input.simulated, mode: input.mode ?? 'free',
+      isSimulated: !!input.simulated, mode: input.mode ?? 'free', circuitId: input.circuitId ?? null,
       path: [input.points.map((p) => ({ latitude: p.lat, longitude: p.lng }))],
     });
     return { id, stats, score };
@@ -198,7 +199,8 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
     vehicle: vehicle.data ?? null,
     circuitName: (circuit.data as { name: string } | null)?.name ?? null,
     isSimulated: !!row.is_simulated,
-    mode: row.mode === 'sprint' ? 'sprint' : 'free',
+    mode: row.mode === 'sprint' || row.mode === 'circuit' ? row.mode : 'free',
+    circuitId: row.circuit_id,
     path: geojsonToPath(path.data),
   };
 }
@@ -257,7 +259,7 @@ function demoFromFeed(id: string): DriveDetail | null {
     avgSpeedKmh: null, maxSpeedKmh: null, maxLateralG: f.max_lateral_g, score: f.score,
     scoreBreakdown: f.score_breakdown, lapTimeMs: f.lap_time_ms, visibility: f.visibility,
     likeCount: f.like_count, commentCount: f.comment_count, author: f.author, vehicleId: f.vehicle_id, vehicle: f.vehicle,
-    circuitName: null, path: [], isSimulated: false, mode: 'free',
+    circuitName: null, path: [], isSimulated: false, mode: 'free', circuitId: null,
   };
 }
 

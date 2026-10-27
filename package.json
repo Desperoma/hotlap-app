@@ -60,7 +60,8 @@
     "circuits:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/circuits.test.ts",
     "telemetry:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/telemetry.test.ts",
     "gforce:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/gforce.test.ts",
-    "sprint:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/sprint.test.ts"
+    "sprint:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/sprint.test.ts",
+    "laps:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/laps.test.ts"
   },
   "private": true,
   "engines": {

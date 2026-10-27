@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { buildOsmCircuits, centersOf, lineLengthM, mergeWikidata, type OsmElement, type Pt } from './lib/circuits';
+import { buildOsmCircuits, categoryOf, centersOf, lineLengthM, mergeWikidata, type OsmElement, type Pt } from './lib/circuits';
 
 // Carré d'environ 1,1 km de côté autour de (50.44, 5.97)
 const sq = (lat: number, lon: number, d: number): Pt[] => [
@@ -46,5 +46,15 @@ const dup = buildOsmCircuits([
 const dm = mergeWikidata(dup, [], centersOf(dup));
 assert.equal(dm.length, 2);
 assert.equal(dm.filter((c) => c.wikidata_id === 'Q5').length, 1);
+
+// Catégories (filtres de la carte)
+assert.equal(categoryOf({ sport: 'motor', name: 'Circuit de Spa-Francorchamps' }), 'racing');
+assert.equal(categoryOf({ sport: 'karting', name: 'Kart Arena' }), 'karting');
+assert.equal(categoryOf({ sport: 'motor', name: 'Santa Pod Dragway' }), 'drag');
+assert.equal(categoryOf({ sport: 'motor', name: 'Ebisu Drift Park' }), 'drift');
+assert.equal(categoryOf({ sport: 'motor', name: 'Lohéac' }, 'gravel'), 'dirt');
+assert.equal(categoryOf({ sport: 'motor;4wd', name: 'Terrain 4x4' }), 'offroad');
+assert.equal(osm.find((c) => c.osm_ref === 'way/4')!.category, 'karting');
+assert.equal(spa.path_source, 'osm');
 
 console.log('circuits: ok');

@@ -22,7 +22,7 @@ export type PendingDrive = {
   /** Véhicule choisi avant le départ (garage) ; modifiable sur le récap. Absent sur les anciens drives en attente. */
   vehicleId?: string | null;
   /** Mode choisi avant le départ : drive libre ou Sprint (migration 0024). Absent = libre. */
-  mode?: 'free' | 'sprint';
+  mode?: 'free' | 'sprint' | 'circuit';
   /** Drive simulé (outils de test) : marqué drives.is_simulated */
   simulated?: boolean;
   simStyle?: string;
