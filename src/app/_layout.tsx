@@ -76,6 +76,8 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="people/[kind]" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="leaderboard" />
+        <Stack.Screen name="circuit/[id]" />
+        <Stack.Screen name="circuit/live" options={{ gestureEnabled: false, animation: 'slide_from_bottom' }} />
       </Stack.Protected>
     </Stack>
   );

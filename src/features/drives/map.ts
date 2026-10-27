@@ -52,6 +52,8 @@ export async function fetchPublicDrives(b: BBox, limit = 200): Promise<MapDrive[
 export type MapCircuit = {
   id: string; name: string; city: string | null; countryCode: string | null; kind: string;
   lapLengthM: number | null; coordinate: LatLng;
+  /** Migration 0026 : catégorie, tracé et emprise connus */
+  category: string; hasPath: boolean; hasArea: boolean;
 };
 
 export async function fetchMapCircuits(b: BBox): Promise<MapCircuit[]> {
@@ -62,10 +64,11 @@ export async function fetchMapCircuits(b: BBox): Promise<MapCircuit[]> {
   if (error) throw error;
   return ((data ?? []) as {
     id: string; name: string; city: string | null; country_code: string | null; kind: string;
-    lap_length_m: number | null; lat: number; lng: number;
+    lap_length_m: number | null; lat: number; lng: number; category?: string; has_path?: boolean; has_area?: boolean;
   }[]).map((c) => ({
     id: c.id, name: c.name, city: c.city, countryCode: c.country_code, kind: c.kind, lapLengthM: c.lap_length_m,
     coordinate: { latitude: c.lat, longitude: c.lng },
+    category: c.category ?? (c.kind === 'karting' ? 'karting' : 'racing'), hasPath: !!c.has_path, hasArea: !!c.has_area,
   }));
 }
 

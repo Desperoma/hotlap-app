@@ -6,6 +6,7 @@ import { DriveMap } from '@/components/DriveMap';
 import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
+import { LapList } from '@/components/LapList';
 import { SprintResults } from '@/components/SprintResults';
 import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Screen, SegmentedControl, TextField } from '@/components/ui';
@@ -18,6 +19,8 @@ import { clearPendingDrive, getPendingDrive, type PendingDrive } from '@/feature
 import { computeStats } from '@/features/recording/geo';
 import { computeScore } from '@/features/scoring/score';
 import { recordDriveSprints } from '@/features/sprint/api';
+import { getCircuit, recordDriveLaps } from '@/features/circuit/api';
+import { detectLaps, startLineFromHeading, startLineOnPath, type Lap } from '@/features/circuit/laps';
 import { detectSprints } from '@/features/sprint/sprint';
 import { VISIBILITY_HINT, VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
@@ -41,10 +44,23 @@ export default function FinishDriveScreen() {
   useEffect(() => {
     getPendingDrive().then((d) => {
       setDrive(d);
-      if (d) setTitle(d.simulated ? `Test · ${simLabel(d.simStyle)}` : defaultTitle(d.startedAt));
+      if (d) setTitle(d.simulated ? `Test · ${d.simStyle === 'circuit' ? d.circuitName ?? 'Circuit' : simLabel(d.simStyle)}` : d.mode === 'circuit' && d.circuitName ? `${d.circuitName} · laps` : defaultTitle(d.startedAt));
       if (d && d.vehicleId !== undefined) setVehicleId(d.vehicleId);
     });
   }, []);
+
+  // Drive sur circuit : tours recalculés sur le téléphone pour le récap (la base fait foi).
+  const [recapLaps, setRecapLaps] = useState<Lap[]>([]);
+  useEffect(() => {
+    if (!drive || drive.mode !== 'circuit' || !drive.circuitId) return;
+    getCircuit(drive.circuitId).then((c) => {
+      const path = c?.path.flat() ?? [];
+      const p0 = drive.points[0];
+      if (!p0) return;
+      const line = path.length > 1 ? startLineOnPath(path, { latitude: p0.lat, longitude: p0.lng }) : startLineFromHeading(drive.points);
+      setRecapLaps(detectLaps(drive.points, line));
+    }).catch(() => {});
+  }, [drive]);
 
   const summary = useMemo(() => {
     if (!drive) return null;
@@ -68,6 +84,7 @@ export default function FinishDriveScreen() {
   }
 
   const sprints = drive.mode === 'sprint' ? detectSprints(drive.points) : [];
+  const laps = drive.mode === 'circuit' ? recapLaps : [];
   const tooShort = drive.points.length < 2;
   // Véhicule choisi avant le départ, sinon le favori ; un véhicule retiré du garage entre-temps est ignoré.
   const picked = vehicleId === undefined ? primaryVehicle?.id ?? null : vehicleId;
@@ -93,6 +110,11 @@ export default function FinishDriveScreen() {
         mode: drive.mode ?? 'free',
       });
       await clearPendingDrive();
+      if (drive.mode === 'circuit') {
+        // Tours officiels : recalculés par la base depuis les points enregistrés.
+        await recordDriveLaps(id).catch((e) =>
+          Alert.alert('Laps not recorded', e instanceof Error ? e.message : String(e)));
+      }
       if (drive.mode === 'sprint') {
         // Les temps officiels sont recalculés par la base depuis les points enregistrés.
         await recordDriveSprints(id, drive.points).catch((e) =>
@@ -163,6 +185,10 @@ export default function FinishDriveScreen() {
       <Text style={styles.overline}>DRIVE COMPLETE · NICE DRIVE</Text>
       <DriveMap path={summary.path} emptyLabel="Not enough GPS points for a route" />
 
+      {drive.mode === 'circuit' && (
+        <LapList laps={laps} circuitId={drive.circuitId} circuitName={drive.circuitName}
+          note="Tours calculés sur ce téléphone ; la base les recalcule à l’enregistrement." />
+      )}
       {drive.mode === 'sprint' && (
         <SprintResults results={sprints} note="Temps calculés sur ce téléphone ; la base les recalcule à l’enregistrement (GPS 1 Hz, environ ±0,3 s)." />
       )}

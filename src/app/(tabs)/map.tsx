@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -6,11 +6,12 @@ import {
   ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions,
   type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type MapPressEvent, type Region } from 'react-native-maps';
+import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, type MapPressEvent, type Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { CATEGORIES, categoryOf, getCircuit } from '@/features/circuit/api';
 import type { LatLng } from '@/features/drives/api';
 import {
   fetchDrivePath, fetchMapCircuits, fetchMapDrives, fetchPublicDrives,
@@ -149,7 +150,22 @@ export default function MapScreen() {
     () => groupPins(allDrives.filter((d) => filter === 'all' || d.source === filter), 0.0014 * 2 ** (cellKey / 2)),
     [allDrives, filter, cellKey],
   );
+  const [cats, setCats] = useState<Set<string>>(new Set());
+  const shownCircuits = useMemo(() => (cats.size === 0 ? circuits : circuits.filter((c) => cats.has(c.category))), [circuits, cats]);
   const selectedCircuit = circuitId ? circuits.find((c) => c.id === circuitId) ?? null : null;
+  // Circuit touché : son tracé et son emprise sur la carte, caméra cadrée dessus.
+  const [circuitShape, setCircuitShape] = useState<{ id: string; path: LatLng[][]; area: LatLng[][] } | null>(null);
+  useEffect(() => {
+    if (!circuitId) return setCircuitShape(null);
+    let live = true;
+    getCircuit(circuitId).then((c) => {
+      if (!live || !c) return;
+      setCircuitShape({ id: c.id, path: c.path, area: c.area });
+      const pts = [...c.path.flat(), ...c.area.flat()];
+      if (pts.length > 1) mapRef.current?.fitToCoordinates(pts, { edgePadding: { top: 200, right: 50, bottom: 300, left: 50 }, animated: true });
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [circuitId]);
   const selectedIds = useMemo(() => new Set(selected?.drives.map((d) => d.id) ?? []), [selected]);
   const selectedPin = selected ? { drives: selected.drives } : null;
   const selectedDrive = selected ? selected.drives[Math.min(selected.index, selected.drives.length - 1)] : null;
@@ -289,15 +305,28 @@ export default function MapScreen() {
             );
           })}
 
-          {(filter === 'all' || filter === 'public') && circuits.map((c) => (
-            <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
-              zIndex={c.id === circuitId ? 9 : 4}
-              onPress={() => { setSelected(null); setCircuitId(c.id === circuitId ? null : c.id); }}>
-              <View style={[styles.circuitPin, c.id === circuitId && styles.pinSelected]}>
-                <Ionicons name="flag" size={14} color={colors.accentText} />
-              </View>
-            </Marker>
-          ))}
+          {circuitShape && circuitShape.id === circuitId && (
+            <>
+              {circuitShape.area.map((ring, i) => (
+                <Polygon key={`ca${i}`} coordinates={ring} strokeColor="rgba(198,244,50,0.4)" fillColor="rgba(198,244,50,0.08)" strokeWidth={1} />
+              ))}
+              {circuitShape.path.map((seg, i) => (
+                <Polyline key={`cp${i}`} coordinates={seg} strokeColor="#FFFFFF" strokeWidth={4} lineCap="round" lineJoin="round" zIndex={3} />
+              ))}
+            </>
+          )}
+          {(filter === 'all' || filter === 'public') && shownCircuits.map((c) => {
+            const cat = categoryOf(c.category);
+            return (
+              <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
+                zIndex={c.id === circuitId ? 9 : 4}
+                onPress={() => { setSelected(null); setCircuitId(c.id === circuitId ? null : c.id); }}>
+                <View style={[styles.circuitPin, { backgroundColor: cat.color }, c.id === circuitId && styles.pinSelected]}>
+                  <MaterialCommunityIcons name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color="#0B0B0B" />
+                </View>
+              </Marker>
+            );
+          })}
 
           {searched && (
             <Marker coordinate={searched.coordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={tracking} zIndex={3}
@@ -341,6 +370,28 @@ export default function MapScreen() {
           })}
         </View>
         </ScrollView>
+        {(filter === 'all' || filter === 'public') && circuits.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingRight: spacing.lg }}>
+            <View style={styles.filterBar}>
+              <Pressable onPress={() => setCats(new Set())} style={[styles.chip, cats.size === 0 && styles.chipActive]}
+                accessibilityState={{ selected: cats.size === 0 }}>
+                <Ionicons name="flag" size={12} color={colors.textMuted} />
+                <Text style={[styles.chipText, cats.size === 0 && styles.chipTextActive]}>All tracks</Text>
+              </Pressable>
+              {CATEGORIES.map((c) => {
+                const active = cats.has(c.key);
+                return (
+                  <Pressable key={c.key} accessibilityState={{ selected: active }}
+                    onPress={() => setCats((s) => { const n = new Set(s); if (n.has(c.key)) n.delete(c.key); else n.add(c.key); return n; })}
+                    style={[styles.chip, active && styles.chipActive]}>
+                    <View style={[styles.dot, { backgroundColor: c.color }]} />
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        )}
 
         <View style={styles.sideButtons} pointerEvents="box-none">
           {!drives && !error && <View style={styles.roundBtn}><ActivityIndicator size="small" color={colors.accent} /></View>}
@@ -397,7 +448,9 @@ export default function MapScreen() {
         <View style={[styles.cards, { paddingHorizontal: spacing.lg }]}>
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={styles.circuitPin}><Ionicons name="flag" size={14} color={colors.accentText} /></View>
+              <View style={[styles.circuitPin, { backgroundColor: categoryOf(selectedCircuit.category).color }]}>
+                <MaterialCommunityIcons name={categoryOf(selectedCircuit.category).icon as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color="#0B0B0B" />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardName} numberOfLines={1}>{selectedCircuit.name}</Text>
                 <Text style={styles.cardMeta} numberOfLines={1}>
@@ -410,13 +463,18 @@ export default function MapScreen() {
             </View>
             <View style={styles.statsRow}>
               <Stat value={selectedCircuit.lapLengthM ? formatKm(selectedCircuit.lapLengthM) : '—'} unit={selectedCircuit.lapLengthM ? 'km' : undefined} label="LAP" />
-              <Stat value={selectedCircuit.kind === 'closed_road' ? 'Closed road' : selectedCircuit.kind === 'karting' ? 'Karting' : 'Track'} label="TYPE" />
+              <Stat value={categoryOf(selectedCircuit.category).label} label="TYPE" />
+              <Stat value={selectedCircuit.hasPath ? 'Mapped' : selectedCircuit.hasArea ? 'To learn' : '—'} label="TRACK" />
             </View>
             <View style={styles.cardFooter}>
-              <Text style={[styles.cardHint, { flex: 1 }]} numberOfLines={2}>Circuit data © OpenStreetMap contributors, Wikidata</Text>
-              <Pressable style={styles.openBtn} onPress={() => router.push({ pathname: '/leaderboard', params: { circuit: selectedCircuit.id, circuitName: selectedCircuit.name } })}>
-                <Text style={styles.openText}>Leaderboard</Text>
-                <Ionicons name="podium-outline" size={14} color={colors.accentText} />
+              <Text style={[styles.cardHint, { flex: 1 }]} numberOfLines={2}>© OpenStreetMap contributors, Wikidata</Text>
+              <Pressable style={[styles.openBtn, styles.ghostBtn]} onPress={() => router.push({ pathname: '/leaderboard', params: { circuit: selectedCircuit.id, circuitName: selectedCircuit.name } })}
+                accessibilityLabel="Leaderboard">
+                <Ionicons name="podium-outline" size={14} color={colors.text} />
+              </Pressable>
+              <Pressable style={styles.openBtn} onPress={() => router.push(`/circuit/${selectedCircuit.id}`)}>
+                <Text style={styles.openText}>{selectedCircuit.hasPath || selectedCircuit.hasArea ? 'Drive' : 'Open'}</Text>
+                <Ionicons name="flag" size={14} color={colors.accentText} />
               </Pressable>
             </View>
           </View>
@@ -567,6 +625,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill, paddingHorizontal: spacing.md,
   },
   searchText: { flex: 1, color: colors.textMuted, fontFamily: fonts.regular, fontSize: 14 },
+  ghostBtn: { backgroundColor: colors.card, paddingHorizontal: 10 },
   circuitPin: {
     width: 28, height: 28, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: colors.bg,

@@ -15,13 +15,18 @@ export type OsmElement = {
 };
 export type WdCircuit = { qid: string; name: string; lat: number; lon: number; country: string | null; lengthM: number | null; website: string | null };
 
+/** Catégories de l'app (filtres de la carte) : voir circuits.category, migration 0026. */
+export type CircuitCategory = 'racing' | 'dirt' | 'offroad' | 'drag' | 'karting' | 'drift';
+
 export type CircuitRow = {
   name: string;
   kind: 'track' | 'karting';
+  category: CircuitCategory;
   country_code: string | null;
   location: string;       // EWKT point
   area: string | null;    // EWKT polygon
   path: string | null;    // EWKT linestring (piste la plus longue)
+  path_source: 'osm' | null;
   lap_length_m: number | null;
   website: string | null;
   osm_ref: string | null;
@@ -84,6 +89,24 @@ function outerRing(e: OsmElement): Pt[] | null {
   return null;
 }
 
+const UNPAVED = /^(dirt|gravel|fine_gravel|ground|sand|unpaved|compacted|earth|mud|grass)$/;
+
+/**
+ * Catégorie d'un site : tags OSM d'abord (sport, surface de la piste), sinon le nom.
+ * Même logique de nom que public.circuit_category_guess (migration 0026).
+ */
+export function categoryOf(t: Record<string, string>, pisteSurface?: string | null): CircuitCategory {
+  const name = `${t.name ?? ''} ${t['name:en'] ?? ''}`;
+  const sport = t.sport ?? '';
+  if (/drift/i.test(name)) return 'drift';
+  if (/drag_racing/.test(sport) || /(drag|dragway|dragstrip|quarter mile|1\/4)/i.test(name)) return 'drag';
+  if (/karting/.test(sport) || /kart/i.test(name)) return 'karting';
+  if (/(4wd|offroad|off_road)/.test(sport) || /(off.?road|4x4|tout.?terrain|motocross|moto-cross|cross country|trial|enduro)/i.test(name)) return 'offroad';
+  if (/(rally|rallycross)/.test(sport) || UNPAVED.test(pisteSurface ?? t.surface ?? '')
+    || /(rally|rallye|dirt|terre|gravel|autocross|auto-cross|stock car|speedway)/i.test(name)) return 'dirt';
+  return 'racing';
+}
+
 const isKart = (t: Record<string, string>) => /karting/.test(t.sport ?? '') || /kart/i.test(t.name ?? '');
 const isSite = (t: Record<string, string>) =>
   /^(track|sports_centre|stadium)$/.test(t.leisure ?? '') && /(^|;)(motor|karting)(;|$)/.test(t.sport ?? '');
@@ -112,10 +135,12 @@ export function buildOsmCircuits(elements: OsmElement[], country: string | null)
     out.push({
       name,
       kind: isKart(t) ? 'karting' : 'track',
+      category: categoryOf(t, main?.tags?.surface),
       country_code: country,
       location: ewktPoint(centroid(ring.slice(0, -1))),
       area: ewktPolygon(ring),
       path: main ? ewktLine(main.geometry!) : null,
+      path_source: main ? 'osm' : null,
       lap_length_m: main && closed(main.geometry) ? len : null,
       website: t.website || t['contact:website'] || null,
       osm_ref: `${e.type}/${e.id}`,
@@ -131,10 +156,12 @@ export function buildOsmCircuits(elements: OsmElement[], country: string | null)
     out.push({
       name,
       kind: isKart(t) ? 'karting' : 'track',
+      category: categoryOf(t),
       country_code: country,
       location: ewktPoint(centroid(r.geometry!.slice(0, -1))),
       area: ewktPolygon(r.geometry!),
       path: ewktLine(r.geometry!),
+      path_source: 'osm',
       lap_length_m: Math.round(lineLengthM(r.geometry!)),
       website: t.website || null,
       osm_ref: `way/${r.id}`,
@@ -175,8 +202,8 @@ export function mergeWikidata(osm: CircuitRow[], wd: WdCircuit[], osmCenters: Ma
       continue;
     }
     rows.push({
-      name: w.name, kind: /kart/i.test(w.name) ? 'karting' : 'track', country_code: w.country,
-      location: ewktPoint({ lat: w.lat, lon: w.lon }), area: null, path: null,
+      name: w.name, kind: /kart/i.test(w.name) ? 'karting' : 'track', category: categoryOf({ name: w.name }), country_code: w.country,
+      location: ewktPoint({ lat: w.lat, lon: w.lon }), area: null, path: null, path_source: null,
       lap_length_m: w.lengthM, website: w.website, osm_ref: null, wikidata_id: w.qid, source: 'wikidata',
     });
   }
