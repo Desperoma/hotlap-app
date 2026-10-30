@@ -7,6 +7,13 @@ import type { ExpoConfig } from "expo/config";
 // Identifiant du projet EAS, affiché par `npx eas-cli@latest init` (pas un secret).
 const EAS_PROJECT_ID = '2917e236-175f-4b58-a141-f86c1179dd06'; // @hotlaphar/hotlap
 
+// Publication pour Expo Go (npm run update:go, EXPO_GO_UPDATE=1) : Expo Go n'ouvre une mise à jour
+// EAS Update que si sa version d'exécution est « exposdk:<SDK>.0.0 ». Les builds natifs gardent la
+// politique appVersion et n'interrogent pas EAS Update (updates.enabled = false).
+const EXPO_GO_UPDATE = process.env.EXPO_GO_UPDATE === '1';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const EXPO_SDK = `${String(require('expo/package.json').version).split('.')[0]}.0.0`;
+
 // Variantes de l'app (APP_VARIANT, fixé par chaque profil de eas.json). Identifiants différents :
 // les versions de test et la version des testeurs s'installent côte à côte sur un même téléphone.
 //   development : app de développement (se connecte au serveur Expo du PC), outils de test
@@ -36,6 +43,11 @@ const config: ExpoConfig = {
   "owner": "hotlaphar",
   "scheme": V.scheme,
   "version": "0.1.0",
+  "runtimeVersion": EXPO_GO_UPDATE ? `exposdk:${EXPO_SDK}` : { "policy": "appVersion" },
+  "updates": {
+    "url": `https://u.expo.dev/${EAS_PROJECT_ID}`,
+    "enabled": EXPO_GO_UPDATE,
+  },
   "orientation": "portrait",
   "icon": "./assets/icon.png",
   "userInterfaceStyle": "dark",
