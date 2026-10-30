@@ -2,16 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { CircuitPicker, type PickedCircuit } from '@/components/CircuitPicker';
+import { Dropdown } from '@/components/Dropdown';
 import { ClassBadge } from '@/components/ClassBadge';
 import { Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatLap } from '@/features/circuit/laps';
 import { carImageFor } from '@/features/garage/carImage';
 import { CLASSES, type ClassKey } from '@/features/garage/hpi';
-import { flagOf } from '@/features/places/format';
 import {
   INCLUDE_TEST_DRIVES, circuitsWithLaps, leaderboardLaps, leaderboardScore, leaderboardSprint, type LapCircuit, type LeaderRow, type LeaderScope,
 } from '@/features/sprint/api';
@@ -25,6 +26,11 @@ const GROUPS: { key: Group; label: string; icon: keyof typeof Ionicons.glyphMap 
   { key: 'distance', label: 'Distance', icon: 'flag-outline' },
   { key: 'laps', label: 'Laps', icon: 'refresh' },
 ];
+/** Nom du pays dans la langue du téléphone (FR → France), à défaut le code. */
+const countryName = (code: string) => {
+  try { return new Intl.DisplayNames(undefined, { type: 'region' }).of(code.toUpperCase()) ?? code; } catch { return code; }
+};
+
 const SUBS: Record<'accel' | 'distance', SprintKind[]> = { accel: ['0_100', '0_200'], distance: ['500m', '1000m', '2000m'] };
 const groupOf = (k?: string): Group | null =>
   SUBS.accel.includes(k as SprintKind) ? 'accel' : SUBS.distance.includes(k as SprintKind) ? 'distance' : null;
@@ -53,6 +59,8 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   const vehicleId = picked ?? primaryVehicle?.id ?? vehicles?.[0]?.id ?? null;
   const [circuits, setCircuits] = useState<LapCircuit[]>([]);
   const [circuitId, setCircuitId] = useState<string | null>(params.circuit ?? null);
+  // Circuit choisi par la recherche (absent de la liste des circuits qui ont des tours).
+  const [pickedCircuit, setPickedCircuit] = useState<PickedCircuit | null>(null);
   const [rows, setRows] = useState<LeaderRow[] | null>(null);
   const [error, setError] = useState(false);
 
@@ -72,13 +80,13 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   };
 
   const country = profile?.country_code?.trim() || null;
-  const scopes: { key: LeaderScope; label: string }[] = [
-    { key: 'world', label: '🌍 World' },
-    ...(country ? [{ key: 'country' as const, label: `${flagOf(country)} ${country}` }] : []),
-    { key: 'friends', label: 'Friends' },
-    { key: 'crews', label: 'Crews' },
+  const scopes: { key: LeaderScope; label: string; hint?: string }[] = [
+    { key: 'world', label: 'World' },
+    ...(country ? [{ key: 'country' as const, label: countryName(country) }] : []),
+    { key: 'friends', label: 'Friends', hint: 'You and the drivers you follow' },
+    { key: 'crews', label: 'Crews', hint: 'You and the members of your crews' },
     // Score : toutes voitures confondues, donc pas de classement par modèle.
-    ...(vehicles?.length && group !== 'score' ? [{ key: 'model' as const, label: 'My model' }] : []),
+    ...(vehicles?.length && group !== 'score' ? [{ key: 'model' as const, label: 'My model', hint: 'Same make and model as my car' }] : []),
   ];
   useEffect(() => { if (group === 'score' && scope === 'model') setScope('world'); }, [group, scope]);
 
@@ -108,7 +116,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   const rest = top.filter((r) => !podium.includes(r));
   const meOutside = rows?.find((r) => r.isMe && r.rank > 50) ?? null;
   const myCar = vehicles?.find((v) => v.id === vehicleId);
-  const circuit = circuits.find((c) => c.id === circuitId);
+  const circuit = circuits.find((c) => c.id === circuitId) ?? (pickedCircuit?.id === circuitId ? pickedCircuit : undefined);
   const metric: Metric = group === 'score' ? 'score' : group === 'laps' ? 'lap' : 'sprint';
 
   const scopeLabel = scope === 'world' ? 'World rankings' : scope === 'country' ? `${country} rankings`
@@ -147,24 +155,31 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
         })}
       </View>
 
-      {(group === 'accel' || group === 'distance') && (
-        <Chips items={SUBS[group].map((k) => ({ key: k, label: sprintLabel(k) }))} value={sprint} onChange={setSprint} />
-      )}
+      <View style={styles.filters}>
+        {(group === 'accel' || group === 'distance') && (
+          <Dropdown label={group === 'accel' ? 'Target' : 'Distance'} value={sprint} onChange={setSprint} style={styles.filter}
+            options={SUBS[group].map((k) => ({ key: k, label: sprintLabel(k) }))} />
+        )}
+        <Dropdown label="Ranking" value={scope} onChange={setScope} options={scopes} style={styles.filter} />
+        <Dropdown label="Class" value={cls} onChange={setCls} style={styles.filter}
+          options={[{ key: 'all' as const, label: 'All classes' },
+            ...CLASSES.map((c) => ({ key: c.key, label: `${c.min}–${c.max} HPI`, left: <ClassBadge cls={c.key} size="sm" /> }))]} />
+      </View>
       {group === 'laps' && (
-        circuits.length > 0
-          ? <Chips items={circuits.map((c) => ({ key: c.id, label: c.name }))} value={circuitId ?? ''} onChange={setCircuitId} />
-          : <Text style={styles.muted}>Aucun tour chronométré pour l’instant. Lance un drive depuis la fiche d’un circuit.</Text>
+        <CircuitPicker value={circuit ?? null} withLaps={circuits} onChange={(c) => { setPickedCircuit(c); setCircuitId(c.id); }} />
       )}
-      <Chips items={scopes} value={scope} onChange={setScope} small />
-      <ClassChips value={cls} onChange={setCls} />
       {scope === 'model' && vehicles && vehicles.length > 1 && (
-        <Chips items={vehicles.map((v) => ({ key: v.id, label: `${v.make} ${v.model}` }))} value={vehicleId ?? ''} onChange={setVehicleId} small />
+        <Dropdown label="My model" value={vehicleId ?? ''} onChange={setVehicleId}
+          options={vehicles.map((v) => ({ key: v.id, label: `${v.make} ${v.model}` }))} />
       )}
 
       <View style={styles.selected}>
         <Text style={styles.selectedOver}>SELECTED LEADERBOARD</Text>
         <Text style={styles.selectedTitle}>{selected}</Text>
         <Text style={styles.muted}>{scopeLabel}{classLabel} · {what}</Text>
+        {group === 'laps' && circuits.length === 0 && !circuit && (
+          <Text style={styles.faint}>Aucun tour chronométré pour l’instant : choisis un circuit, ou lance un drive depuis sa fiche.</Text>
+        )}
         {INCLUDE_TEST_DRIVES && <Text style={styles.faint}>Version de test : les drives simulés (TEST) de tout le monde sont inclus.</Text>}
         {group !== 'laps' && (
           <Text style={styles.faint}>
@@ -272,40 +287,6 @@ function Line({ r, metric }: { r: LeaderRow; metric: Metric }) {
   );
 }
 
-/** Filtre par classe de véhicule : badges D → X, « All » en premier. */
-function ClassChips({ value, onChange }: { value: ClassKey | 'all'; onChange: (v: ClassKey | 'all') => void }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, alignItems: 'center' }}>
-      <Pressable onPress={() => onChange('all')} accessibilityState={{ selected: value === 'all' }}
-        style={[styles.chip, styles.chipSmall, value === 'all' && styles.chipOutline]}>
-        <Text style={[styles.chipText, value === 'all' && styles.chipTextOutline]}>All classes</Text>
-      </Pressable>
-      {CLASSES.map((c) => (
-        <Pressable key={c.key} onPress={() => onChange(c.key)} accessibilityLabel={`Class ${c.key}`}
-          accessibilityState={{ selected: value === c.key }}
-          style={[styles.classChip, value === c.key && { borderColor: c.color, backgroundColor: 'rgba(255,255,255,0.06)' }]}>
-          <ClassBadge cls={c.key} size="sm" />
-        </Pressable>
-      ))}
-    </ScrollView>
-  );
-}
-
-function Chips<T extends string>({ items, value: v, onChange, small }: {
-  items: { key: T; label: string }[]; value: T; onChange: (v: T) => void; small?: boolean;
-}) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-      {items.map((i) => (
-        <Pressable key={i.key} onPress={() => onChange(i.key)} accessibilityState={{ selected: i.key === v }}
-          style={[styles.chip, small && styles.chipSmall, i.key === v && (small ? styles.chipOutline : styles.chipActive)]}>
-          <Text style={[styles.chipText, i.key === v && (small ? styles.chipTextOutline : styles.chipTextActive)]} numberOfLines={1}>{i.label}</Text>
-        </Pressable>
-      ))}
-    </ScrollView>
-  );
-}
-
 const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   overline: { ...type.overline, color: colors.accent },
@@ -320,13 +301,8 @@ const styles = StyleSheet.create({
   groupActive: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.borderStrong },
   groupText: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 11 },
   groupTextActive: { color: colors.text },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  chipSmall: { paddingVertical: 6 },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipOutline: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  chipText: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 13 },
-  chipTextActive: { color: colors.accentText },
-  chipTextOutline: { color: colors.accent },
+  filters: { flexDirection: 'row', gap: spacing.sm },
+  filter: { flex: 1 },
   selected: { gap: 3, borderLeftWidth: 3, borderLeftColor: colors.accent, paddingLeft: spacing.md },
   selectedOver: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
   selectedTitle: { ...type.h2, color: colors.text, fontSize: 19 },
@@ -356,6 +332,5 @@ const styles = StyleSheet.create({
   name: { color: colors.text, fontFamily: fonts.semibold, fontSize: 14 },
   car: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 11 },
   carRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  classChip: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: colors.border },
   time: { color: colors.text, fontFamily: fonts.semibold, fontSize: 16 },
 });
