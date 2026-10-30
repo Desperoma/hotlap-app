@@ -162,3 +162,43 @@ export function geoToRings(g: unknown): LL[][] {
     default: return [];
   }
 }
+
+/**
+ * Écart en direct avec le meilleur tour : à distance égale depuis la ligne, combien de temps de
+ * plus (> 0) ou de moins (< 0) que le meilleur tour. `progress` : part du tour faite (0-1),
+ * d'après la longueur du meilleur tour. null tant qu'il n'y a pas de meilleur tour.
+ */
+export function liveDelta(points: LapPoint[], line: [LL, LL] | null, now = Date.now()): { deltaMs: number; progress: number } | null {
+  if (!line) return null;
+  const cross = lapCrossings(points, line);
+  const best = detectLaps(points, line).reduce<Lap | null>((b, l) => (!b || l.timeMs < b.timeMs ? l : b), null);
+  if (!best || cross.length === 0) return null;
+  const lapStart = cross[cross.length - 1];
+  const cumOf = (from: number, to: number) => {
+    const out: { t: number; d: number }[] = [];
+    let d = 0, prev: LapPoint | null = null;
+    for (const p of points) {
+      if (p.ts < from || p.ts > to) continue;
+      if (prev) d += dist(prev, p);
+      out.push({ t: p.ts, d });
+      prev = p;
+    }
+    return out;
+  };
+  const cur = cumOf(lapStart, now);
+  const done = cur.at(-1)?.d ?? 0;
+  const ref = cumOf(best.startedAt, best.startedAt + best.timeMs);
+  const total = ref.at(-1)?.d ?? 0;
+  if (total <= 0) return null;
+  let expected = best.timeMs;
+  for (let i = 1; i < ref.length; i++) {
+    if (ref[i].d >= done) {
+      const a = ref[i - 1], b = ref[i];
+      const k = b.d > a.d ? (done - a.d) / (b.d - a.d) : 0;
+      expected = a.t + k * (b.t - a.t) - best.startedAt;
+      break;
+    }
+  }
+  if (done === 0) expected = 0;
+  return { deltaMs: Math.round(now - lapStart - expected), progress: Math.min(1, done / total) };
+}

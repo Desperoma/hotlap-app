@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CircuitMap } from '@/components/CircuitMap';
@@ -32,11 +32,12 @@ export default function CircuitScreen() {
   const [busy, setBusy] = useState(false);
   const chosenVehicle = vehicleId === undefined ? primaryVehicle?.id ?? null : vehicleId;
 
-  useEffect(() => {
+  // Au retour de l'éditeur de tracé (dev), la fiche se recharge.
+  useFocusEffect(useCallback(() => {
     if (!id) return;
     getCircuit(id).then(setCircuit).catch(() => setCircuit(null));
     Location.getLastKnownPositionAsync().then((p) => p && setMe(p.coords)).catch(() => {});
-  }, [id]);
+  }, [id]));
 
   const path = useMemo(() => circuit?.path.flat() ?? [], [circuit]);
   // Aperçu de la ligne de départ : là où je suis si je suis sur le circuit, sinon au début du tracé.
@@ -115,7 +116,7 @@ export default function CircuitScreen() {
         {path.length > 1
           ? 'Trait rouge : ligne de départ. Elle se place là où tu démarres, perpendiculaire au tracé.'
           : 'Pas encore de tracé : la ligne se place à ton départ, et ton meilleur tour deviendra le tracé du circuit.'}
-        {circuit.pathSource === 'drive' ? ' Tracé appris d’un drive.' : ''}
+        {circuit.pathSource === 'drive' ? ' Tracé appris d’un drive.' : circuit.pathSource === 'manual' ? ' Tracé corrigé par l’équipe.' : ''}
       </Text>
 
       {playable ? (
@@ -132,6 +133,11 @@ export default function CircuitScreen() {
         </Card>
       ) : (
         <Text style={styles.muted}>Ni tracé ni emprise connus pour ce circuit : il n’est pas encore jouable.</Text>
+      )}
+
+      {profile?.is_dev && (
+        <Button title="Edit track path (dev)" variant="ghost" icon="create-outline"
+          onPress={() => router.push({ pathname: '/circuit/edit', params: { id: circuit.id } })} />
       )}
 
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>

@@ -23,6 +23,8 @@ export type DriveDetail = {
   id: string;
   ownerId: string;
   isMine: boolean;
+  /** Vu comme l'auteur : le propriétaire, ou un compte dev (tracé complet, télémétrie, vitesses) */
+  asAuthor: boolean;
   title: string;
   description: string | null;
   startedAt: string;
@@ -43,6 +45,7 @@ export type DriveDetail = {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url'> | null;
   vehicleId: string | null;
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year' | 'color'> | null;
+  vehicleClass: { hpi: number; cls: 'D' | 'C' | 'B' | 'A' | 'S1' | 'S2' | 'X' } | null;
   circuitName: string | null;
   /** Drive simulé (outils de test), repérable pour être supprimé avant l'ouverture au public */
   isSimulated: boolean;
@@ -89,7 +92,7 @@ export async function saveDrive(input: SaveDriveInput) {
   if (!isSupabaseConfigured) {
     const id = `demo-${Date.now()}`;
     demoDrives.set(id, {
-      id, ownerId: input.ownerId, isMine: true, title: input.title, description: input.description ?? null,
+      id, ownerId: input.ownerId, isMine: true, asAuthor: true, vehicleClass: null, title: input.title, description: input.description ?? null,
       startedAt: new Date(input.startedAt).toISOString(), endedAt: new Date(input.endedAt).toISOString(),
       distanceM: Math.round(stats.distanceM), durationS: stats.durationS, avgSpeedKmh: stats.avgSpeedKmh,
       maxSpeedKmh: stats.maxSpeedKmh, maxLateralG: null, score, scoreBreakdown: breakdown, lapTimeMs: null,
@@ -153,7 +156,7 @@ export async function saveDrive(input: SaveDriveInput) {
 }
 
 /** Détail d'un drive visible par l'utilisateur connecté, ou null s'il n'existe pas / n'est pas visible. */
-export async function getDrive(id: string, me: string | undefined): Promise<DriveDetail | null> {
+export async function getDrive(id: string, me: string | undefined, isDev = false): Promise<DriveDetail | null> {
   if (!isSupabaseConfigured) return demoDrives.get(id) ?? demoFromFeed(id);
 
   const { data: d, error } = await supabase.from('drives').select(DRIVE_COLUMNS).eq('id', id).maybeSingle();
@@ -161,8 +164,9 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
   if (!d) return null;
   const row = d as unknown as DriveRow;
   const isMine = row.owner_id === me;
+  const asAuthor = isMine || isDev;
 
-  const [author, vehicle, circuit, path, priv] = await Promise.all([
+  const [author, vehicle, circuit, path, priv, cls] = await Promise.all([
     supabase.from('public_profiles').select('id, username, display_name, avatar_url').eq('id', row.owner_id).maybeSingle(),
     row.vehicle_id
       ? supabase.from('vehicles').select('make, model, year, color').eq('id', row.vehicle_id).maybeSingle()
@@ -171,22 +175,25 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
       ? supabase.from('circuits').select('name').eq('id', row.circuit_id).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.rpc('drive_path_public', { p_drive_id: id }),
-    isMine ? supabase.rpc('my_drive_private', { p_drive_id: id }) : Promise.resolve({ data: null }),
+    asAuthor ? supabase.rpc('my_drive_private', { p_drive_id: id }) : Promise.resolve({ data: null }),
+    row.vehicle_id ? supabase.rpc('vehicle_classes', { p_vehicles: [row.vehicle_id] }) : Promise.resolve({ data: null }),
   ]);
+  const vc = ((cls.data ?? []) as NonNullable<DriveDetail['vehicleClass']>[])[0];
 
   return {
     id: row.id,
     ownerId: row.owner_id,
     isMine,
+    asAuthor,
     title: row.title,
     description: row.description,
     startedAt: row.started_at,
     endedAt: row.ended_at,
     distanceM: row.distance_m,
     durationS: row.duration_s,
-    avgSpeedKmh: isMine ? row.avg_speed_kmh : null,
+    avgSpeedKmh: asAuthor ? row.avg_speed_kmh : null,
     // Visible par tous depuis 0023 ; my_drive_private reste la source pour le propriétaire.
-    maxSpeedKmh: (isMine ? (priv.data as { max_speed_kmh: number | null }[] | null)?.[0]?.max_speed_kmh : null) ?? row.max_speed_kmh ?? null,
+    maxSpeedKmh: (asAuthor ? (priv.data as { max_speed_kmh: number | null }[] | null)?.[0]?.max_speed_kmh : null) ?? row.max_speed_kmh ?? null,
     maxLateralG: row.max_lateral_g,
     score: row.score,
     scoreBreakdown: row.score_breakdown,
@@ -197,6 +204,7 @@ export async function getDrive(id: string, me: string | undefined): Promise<Driv
     author: author.data ?? null,
     vehicleId: row.vehicle_id,
     vehicle: vehicle.data ?? null,
+    vehicleClass: vc ? { hpi: vc.hpi, cls: vc.cls } : null,
     circuitName: (circuit.data as { name: string } | null)?.name ?? null,
     isSimulated: !!row.is_simulated,
     mode: row.mode === 'sprint' || row.mode === 'circuit' ? row.mode : 'free',
@@ -254,7 +262,7 @@ function demoFromFeed(id: string): DriveDetail | null {
   const f = FEED.find((d) => d.id === id);
   if (!f) return null;
   return {
-    id: f.id, ownerId: f.owner_id, isMine: false, title: f.title, description: f.description,
+    id: f.id, ownerId: f.owner_id, isMine: false, asAuthor: false, vehicleClass: null, title: f.title, description: f.description,
     startedAt: f.started_at, endedAt: f.ended_at, distanceM: f.distance_m, durationS: f.duration_s,
     avgSpeedKmh: null, maxSpeedKmh: null, maxLateralG: f.max_lateral_g, score: f.score,
     scoreBreakdown: f.score_breakdown, lapTimeMs: f.lap_time_ms, visibility: f.visibility,

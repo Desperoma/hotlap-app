@@ -1,3 +1,4 @@
+import type { ClassKey } from '@/features/garage/hpi';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 import { detectSprints, type SprintKind, type SprintPoint } from './sprint';
@@ -36,26 +37,29 @@ export type LeaderRow = {
   rank: number; userId: string; username: string; displayName: string | null; avatarUrl: string | null;
   car: string | null; make: string | null; model: string | null; timeMs: number; exitSpeedKmh: number | null; driveId: string; achievedAt: string;
   isMe: boolean; isSimulated: boolean;
+  /** Classe du véhicule (HPI, migration 0029) */
+  hpi: number | null; cls: ClassKey | null;
   /** Classement Score : points et distance du drive */
   score?: number; distanceM?: number;
 };
 type Row = {
   rank: number; user_id: string; username: string; display_name: string | null; avatar_url: string | null;
   make: string | null; model: string | null; time_ms: number; exit_speed_kmh?: number | null; drive_id: string;
-  achieved_at: string; is_me: boolean; is_simulated?: boolean;
+  achieved_at: string; is_me: boolean; is_simulated?: boolean; hpi?: number | null; cls?: ClassKey | null;
 };
 const toRow = (r: Row): LeaderRow => ({
   rank: r.rank, userId: r.user_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url,
   car: r.make ? `${r.make} ${r.model ?? ''}`.trim() : null, make: r.make, model: r.model, timeMs: r.time_ms, exitSpeedKmh: r.exit_speed_kmh ?? null,
   driveId: r.drive_id, achievedAt: r.achieved_at, isMe: r.is_me, isSimulated: !!r.is_simulated,
+  hpi: r.hpi ?? null, cls: r.cls ?? null,
 });
 
-export type LeaderFilter = { scope: LeaderScope; country?: string | null; vehicleId?: string | null };
+export type LeaderFilter = { scope: LeaderScope; country?: string | null; vehicleId?: string | null; cls?: ClassKey | null };
 
 export async function leaderboardSprint(kind: SprintKind, f: LeaderFilter): Promise<LeaderRow[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase.rpc('leaderboard_sprint', {
-    p_kind: kind, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50,
+    p_kind: kind, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50, ...(f.cls ? { p_class: f.cls } : {}),
   });
   if (error) throw error;
   return ((data ?? []) as Row[]).map(toRow);
@@ -64,7 +68,7 @@ export async function leaderboardSprint(kind: SprintKind, f: LeaderFilter): Prom
 export async function leaderboardLaps(circuitId: string, f: LeaderFilter): Promise<LeaderRow[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase.rpc('leaderboard_laps', {
-    p_circuit: circuitId, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50,
+    p_circuit: circuitId, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50, ...(f.cls ? { p_class: f.cls } : {}),
   });
   if (error) throw error;
   return ((data ?? []) as Row[]).map(toRow);
@@ -73,7 +77,7 @@ export async function leaderboardLaps(circuitId: string, f: LeaderFilter): Promi
 /** Meilleur score sur route ouverte, toutes voitures confondues (migration 0025). */
 export async function leaderboardScore(f: LeaderFilter): Promise<LeaderRow[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.rpc('leaderboard_score', { p_scope: f.scope, p_country: f.country ?? null, p_limit: 50 });
+  const { data, error } = await supabase.rpc('leaderboard_score', { p_scope: f.scope, p_country: f.country ?? null, p_limit: 50, ...(f.cls ? { p_class: f.cls } : {}) });
   if (error) throw error;
   return ((data ?? []) as (Omit<Row, 'time_ms'> & { score: number; distance_m: number })[])
     .map((r) => ({ ...toRow({ ...r, time_ms: 0 }), score: r.score, distanceM: r.distance_m }));

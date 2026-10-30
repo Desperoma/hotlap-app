@@ -6,6 +6,7 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LiveDashboard, SpeedCard, Tile } from '@/components/live/LiveDashboard';
 import { SprintPanel } from '@/components/SprintPanel';
 import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, SegmentedControl } from '@/components/ui';
@@ -17,6 +18,7 @@ import { SIM_STYLES, simulatedDrive, simulatedSprint, TEST_TOOLS, type SimStyle 
 import { checkRecording, refusalMessage, type RecordingContext } from '@/features/recording/authorization';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import { useRecorder } from '@/features/recording/useRecorder';
+import { setPref, usePrefs, type LiveView } from '@/features/settings/prefs';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
@@ -26,7 +28,7 @@ import { darkMapStyle } from '@/theme/mapStyle';
  */
 export default function LiveDriveScreen() {
   const { profile, primaryVehicle, vehicles } = useAuth();
-  const { status, points, stats, recorder, mode: activeMode } = useRecorder();
+  const { status, points, stats, recorder, mode: activeMode, startedAt } = useRecorder();
   // Mode du prochain drive (avant le départ) ; pendant l'enregistrement, celui du recorder.
   const [nextMode, setNextMode] = useState<'free' | 'sprint'>('free');
   const mapRef = useRef<MapView>(null);
@@ -130,6 +132,61 @@ export default function LiveDriveScreen() {
   };
 
   const recording = status !== 'idle';
+  const prefs = usePrefs();
+  const [picked, setPicked] = useState<LiveView | null>(null);
+  const view = picked ?? prefs.liveView;
+  const setView = (v: LiveView) => { setPicked(v); setPref('liveView', v); };
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!recording) return;
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [recording]);
+
+  // En route : tableau de bord (carte, cercle de force G, ou les deux).
+  if (recording && stats) {
+    const speedKmh = Math.max(0, (last?.speed ?? 0) * 3.6);
+    const maxKmh = points.reduce((m, p) => Math.max(m, (p.speed ?? 0) * 3.6), 0);
+    const ctx = where ? (where.context === 'circuit' ? `CIRCUIT${where.countryCode ? ` · ${where.countryCode}` : ''}` : `OPEN ROAD${where.countryCode ? ` · ${where.countryCode}` : ''}`) : 'OPEN ROAD';
+    return (
+      <LiveDashboard
+        overline={activeMode === 'sprint' ? `SPRINT · ${ctx}` : ctx}
+        name={where?.circuitName ?? (activeMode === 'sprint' ? 'Sprint' : 'Free drive')}
+        elapsedMs={startedAt ? now - startedAt : stats.durationS * 1000}
+        view={view} onView={setView}
+        paused={status === 'paused'}
+        onBack={() => (router.canGoBack() ? router.back() : router.navigate('/'))}
+        onPause={() => (status === 'paused' ? recorder.resume() : recorder.pause())}
+        onFinish={stop}
+        map={(style) => MAPS_AVAILABLE ? (
+          <MapView
+            ref={mapRef}
+            style={style}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            customMapStyle={darkMapStyle}
+            userInterfaceStyle="dark"
+            mapType={prefs.mapType}
+            showsUserLocation
+            showsMyLocationButton={false}
+            initialRegion={last ? { latitude: last.lat, longitude: last.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 } : undefined}
+          >
+            {points.length > 1 && (
+              <Polyline coordinates={points.map((p) => ({ latitude: p.lat, longitude: p.lng }))} strokeColor={colors.accent} strokeWidth={5} />
+            )}
+          </MapView>
+        ) : (
+          <View style={[style, styles.noMapSmall]}><Text style={styles.panelText}>Map unavailable</Text></View>
+        )}
+      >
+        {activeMode === 'sprint' ? <SprintPanel points={points} /> : <SpeedCard kmh={speedKmh} />}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <Tile label="DISTANCE" value={`${formatKm(stats.distanceM)} km`} />
+          <Tile label="AVG" value={`${Math.round(stats.avgSpeedKmh)}`} sub="KM/H" />
+          <Tile label="MAX" value={`${Math.round(maxKmh)}`} sub="KM/H" />
+        </View>
+      </LiveDashboard>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -286,6 +343,7 @@ const glass = { backgroundColor: 'rgba(22,25,22,0.92)', borderWidth: 1, borderCo
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  noMapSmall: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgElevated },
   noMap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   top: { position: 'absolute', top: 0, left: 0, right: 0, padding: spacing.lg, gap: spacing.md },
   brand: { ...glass, flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.md },

@@ -5,7 +5,8 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card, Screen, SegmentedControl } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import type { DetailsVisibility, FollowPolicy } from '@/lib/database.types';
+import { VISIBILITY_HINT, VISIBILITY_OPTIONS } from '@/features/drives/visibility';
+import type { DetailsVisibility, FollowPolicy, Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
 const FOLLOW: { value: FollowPolicy; label: string }[] = [
@@ -25,9 +26,9 @@ const DETAILS: { value: DetailsVisibility; label: string }[] = [
 export default function PrivacySettingsScreen() {
   const { profile, updateProfile } = useAuth();
   const [saving, setSaving] = useState(false);
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/profile'));
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/settings'));
 
-  const save = async (patch: { follow_policy?: FollowPolicy; details_visibility?: DetailsVisibility }) => {
+  const save = async (patch: { follow_policy?: FollowPolicy; details_visibility?: DetailsVisibility; default_drive_visibility?: Visibility }) => {
     setSaving(true);
     try {
       await updateProfile(patch);
@@ -40,6 +41,7 @@ export default function PrivacySettingsScreen() {
 
   const policy = profile?.follow_policy ?? 'open';
   const details = profile?.details_visibility ?? 'followers';
+  const defaultVis = profile?.default_drive_visibility ?? 'private';
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
@@ -66,6 +68,12 @@ export default function PrivacySettingsScreen() {
         <Text style={styles.hint}>
           Your username, name, bio and photo are always public. A car used on a drive stays visible on that drive.
         </Text>
+      </Card>
+
+      <Card style={{ gap: spacing.md }}>
+        <Text style={styles.label}>Default visibility of new drives</Text>
+        <SegmentedControl options={VISIBILITY_OPTIONS} value={defaultVis} onChange={(v) => !saving && save({ default_drive_visibility: v })} />
+        <Text style={styles.hint}>{VISIBILITY_HINT[defaultVis]} You can still change it on each drive before publishing.</Text>
       </Card>
 
       <Card onPress={() => router.push('/settings/privacy-zone')} style={styles.link}>

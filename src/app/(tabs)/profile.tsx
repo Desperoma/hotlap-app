@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { GarageCarCard } from '@/components/GarageCarCard';
@@ -13,7 +13,6 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { placeLine } from '@/features/places/format';
 import { listMyCrews, type MyCrew } from '@/features/crews/api';
 import { myVehicleStats, type VehicleStats } from '@/features/garage/stats';
-import { deleteAccount } from '@/features/moderation/api';
 import { CheckInBar } from '@/features/profile/CheckInBar';
 import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from '@/features/profile/api';
 import { listPeople } from '@/features/social/api';
@@ -21,7 +20,7 @@ import { colors, fonts, radius, spacing, type } from '@/theme';
 
 /** Driver Profile : identité, compteurs, raccourcis, My Garage / Drive Log. */
 export default function ProfileScreen() {
-  const { session, profile, vehicles, primaryVehicle, signOut } = useAuth();
+  const { session, profile, vehicles, primaryVehicle } = useAuth();
   const [tab, setTab] = useState<'garage' | 'log'>('garage');
   const [carStats, setCarStats] = useState<Map<string, VehicleStats>>(new Map());
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
@@ -30,37 +29,6 @@ export default function ProfileScreen() {
   const [crews, setCrews] = useState<MyCrew[]>([]);
   const [xp, setXp] = useState<DriverXp | null>(null);
   const userId = session?.user.id;
-
-  const [deleting, setDeleting] = useState(false);
-
-  // Double confirmation : la suppression est définitive.
-  const askDelete = () =>
-    Alert.alert('Delete your account?', 'Your profile, drives, photos, comments and follows will be deleted for good.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Continue',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('This can’t be undone', 'Delete your HotLap account now?', [
-            { text: 'Keep my account', style: 'cancel' },
-            {
-              text: 'Delete account',
-              style: 'destructive',
-              onPress: async () => {
-                if (!userId) return;
-                setDeleting(true);
-                try {
-                  await deleteAccount(userId);
-                  await signOut();
-                } catch (e) {
-                  setDeleting(false);
-                  Alert.alert('Deletion failed', e instanceof Error ? e.message : String(e));
-                }
-              },
-            },
-          ]),
-      },
-    ]);
 
   // Rechargé à chaque retour sur l'onglet (ex. après avoir sauvegardé un drive).
   useFocusEffect(
@@ -86,8 +54,8 @@ export default function ProfileScreen() {
           <Text style={styles.overline}>DRIVER PROFILE</Text>
           <Text style={styles.handle}>@{profile?.username ?? 'driver'}</Text>
         </View>
-        <Pressable style={styles.iconBtn} onPress={signOut} accessibilityLabel="Se déconnecter">
-          <Ionicons name="log-out-outline" size={18} color={colors.text} />
+        <Pressable style={styles.iconBtn} onPress={() => router.push('/settings')} accessibilityLabel="Settings">
+          <Ionicons name="settings-outline" size={18} color={colors.text} />
         </Pressable>
       </View>
 
@@ -123,16 +91,11 @@ export default function ProfileScreen() {
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
-        <Shortcut icon="radio-button-on" title="Record a drive" text="Log a new road session" onPress={() => router.push('/record')} />
-        <Shortcut icon="map-outline" title="Explore the map" text="Find roads and drivers nearby" onPress={() => router.push('/map')} />
         <Shortcut icon="people-outline" title="Crews" text="Create, join or manage your crews" onPress={() => router.push('/crews')} />
-        <Shortcut icon="compass-outline" title="Discover" text="Live G-force, drives and circuits near you" onPress={() => router.push('/discover')} />
         {requests > 0 && (
           <Shortcut icon="person-add-outline" title={`Follow requests (${requests})`} text="Accept or decline"
             onPress={() => router.push('/people/requests')} />
         )}
-        <Shortcut icon="lock-closed-outline" title="Privacy" text="Followers, garage and city, private zone"
-          onPress={() => router.push('/settings/privacy')} />
       </Card>
 
       <View style={styles.tabs}>
@@ -178,7 +141,6 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      <Button title="Delete account" variant="ghost" icon="trash-outline" onPress={askDelete} loading={deleting} />
     </Screen>
   );
 }

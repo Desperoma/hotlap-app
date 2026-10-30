@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 
 import { simulateCircuitPoints } from '../src/features/circuit/simulate';
-import { detectLaps, startLineFromHeading, startLineOnPath, type LL } from '../src/features/circuit/laps';
+import { detectLaps, lapCrossings, liveDelta, startLineFromHeading, startLineOnPath, type LL } from '../src/features/circuit/laps';
 
 // Ovale de 400 × 200 m autour de (48, 2), 240 points, fermé.
 const ky = 110_540, kx = 111_320 * Math.cos((48 * Math.PI) / 180);
@@ -31,6 +31,21 @@ assert.equal(detectLaps(pts, h).length, 3);
 
 // Demi-tour ou marche arrière sur la ligne : pas de tour.
 assert.equal(detectLaps(pts.slice(0, 40), line).length, 0);
+
+// Écart en direct : à la fin d'un tour, l'écart vaut (ce tour − meilleur tour) ; au départ, ~0.
+{
+  const cross = lapCrossings(pts, line);
+  const best = Math.min(...laps.map((l) => l.timeMs));
+  const third = laps[2];
+  const before = pts.filter((p) => p.ts <= third.startedAt + third.timeMs - 1);
+  const d = liveDelta(before, line, third.startedAt + third.timeMs - 1)!;
+  assert.ok(d, 'écart disponible au 3e tour');
+  assert.ok(Math.abs(d.deltaMs - (third.timeMs - best)) < 2500, `écart fin de tour ${d.deltaMs} vs ${third.timeMs - best}`);
+  assert.ok(d.progress > 0.9, `progression ${d.progress}`);
+  const early = liveDelta(pts.filter((p) => p.ts <= cross[2] + 1000), line, cross[2] + 1000)!;
+  assert.ok(Math.abs(early.deltaMs) < 2500 && early.progress < 0.2, `début de tour ${early.deltaMs} ${early.progress}`);
+  assert.equal(liveDelta(pts.slice(0, 30), line), null);
+}
 
 if (process.argv.includes('--sql')) {
   writeFileSync(process.argv[process.argv.indexOf('--sql') + 1], JSON.stringify({ oval, points: pts, laps }));
