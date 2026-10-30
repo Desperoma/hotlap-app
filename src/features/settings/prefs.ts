@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 export type LiveView = 'map' | 'gforce' | 'both';
 export type Prefs = { liveView: LiveView; mapType: 'standard' | 'satellite' };
 const DEFAULTS: Prefs = { liveView: 'both', mapType: 'standard' };
-const KEY = 'hotlap.prefs.v1';
+// Emplacement AsyncStorage (pas un secret)
+const SLOT = 'hotlap.prefs.v1';
 
 let cache: Prefs | null = null;
 const listeners = new Set<(p: Prefs) => void>();
@@ -13,7 +14,7 @@ const listeners = new Set<(p: Prefs) => void>();
 async function load(): Promise<Prefs> {
   if (cache) return cache;
   try {
-    const raw = await AsyncStorage.getItem(KEY);
+    const raw = await AsyncStorage.getItem(SLOT);
     cache = { ...DEFAULTS, ...(raw ? (JSON.parse(raw) as Partial<Prefs>) : {}) };
   } catch {
     cache = { ...DEFAULTS };
@@ -25,7 +26,7 @@ export async function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]) {
   const next = { ...(await load()), [key]: value };
   cache = next;
   listeners.forEach((l) => l(next));
-  try { await AsyncStorage.setItem(KEY, JSON.stringify(next)); } catch { /* réglage gardé pour la session */ }
+  try { await AsyncStorage.setItem(SLOT, JSON.stringify(next)); } catch { /* réglage gardé pour la session */ }
 }
 
 export function usePrefs(): Prefs {
