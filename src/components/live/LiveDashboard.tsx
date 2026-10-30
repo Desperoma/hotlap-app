@@ -45,8 +45,8 @@ export function LiveDashboard({ overline, name, elapsedMs, view, onView, map, pa
           <Text style={styles.name} numberOfLines={1}>{name}</Text>
         </View>
         <Text style={styles.elapsed}>{clock(elapsedMs)}</Text>
-        <ViewSwitch value={view} onChange={onView} />
       </View>
+      <ViewSwitch value={view} onChange={onView} />
 
       {view === 'both' ? (
         <View style={[styles.row, { height: tall ? 330 : 280 }]}>
@@ -82,11 +82,11 @@ export function LiveDashboard({ overline, name, elapsedMs, view, onView, map, pa
   );
 }
 
-/** Choix de la vue : carte, les deux, G-force (réglage par défaut dans Settings > Interface). */
+/** Choix de la vue pendant le drive : carte, les deux, G-force (vue par défaut : Settings > Interface). */
 function ViewSwitch({ value, onChange }: { value: LiveView; onChange: (v: LiveView) => void }) {
   const items: { v: LiveView; icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }[] = [
     { v: 'map', icon: 'map-outline', label: 'Map' },
-    { v: 'both', icon: 'view-split-vertical', label: 'Map and G-force' },
+    { v: 'both', icon: 'view-split-vertical', label: 'Both' },
     { v: 'gforce', icon: 'target', label: 'G-force' },
   ];
   return (
@@ -95,6 +95,7 @@ function ViewSwitch({ value, onChange }: { value: LiveView; onChange: (v: LiveVi
         <Pressable key={i.v} onPress={() => onChange(i.v)} style={[styles.switchItem, value === i.v && styles.switchOn]}
           accessibilityLabel={i.label} accessibilityState={{ selected: value === i.v }} hitSlop={4}>
           <MaterialCommunityIcons name={i.icon} size={16} color={value === i.v ? colors.accentText : colors.textMuted} />
+          <Text style={[styles.switchText, value === i.v && { color: colors.accentText }]}>{i.label}</Text>
         </Pressable>
       ))}
     </View>
@@ -186,8 +187,9 @@ const styles = StyleSheet.create({
   overline: { ...type.overline, color: colors.accent, fontSize: 10 },
   name: { ...type.h2, color: colors.text, fontSize: 18 },
   elapsed: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 16 },
-  switch: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 10, padding: 2, gap: 2 },
-  switchItem: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  switch: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 12, padding: 3, gap: 3, borderWidth: 1, borderColor: colors.border },
+  switchItem: { flex: 1, height: 34, borderRadius: 9, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' },
+  switchText: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 12 },
   switchOn: { backgroundColor: colors.accent },
   row: { flexDirection: 'row', gap: spacing.sm },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md },

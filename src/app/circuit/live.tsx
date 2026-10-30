@@ -8,7 +8,7 @@ import { getCircuit, type CircuitDetail } from '@/features/circuit/api';
 import { formatLap, liveDelta, liveLaps, startLineFromHeading, startLineOnPath } from '@/features/circuit/laps';
 import { setPendingDrive } from '@/features/drives/pending';
 import { useRecorder } from '@/features/recording/useRecorder';
-import { setPref, usePrefs, type LiveView } from '@/features/settings/prefs';
+import { usePrefs, type LiveView } from '@/features/settings/prefs';
 import { colors, spacing } from '@/theme';
 
 /**
@@ -23,7 +23,8 @@ export default function CircuitLiveScreen() {
   const prefs = usePrefs();
   const [picked, setPicked] = useState<LiveView | null>(null);
   const view = picked ?? prefs.liveView;
-  const setView = (v: LiveView) => { setPicked(v); setPref('liveView', v); };
+  // Changer de vue pendant le drive ne touche pas à la vue par défaut (Settings > Interface).
+  const setView = (v: LiveView) => setPicked(v);
 
   useEffect(() => {
     if (circuitId) getCircuit(circuitId).then(setCircuit).catch(() => {});
