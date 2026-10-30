@@ -159,3 +159,18 @@ Sur la machine serveur (Windows, Tailscale installé), une seule fois :
 
 La tâche démarre `npm run start:go` sur l'IP Tailscale au démarrage de Windows, le relance s'il s'arrête,
 récupère `main` toutes les 10 minutes et n'ouvre le port 8081 qu'aux adresses Tailscale.
+
+### Expo Go sans serveur : EAS Update
+
+`npm run update:go -- "message"` publie l'app sur EAS Update (canal `go`, environnement EAS `preview`,
+outils de test activés). Les testeurs l'ouvrent dans Expo Go depuis un lien fixe, sans serveur de dev
+ni Tailscale :
+
+```
+exp://u.expo.dev/2917e236-175f-4b58-a141-f86c1179dd06?runtime-version=exposdk%3A58.0.0&channel-name=go
+```
+
+- Il faut être connecté à EAS (`npx eas-cli@latest whoami`) avec un compte membre de `@hotlaphar`.
+- Chaque publication remplace la précédente ; les testeurs l'ont en rouvrant le lien.
+- Changement de SDK Expo : le lien change (`exposdk:<SDK>.0.0`), et Expo Go doit être sur le même SDK.
+- Les builds natifs ne sont pas concernés (`updates.enabled` n'est vrai que pour cette publication).
