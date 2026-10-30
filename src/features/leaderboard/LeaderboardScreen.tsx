@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { ClassBadge } from '@/components/ClassBadge';
 import { Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatLap } from '@/features/circuit/laps';
 import { carImageFor } from '@/features/garage/carImage';
+import { CLASSES, type ClassKey } from '@/features/garage/hpi';
 import { flagOf } from '@/features/places/format';
 import {
   circuitsWithLaps, leaderboardLaps, leaderboardScore, leaderboardSprint, type LapCircuit, type LeaderRow, type LeaderScope,
@@ -46,6 +48,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   const [group, setGroup] = useState<Group>(params.circuit ? 'laps' : groupOf(params.kind) ?? (asTab ? 'accel' : 'score'));
   const [sprint, setSprint] = useState<SprintKind>(groupOf(params.kind) ? params.kind as SprintKind : '0_100');
   const [scope, setScope] = useState<LeaderScope>('world');
+  const [cls, setCls] = useState<ClassKey | 'all'>('all');
   const [picked, setVehicleId] = useState<string | null>(null);
   const vehicleId = picked ?? primaryVehicle?.id ?? vehicles?.[0]?.id ?? null;
   const [circuits, setCircuits] = useState<LapCircuit[]>([]);
@@ -93,12 +96,12 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
     setRows(null);
     setError(false);
     if (group === 'score' && scope === 'model') return;
-    const f = { scope, country, vehicleId: scope === 'model' ? vehicleId : null };
+    const f = { scope, country, vehicleId: scope === 'model' ? vehicleId : null, cls: cls === 'all' ? null : cls };
     const q = group === 'score' ? leaderboardScore(f)
       : group === 'laps' ? (circuitId ? leaderboardLaps(circuitId, f) : Promise.resolve([])) : leaderboardSprint(sprint, f);
     q.then((r) => live && setRows(r)).catch(() => live && (setRows([]), setError(true)));
     return () => { live = false; };
-  }, [group, sprint, scope, country, vehicleId, circuitId]);
+  }, [group, sprint, scope, country, vehicleId, circuitId, cls]);
 
   const top = useMemo(() => rows?.filter((r) => r.rank <= 50) ?? [], [rows]);
   const podium = top.filter((r) => r.rank <= 3).slice(0, 3);
@@ -114,6 +117,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   const selected = group === 'score' ? 'Score · Open road'
     : group === 'laps' ? `Laps · ${circuit?.name ?? 'Circuit'}`
     : `${group === 'accel' ? 'Acceleration' : 'Distance'} · ${sprintLabel(sprint)}`;
+  const classLabel = cls === 'all' ? '' : ` · Class ${cls}`;
   const what = group === 'score' ? 'Highest score' : group === 'laps' ? 'Fastest lap time' : 'Fastest recorded time';
 
   return (
@@ -152,6 +156,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
           : <Text style={styles.muted}>Aucun tour chronométré pour l’instant. Lance un drive depuis la fiche d’un circuit.</Text>
       )}
       <Chips items={scopes} value={scope} onChange={setScope} small />
+      <ClassChips value={cls} onChange={setCls} />
       {scope === 'model' && vehicles && vehicles.length > 1 && (
         <Chips items={vehicles.map((v) => ({ key: v.id, label: `${v.make} ${v.model}` }))} value={vehicleId ?? ''} onChange={setVehicleId} small />
       )}
@@ -159,7 +164,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
       <View style={styles.selected}>
         <Text style={styles.selectedOver}>SELECTED LEADERBOARD</Text>
         <Text style={styles.selectedTitle}>{selected}</Text>
-        <Text style={styles.muted}>{scopeLabel} · {what}</Text>
+        <Text style={styles.muted}>{scopeLabel}{classLabel} · {what}</Text>
         {group !== 'laps' && (
           <Text style={styles.faint}>
             {group === 'score' ? 'Best score of a drive on open roads, all cars combined.'
@@ -231,6 +236,7 @@ function Step({ r, place, metric }: { r: LeaderRow; place: 1 | 2 | 3; metric: Me
           <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={first ? 34 : 28} />
           <Text style={styles.stepName} numberOfLines={1}>{nameOf(r)}</Text>
           <Text style={styles.stepCar} numberOfLines={1}>{r.car ?? '—'}</Text>
+          {r.cls && <ClassBadge cls={r.cls} size="sm" />}
           <Text style={[styles.stepValue, { color: first ? colors.accent : colors.text }, first && { fontSize: 18 }]} numberOfLines={1}
             adjustsFontSizeToFit>{value(r, metric)}</Text>
         </View>
@@ -250,7 +256,10 @@ function Line({ r, metric }: { r: LeaderRow; metric: Metric }) {
       <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={30} />
       <View style={{ flex: 1 }}>
         <Text style={styles.name} numberOfLines={1}>{nameOf(r)}{r.isSimulated ? ' · TEST' : ''}</Text>
-        <Text style={styles.car} numberOfLines={1}>{r.car ?? '—'}</Text>
+        <View style={styles.carRow}>
+          {r.cls && <ClassBadge cls={r.cls} size="sm" />}
+          <Text style={[styles.car, { flexShrink: 1 }]} numberOfLines={1}>{r.car ?? '—'}</Text>
+        </View>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={styles.time}>{value(r, metric)}</Text>
@@ -258,6 +267,25 @@ function Line({ r, metric }: { r: LeaderRow; metric: Metric }) {
           : metric === 'sprint' && r.exitSpeedKmh != null ? <Text style={styles.car}>{Math.round(r.exitSpeedKmh)} km/h</Text> : null}
       </View>
     </Pressable>
+  );
+}
+
+/** Filtre par classe de véhicule : badges D → X, « All » en premier. */
+function ClassChips({ value, onChange }: { value: ClassKey | 'all'; onChange: (v: ClassKey | 'all') => void }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, alignItems: 'center' }}>
+      <Pressable onPress={() => onChange('all')} accessibilityState={{ selected: value === 'all' }}
+        style={[styles.chip, styles.chipSmall, value === 'all' && styles.chipOutline]}>
+        <Text style={[styles.chipText, value === 'all' && styles.chipTextOutline]}>All classes</Text>
+      </Pressable>
+      {CLASSES.map((c) => (
+        <Pressable key={c.key} onPress={() => onChange(c.key)} accessibilityLabel={`Class ${c.key}`}
+          accessibilityState={{ selected: value === c.key }}
+          style={[styles.classChip, value === c.key && { borderColor: c.color, backgroundColor: 'rgba(255,255,255,0.06)' }]}>
+          <ClassBadge cls={c.key} size="sm" />
+        </Pressable>
+      ))}
+    </ScrollView>
   );
 }
 
@@ -324,5 +352,7 @@ const styles = StyleSheet.create({
   thumb: { width: 52, height: 30 },
   name: { color: colors.text, fontFamily: fonts.semibold, fontSize: 14 },
   car: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 11 },
+  carRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  classChip: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: colors.border },
   time: { color: colors.text, fontFamily: fonts.semibold, fontSize: 16 },
 });

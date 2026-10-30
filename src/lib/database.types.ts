@@ -31,6 +31,10 @@ export interface Profile {
   onboarded_at: string | null;
   follow_policy: FollowPolicy;
   details_visibility: DetailsVisibility;
+  /** Compte développeur (migration 0029) : voit tous les profils et drives, corrige les circuits */
+  is_dev?: boolean;
+  /** Visibilité par défaut des nouveaux drives (migration 0029) */
+  default_drive_visibility?: Visibility;
   created_at: string;
 }
 
@@ -120,6 +124,8 @@ export interface Drive {
 export interface DriveFeedItem extends Drive {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url'>;
   vehicle: Pick<Vehicle, 'make' | 'model' | 'year' | 'color'> | null;
+  /** Classe du véhicule (vehicle_classes, migration 0029), absente sans puissance / poids */
+  vehicle_class?: { hpi: number; cls: 'D' | 'C' | 'B' | 'A' | 'S1' | 'S2' | 'X' } | null;
   liked_by_me: boolean;
   /** Aperçu du tracé (simplifié, sans les zones de confidentialité pour les autres). Vide si masqué. */
   /** Un tracé, ou plusieurs morceaux quand la zone privée du domicile le coupe */

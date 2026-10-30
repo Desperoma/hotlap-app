@@ -6,6 +6,7 @@
  * Le 0-100 est le meilleur mesuré en mode Sprint avec ce véhicule, sinon une estimation tirée du
  * rapport poids/puissance. Repères : Fiat Panda ≈ 180 (D), Golf GTI ≈ 510 (B), 911 GT3 ≈ 780 (A),
  * Ferrari 296 ≈ 900 (S2), Bugatti Chiron ≈ 990 (X).
+ * Même calcul en SQL (hpi_of, migration 0029) pour les classements : modifier les deux ensemble.
  * Fichier sans dépendance Expo, testé par npm run levels:test.
  */
 

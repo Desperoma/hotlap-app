@@ -1,16 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { CircuitMap } from '@/components/CircuitMap';
-import { Button } from '@/components/ui';
+import { LapCard, LiveDashboard, Tile } from '@/components/live/LiveDashboard';
 import { getCircuit, type CircuitDetail } from '@/features/circuit/api';
-import { formatLap, liveLaps, startLineFromHeading, startLineOnPath } from '@/features/circuit/laps';
+import { formatLap, liveDelta, liveLaps, startLineFromHeading, startLineOnPath } from '@/features/circuit/laps';
 import { setPendingDrive } from '@/features/drives/pending';
 import { useRecorder } from '@/features/recording/useRecorder';
-import { colors, fonts, radius, spacing, type } from '@/theme';
+import { setPref, usePrefs, type LiveView } from '@/features/settings/prefs';
+import { colors, spacing } from '@/theme';
 
 /**
  * Drive sur circuit en cours : plan fixe du circuit (pas de carte qui bouge), voiture et tracé roulé,
@@ -21,6 +20,10 @@ export default function CircuitLiveScreen() {
   const { status, points, recorder, circuitId, circuitName, simulated, startedAt } = useRecorder();
   const [circuit, setCircuit] = useState<CircuitDetail | null>(null);
   const [now, setNow] = useState(Date.now());
+  const prefs = usePrefs();
+  const [picked, setPicked] = useState<LiveView | null>(null);
+  const view = picked ?? prefs.liveView;
+  const setView = (v: LiveView) => { setPicked(v); setPref('liveView', v); };
 
   useEffect(() => {
     if (circuitId) getCircuit(circuitId).then(setCircuit).catch(() => {});
@@ -64,75 +67,43 @@ export default function CircuitLiveScreen() {
   };
 
   const elapsed = startedAt ? Math.max(0, now - startedAt) : 0;
+  const delta = useMemo(() => liveDelta(points, line, now), [points, line, now]);
+  const lastDelta = live.last && live.best ? live.last.timeMs - live.best.timeMs : null;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.head}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} hitSlop={10} style={styles.back} accessibilityLabel="Back">
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.overline}>{status === 'paused' ? 'PAUSED' : simulated ? 'SIMULATION' : 'ON TRACK'}</Text>
-          <Text style={styles.name} numberOfLines={1}>{circuitName ?? 'Circuit'}</Text>
-        </View>
-        <Text style={styles.total}>{formatLap(elapsed).replace(/\.\d+$/, '')}</Text>
-      </View>
-
-      {circuit ? (
+    <LiveDashboard
+      overline={simulated ? 'CIRCUIT SESSION · SIMULATION' : 'CIRCUIT SESSION'}
+      name={circuitName ?? 'Circuit'}
+      elapsedMs={elapsed}
+      view={view}
+      onView={setView}
+      paused={status === 'paused'}
+      onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+      onPause={() => (status === 'paused' ? recorder.resume() : recorder.pause())}
+      onFinish={finish}
+      map={(style) => circuit ? (
         <CircuitMap circuit={circuit} startLine={line} driven={driven} car={last ? { latitude: last.lat, longitude: last.lng } : null}
-          style={styles.map} />
+          satellite={prefs.mapType === 'satellite'} style={style} />
       ) : (
-        <View style={[styles.map, styles.loading]}><ActivityIndicator color={colors.accent} /></View>
+        <View style={[style, styles.loading]}><ActivityIndicator color={colors.accent} /></View>
       )}
-
-      <View style={styles.panel}>
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>{live.started ? `LAP ${live.laps.length + 1}` : 'CROSS THE LINE'}</Text>
-            <Text style={styles.lapTime}>{live.currentMs != null ? formatLap(live.currentMs) : '—:—'}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.speed}>{speed}</Text>
-            <Text style={styles.label}>KM/H</Text>
-          </View>
-        </View>
-        <View style={styles.row}>
-          <Stat label="LAST" value={live.last ? formatLap(live.last.timeMs) : '—'} />
-          <Stat label="BEST" value={live.best ? formatLap(live.best.timeMs) : '—'} accent />
-          <Stat label="LAPS" value={String(live.laps.length)} />
-        </View>
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Button title={status === 'paused' ? 'Resume' : 'Pause'} variant="secondary" style={{ flex: 1 }}
-            onPress={() => (status === 'paused' ? recorder.resume() : recorder.pause())} />
-          <Button title="Finish" icon="flag" style={{ flex: 1 }} onPress={finish} />
-        </View>
+    >
+      <LapCard label={live.started ? `CURRENT LAP · ${live.laps.length + 1}` : 'CROSS THE LINE'}
+        time={live.currentMs != null ? formatLap(live.currentMs) : '—:—.———'}
+        deltaMs={delta?.deltaMs ?? null} progress={delta?.progress ?? null} />
+      <View style={styles.tiles}>
+        <Tile label="LAST LAP" value={live.last ? formatLap(live.last.timeMs) : '—'}
+          sub={lastDelta ? `+${(lastDelta / 1000).toFixed(3)}` : live.last ? 'BEST' : undefined}
+          subColor={lastDelta ? colors.danger : colors.accent} />
+        <Tile label="BEST LAP" value={live.best ? formatLap(live.best.timeMs) : '—'} />
+        <Tile label="LAPS" value={String(live.laps.length)} />
+        <Tile label="SPEED" value={String(speed)} sub="KM/H" />
       </View>
-    </SafeAreaView>
-  );
-}
-
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <View style={{ flex: 1 }}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={[styles.stat, accent && { color: colors.accent }]}>{value}</Text>
-    </View>
+    </LiveDashboard>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.lg, gap: spacing.md },
-  head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.sm },
-  back: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
-  overline: { ...type.overline, color: colors.accent, fontSize: 10 },
-  name: { ...type.h2, color: colors.text, fontSize: 16 },
-  total: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 14 },
-  map: { flex: 1, minHeight: 260, borderRadius: radius.lg },
-  loading: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
-  panel: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md },
-  label: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
-  lapTime: { ...type.stat, color: colors.text, fontSize: 40, lineHeight: 46 },
-  speed: { ...type.stat, color: colors.text, fontSize: 30 },
-  stat: { color: colors.text, fontFamily: fonts.semibold, fontSize: 17 },
+  loading: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgElevated },
+  tiles: { flexDirection: 'row', gap: spacing.sm },
 });

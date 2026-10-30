@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
+import { ClassBadge } from '@/components/ClassBadge';
 import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { DriveSocial } from '@/components/DriveSocial';
 import { DriveTelemetry } from '@/components/DriveTelemetry';
@@ -28,7 +29,7 @@ import { colors, fonts, spacing, type } from '@/theme';
 /** Détail d'un drive : tracé, stats, score détaillé ; visibilité et suppression pour le propriétaire. */
 export default function DriveDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { session, vehicles } = useAuth();
+  const { session, vehicles, profile } = useAuth();
   const [drive, setDrive] = useState<DriveDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -41,18 +42,18 @@ export default function DriveDetailScreen() {
   const load = useCallback(() => {
     if (!id) return;
     setError(null);
-    getDrive(id, session?.user.id)
+    getDrive(id, session?.user.id, !!profile?.is_dev)
       .then(setDrive)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
     listDrivePhotos(id).then(setPhotos).catch(() => setPhotos([]));
     listDriveSprints(id).then(setSprints).catch(() => setSprints([]));
     listDriveLaps(id).then(setLaps).catch(() => setLaps([]));
-  }, [id, session?.user.id]);
+  }, [id, session?.user.id, profile?.is_dev]);
 
   useEffect(load, [load]);
 
-  // Télémétrie : points bruts, lisibles par le seul propriétaire.
-  const mine = !!drive?.isMine;
+  // Télémétrie : points bruts, lisibles par le propriétaire (et les comptes dev).
+  const mine = !!drive?.asAuthor;
   useEffect(() => {
     if (!id || !mine) return;
     getDrivePoints(id).then((p) => setSamples(buildSamples(p))).catch(() => setSamples([]));
@@ -131,7 +132,7 @@ export default function DriveDetailScreen() {
           stats={showcaseStats({
             durationS: drive.durationS,
             distanceM: drive.distanceM,
-            avgSpeedKmh: drive.isMine ? drive.avgSpeedKmh : null, // privées : propriétaire uniquement
+            avgSpeedKmh: drive.asAuthor ? drive.avgSpeedKmh : null, // privées : propriétaire uniquement
             maxSpeedKmh: drive.maxSpeedKmh, // visible par tous (0023)
             score: drive.score,
             maxLateralG: drive.maxLateralG,
@@ -165,14 +166,20 @@ export default function DriveDetailScreen() {
           </Text>
           {vehicle ? ` · ${vehicle}` : ''}
         </Text>
+        {(drive.vehicleClass || (drive.asAuthor && !drive.isMine)) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            {drive.vehicleClass && <ClassBadge cls={drive.vehicleClass.cls} hpi={drive.vehicleClass.hpi} />}
+            {drive.asAuthor && !drive.isMine && <Text style={styles.devTag}>DEV VIEW · AS AUTHOR</Text>}
+          </View>
+        )}
       </View>
 
-      {drive.isMine && samples && samples.length >= 2 ? (
+      {drive.asAuthor && samples && samples.length >= 2 ? (
         <DriveTelemetry samples={samples} />
       ) : (
         <DriveMap
           path={drive.path}
-          emptyLabel={drive.isMine ? (samples === null ? 'Loading route…' : 'No route recorded') : 'Route hidden (inside the driver’s private zone)'}
+          emptyLabel={drive.asAuthor ? (samples === null ? 'Loading route…' : 'No route recorded') : 'Route hidden (inside the driver’s private zone)'}
         />
       )}
 
@@ -216,6 +223,7 @@ function formatDate(iso: string) {
 
 const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
+  devTag: { color: '#F59E0B', fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
   overline: { ...type.overline, color: colors.accent },
   title: { ...type.h1, color: colors.text },
   muted: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, textAlign: 'left' },

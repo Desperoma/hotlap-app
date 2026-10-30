@@ -31,11 +31,11 @@ import { colors, fonts, spacing, type } from '@/theme';
  * Le drive reste dans pending.ts tant qu'il n'est pas sauvegardé ou abandonné.
  */
 export default function FinishDriveScreen() {
-  const { session, primaryVehicle, vehicles } = useAuth();
+  const { session, primaryVehicle, vehicles, profile } = useAuth();
   const [drive, setDrive] = useState<PendingDrive | null | undefined>(undefined);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [visibility, setVisibility] = useState<Visibility>('private');
+  const [visibility, setVisibility] = useState<Visibility>(profile?.default_drive_visibility ?? 'private');
   const [photos, setPhotos] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [vehicleId, setVehicleId] = useState<string | null | undefined>(undefined);

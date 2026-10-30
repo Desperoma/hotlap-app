@@ -8,8 +8,8 @@ import { colors, fonts } from '@/theme';
 
 type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 const TABS: Record<string, { icon: Icon; label: string }> = {
-  index: { icon: 'speedometer', label: 'PERFORMANCE' },
-  community: { icon: 'account-group', label: 'COMMUNITY' },
+  index: { icon: 'account-group', label: 'COMMUNITY' },
+  performance: { icon: 'speedometer', label: 'PERFORMANCE' },
   record: { icon: 'power', label: 'START DRIVE' },
   map: { icon: 'map-marker-radius', label: 'MAP' },
   profile: { icon: 'garage', label: 'GARAGE' },

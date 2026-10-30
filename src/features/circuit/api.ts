@@ -17,7 +17,7 @@ export const categoryOf = (k: string | null | undefined) => CATEGORIES.find((c) 
 export type CircuitDetail = {
   id: string; name: string; city: string | null; countryCode: string | null; kind: string; category: CircuitCategory;
   lapLengthM: number | null; website: string | null;
-  path: LL[][]; area: LL[][]; startLine: [LL, LL] | null; pathSource: 'osm' | 'drive' | null;
+  path: LL[][]; area: LL[][]; startLine: [LL, LL] | null; pathSource: 'osm' | 'drive' | 'manual' | null;
   bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number } | null;
 };
 
@@ -28,7 +28,7 @@ export async function getCircuit(id: string): Promise<CircuitDetail | null> {
   const r = ((data ?? []) as {
     id: string; name: string; city: string | null; country_code: string | null; kind: string; category: CircuitCategory;
     lap_length_m: number | null; website: string | null; path: unknown; area: unknown; start_line: unknown;
-    path_source: 'osm' | 'drive' | null; min_lat: number | null; min_lng: number | null; max_lat: number | null; max_lng: number | null;
+    path_source: 'osm' | 'drive' | 'manual' | null; min_lat: number | null; min_lng: number | null; max_lat: number | null; max_lng: number | null;
   }[])[0];
   if (!r) return null;
   const line = geoToRings(r.start_line)[0];
@@ -65,4 +65,12 @@ function lapError(error: { message: string }) {
   if (m.includes('circuit_start_outside')) return new Error('Le drive n’a pas démarré sur le circuit : les tours ne sont pas chronométrés.');
   if (m.includes('circuit_mode_required')) return new Error('Ce drive n’a pas été lancé depuis un circuit.');
   return new Error(m);
+}
+
+/** Comptes dev (migration 0029) : remplace le tracé d'un circuit (null : l'efface, il sera réappris). */
+export async function devSetCircuitPath(id: string, points: LL[] | null) {
+  const { error } = await supabase.rpc('dev_set_circuit_path', {
+    p_circuit: id, p_points: points ? points.map((p) => [Number(p.longitude.toFixed(7)), Number(p.latitude.toFixed(7))]) : null,
+  });
+  if (error) throw new Error(error.message.includes('dev_only') ? 'Réservé aux comptes développeurs.' : error.message);
 }

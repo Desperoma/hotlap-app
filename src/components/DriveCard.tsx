@@ -5,6 +5,7 @@ import type React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { ClassBadge } from '@/components/ClassBadge';
 import { DriveMap } from '@/components/DriveMap';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Card } from '@/components/ui';
@@ -50,7 +51,10 @@ export function PostHeader({ drive, onBlocked, right }: {
         <Avatar url={drive.author.avatar_url} name={name} size={40} />
         <View style={{ flex: 1 }}>
           <Text style={styles.author} numberOfLines={1}>{name}</Text>
-          <Text style={styles.time} numberOfLines={1}>{timeAgo(drive.created_at)}{drive.vehicle ? ` · ${drive.vehicle.make} ${drive.vehicle.model}` : ''}</Text>
+          <View style={styles.metaRow}>
+            {drive.vehicle_class && <ClassBadge cls={drive.vehicle_class.cls} size="sm" />}
+            <Text style={[styles.time, { flexShrink: 1 }]} numberOfLines={1}>{timeAgo(drive.created_at)}{drive.vehicle ? ` · ${drive.vehicle.make} ${drive.vehicle.model}` : ''}</Text>
+          </View>
         </View>
       </Pressable>
       {right}
@@ -120,6 +124,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   authorLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   author: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 },
   time: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12 },
   vehicle: {
     flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',

@@ -17,7 +17,7 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg } }}
     >
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="community" />
+      <Tabs.Screen name="performance" />
       <Tabs.Screen name="record" />
       <Tabs.Screen name="map" />
       <Tabs.Screen name="profile" />

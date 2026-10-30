@@ -21,14 +21,18 @@ export async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFe
   if (rows.length === 0) return [];
   const ownerIds = [...new Set(rows.map((r) => r.owner_id))];
   const vehicleIds = [...new Set(rows.map((r) => r.vehicle_id).filter((v): v is string => !!v))];
-  const [authors, vehicles, likes, paths] = await Promise.all([
+  const [authors, vehicles, likes, paths, classes] = await Promise.all([
     supabase.from('public_profiles').select('id, username, display_name, avatar_url').in('id', ownerIds),
     vehicleIds.length
       ? supabase.from('vehicles').select('id, make, model, year, color').in('id', vehicleIds)
       : Promise.resolve({ data: [] as { id: string; make: string; model: string; year: number | null; color: string | null }[], error: null }),
     supabase.from('likes').select('drive_id').eq('user_id', me).in('drive_id', rows.map((r) => r.id)),
     supabase.rpc('drive_path_previews', { p_drive_ids: rows.map((r) => r.id) }),
+    vehicleIds.length ? supabase.rpc('vehicle_classes', { p_vehicles: vehicleIds }) : Promise.resolve({ data: [] }),
   ]);
+  // Sans la migration 0029 : pas de classe, le reste s'affiche.
+  const classById = new Map(((classes.data ?? []) as { vehicle_id: string; hpi: number; cls: NonNullable<DriveFeedItem['vehicle_class']>['cls'] }[])
+    .map((c) => [c.vehicle_id, { hpi: c.hpi, cls: c.cls }]));
   for (const r of [authors, vehicles, likes]) if (r.error) throw r.error;
   // Sans aperçu (erreur réseau, fonction absente), le fil s'affiche quand même, sans carte.
   const pathById = new Map(((paths.data ?? []) as { drive_id: string; path: unknown }[]).map((p) => [p.drive_id, geojsonToPath(p.path)]));
@@ -43,6 +47,7 @@ export async function hydrate(rows: DriveCardRow[], me: string): Promise<DriveFe
       max_speed_kmh: null,
       author: authorById.get(r.owner_id) ?? { id: r.owner_id, username: 'driver', display_name: null, avatar_url: null },
       vehicle: v ? { make: v.make, model: v.model, year: v.year, color: v.color } : null,
+      vehicle_class: r.vehicle_id ? classById.get(r.vehicle_id) ?? null : null,
       liked_by_me: liked.has(r.id),
       path_preview: pathById.get(r.id) ?? [],
     };
