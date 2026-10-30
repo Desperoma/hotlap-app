@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { TrackIcon } from '@/components/TrackIcon';
 import { CATEGORIES, categoryOf, getCircuit } from '@/features/circuit/api';
 import type { LatLng } from '@/features/drives/api';
 import {
@@ -321,8 +322,8 @@ export default function MapScreen() {
               <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
                 zIndex={c.id === circuitId ? 9 : 4}
                 onPress={() => { setSelected(null); setCircuitId(c.id === circuitId ? null : c.id); }}>
-                <View style={[styles.circuitPin, { backgroundColor: cat.color }, c.id === circuitId && styles.pinSelected]}>
-                  <MaterialCommunityIcons name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color="#0B0B0B" />
+                <View style={[styles.trackPin, c.id === circuitId && styles.trackPinSelected]}>
+                  <TrackIcon category={cat.key} size={c.id === circuitId ? 34 : 28} />
                 </View>
               </Marker>
             );
@@ -384,7 +385,7 @@ export default function MapScreen() {
                   <Pressable key={c.key} accessibilityState={{ selected: active }}
                     onPress={() => setCats((s) => { const n = new Set(s); if (n.has(c.key)) n.delete(c.key); else n.add(c.key); return n; })}
                     style={[styles.chip, active && styles.chipActive]}>
-                    <View style={[styles.dot, { backgroundColor: c.color }]} />
+                    <TrackIcon category={c.key} size={16} />
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
                   </Pressable>
                 );
@@ -448,9 +449,7 @@ export default function MapScreen() {
         <View style={[styles.cards, { paddingHorizontal: spacing.lg }]}>
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={[styles.circuitPin, { backgroundColor: categoryOf(selectedCircuit.category).color }]}>
-                <MaterialCommunityIcons name={categoryOf(selectedCircuit.category).icon as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color="#0B0B0B" />
-              </View>
+              <TrackIcon category={categoryOf(selectedCircuit.category).key} size={32} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardName} numberOfLines={1}>{selectedCircuit.name}</Text>
                 <Text style={styles.cardMeta} numberOfLines={1}>
@@ -498,9 +497,10 @@ function DrivePin({ pin, selected, dimmed }: { pin: Pin; selected: boolean; dimm
   const name = first.author.displayName || first.author.username;
   return (
     <View style={[styles.pin, { opacity: dimmed ? 0.45 : 1 }]}>
-      <View style={[styles.pinHead, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }, selected && styles.pinSelected]}>
+      <View style={[styles.pinHead, { width: size, height: size, borderRadius: size * 0.26, backgroundColor: color },
+        first.source === 'me' && styles.pinMine, selected && styles.pinSelected]}>
         {first.source === 'me' ? (
-          <Ionicons name="car-sport" size={selected ? 20 : 16} color={colors.accentText} />
+          <TrackIcon category="drive" size={size - 4} style={{ borderRadius: size * 0.22 }} />
         ) : (
           <Text style={[styles.pinInitials, { fontSize: selected ? 14 : 12 }]}>{initialsOf(name)}</Text>
         )}
@@ -652,6 +652,12 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
   pinSelected: { borderColor: colors.text, borderWidth: 3 },
+  pinMine: { borderWidth: 2, overflow: 'hidden' },
+  trackPin: {
+    borderRadius: 9, borderWidth: 2, borderColor: colors.bg,
+    shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 3,
+  },
+  trackPinSelected: { borderColor: colors.text },
   pinInitials: { color: '#fff', fontFamily: fonts.semibold },
   pinTail: {
     width: 0, height: 0, marginTop: -1,

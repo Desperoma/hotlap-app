@@ -3,7 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated, Easing, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { ClassBadge } from '@/components/ClassBadge';
 import { carImageFor } from '@/features/garage/carImage';
+import { hpiFor } from '@/features/garage/hpi';
 import type { VehicleStats } from '@/features/garage/stats';
 import { kwToHp } from '@/features/garage/units';
 import { colors, fonts, spacing } from '@/theme';
@@ -44,6 +46,7 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
   }, [appear, index]);
 
   const { source } = carImageFor(car);
+  const hpi = hpiFor({ powerKw: car.power_kw, weightKg: car.weight_kg, best0to100Ms: stats?.best0to100Ms });
   const rows: { key: string; icon: Icon; label: string; value: string; unit?: string; accent?: boolean }[] = [];
   // Toujours : vitesse max (— tant que la voiture n'a pas roulé), puissance, poids.
   const vmax = stats && stats.driveCount > 0 && stats.maxSpeedKmh != null && stats.maxSpeedKmh > 0 ? stats.maxSpeedKmh : null;
@@ -81,7 +84,10 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
             <Text style={styles.badgeText}>FAVORITE</Text>
           </View>
         )}
-        <Text style={[styles.make, styles.shadow]} numberOfLines={1}>{car.make}</Text>
+        <View style={styles.makeRow}>
+          {hpi && <ClassBadge cls={hpi.cls.key} hpi={hpi.hpi} size="sm" />}
+          <Text style={[styles.make, styles.shadow, { flexShrink: 1 }]} numberOfLines={1}>{car.make}</Text>
+        </View>
         <Text style={[styles.model, styles.shadow]} numberOfLines={2} adjustsFontSizeToFit>{car.model}</Text>
         {[car.nickname, car.year].some(Boolean) ? (
           <Text style={[styles.sub, styles.shadow]} numberOfLines={1}>{[car.nickname, car.year].filter(Boolean).join(' · ')}</Text>
@@ -118,6 +124,7 @@ const styles = StyleSheet.create({
   shadow: { textShadowColor: 'rgba(0,0,0,0.85)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
   badgeText: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 1 },
+  makeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   make: { color: colors.accent, fontFamily: fonts.semibold, fontSize: 13 },
   model: { color: colors.text, fontFamily: fonts.medium, fontSize: 26, lineHeight: 30 },
   sub: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12 },

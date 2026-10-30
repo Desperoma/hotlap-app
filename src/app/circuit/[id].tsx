@@ -8,6 +8,7 @@ import { CircuitMap } from '@/components/CircuitMap';
 import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { TrackIcon } from '@/components/TrackIcon';
 import { categoryOf, getCircuit, type CircuitDetail } from '@/features/circuit/api';
 import { startLineOnPath, type LL } from '@/features/circuit/laps';
 import { simulateCircuitPoints, playSimulation } from '@/features/circuit/simulate';
@@ -100,7 +101,7 @@ export default function CircuitScreen() {
 
       <View style={{ gap: 6 }}>
         <View style={[styles.cat, { backgroundColor: cat.color }]}>
-          <MaterialCommunityIcons name={cat.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={14} color="#0B0B0B" />
+          <TrackIcon category={cat.key} size={18} style={{ borderRadius: 5 }} />
           <Text style={styles.catText}>{cat.label.toUpperCase()}</Text>
         </View>
         <Text style={styles.title}>{circuit.name}</Text>

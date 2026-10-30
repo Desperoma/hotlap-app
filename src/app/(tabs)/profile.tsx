@@ -5,6 +5,8 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { Avatar } from '@/components/Avatar';
 import { GarageCarCard } from '@/components/GarageCarCard';
+import { LevelCard } from '@/components/LevelCard';
+import { driverXp, type DriverXp } from '@/features/levels/api';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -26,6 +28,7 @@ export default function ProfileScreen() {
   const [requests, setRequests] = useState(0);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const [crews, setCrews] = useState<MyCrew[]>([]);
+  const [xp, setXp] = useState<DriverXp | null>(null);
   const userId = session?.user.id;
 
   const [deleting, setDeleting] = useState(false);
@@ -68,6 +71,7 @@ export default function ProfileScreen() {
       listDrives(userId).then(setDrives).catch(() => setDrives([]));
       listMyCrews(userId).then((c) => setCrews(c.filter((x) => x.myStatus === 'active'))).catch(() => {});
       myVehicleStats().then(setCarStats).catch(() => {});
+      driverXp(userId).then(setXp).catch(() => {});
     }, [userId]),
   );
   const name = profile?.display_name ?? profile?.username ?? 'Driver';
@@ -109,6 +113,8 @@ export default function ProfileScreen() {
         </View>
         <CheckInBar userId={userId} completion={completion} />
       </Card>
+
+      {xp && <LevelCard data={xp} />}
 
       <Card style={styles.counters}>
         <Counter value={counters?.drives ?? 0} label="DRIVES" onPress={() => setTab('log')} />

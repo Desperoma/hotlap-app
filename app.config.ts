@@ -66,6 +66,15 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-font",
     [
+      "expo-splash-screen",
+      {
+        "image": "./assets/splash-icon.png",
+        "imageWidth": 220,
+        "resizeMode": "contain",
+        "backgroundColor": "#0E100E"
+      }
+    ],
+    [
       "expo-location",
       {
         "locationAlwaysAndWhenInUsePermission": "HotLap enregistre le tracé de votre drive, y compris écran verrouillé.",

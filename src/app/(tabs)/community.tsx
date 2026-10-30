@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
@@ -147,7 +147,10 @@ export default function CommunityScreen() {
         ListHeaderComponent={
           <View style={{ gap: spacing.lg, marginBottom: spacing.sm }}>
             <View style={styles.header}>
-              <Text style={styles.title}>Community</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <Image source={require('../../../assets/logo/logo-mark.png')} style={{ width: 52, height: 19 }} resizeMode="contain" accessibilityIgnoresInvertColors />
+                <Text style={styles.title}>Community</Text>
+              </View>
               <Pressable onPress={() => router.push('/search')} hitSlop={12} accessibilityLabel="Search">
                 <Ionicons name="search" size={22} color={colors.text} />
               </Pressable>

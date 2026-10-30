@@ -5,6 +5,8 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { Avatar } from '@/components/Avatar';
 import { GarageCarCard } from '@/components/GarageCarCard';
+import { LevelCard } from '@/components/LevelCard';
+import { driverXp, type DriverXp } from '@/features/levels/api';
 import { userVehicleStats, type VehicleStats } from '@/features/garage/stats';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
@@ -28,6 +30,8 @@ export default function UserProfileScreen() {
   const { session } = useAuth();
   const me = session?.user.id;
   const [profile, setProfile] = useState<PublicProfile | null | undefined>(undefined);
+  const [xp, setXp] = useState<DriverXp | null>(null);
+  useEffect(() => { if (id) driverXp(id).then(setXp); }, [id]);
   const [counters, setCounters] = useState<ProfileCounters | null>(null);
   const [drives, setDrives] = useState<DriveLogItem[] | null>(null);
   const [rel, setRel] = useState<'none' | 'following' | 'requested'>('none');
@@ -162,6 +166,8 @@ export default function UserProfileScreen() {
         <Button title={blocked ? `Unblock ${name}` : `Block ${name}`} variant="ghost"
           icon={blocked ? 'lock-open-outline' : 'ban-outline'} onPress={toggleBlock} />
       </Card>
+
+      {xp && !blocked && <LevelCard data={xp} userId={id} />}
 
       <Card style={styles.counters}>
         <Counter value={counters?.drives ?? 0} label="DRIVES" />
