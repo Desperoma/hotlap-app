@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
@@ -63,6 +63,9 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   const [pickedCircuit, setPickedCircuit] = useState<PickedCircuit | null>(null);
   const [rows, setRows] = useState<LeaderRow[] | null>(null);
   const [error, setError] = useState(false);
+  // L'onglet reste monté : on recharge à chaque retour (drive publié, voiture d'un drive changée…).
+  const [focusTick, setFocusTick] = useState(0);
+  useFocusEffect(useCallback(() => { setFocusTick((t) => t + 1); }, []));
 
   // Un lien (récap de sprint, circuit) vers l'onglet déjà monté : on suit ses paramètres.
   useEffect(() => {
@@ -97,7 +100,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
       setCircuits(named);
       setCircuitId((c) => c ?? named[0]?.id ?? null);
     });
-  }, [params.circuit, params.circuitName]);
+  }, [params.circuit, params.circuitName, focusTick]);
 
   useEffect(() => {
     let live = true;
@@ -109,7 +112,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
       : group === 'laps' ? (circuitId ? leaderboardLaps(circuitId, f) : Promise.resolve([])) : leaderboardSprint(sprint, f);
     q.then((r) => live && setRows(r)).catch(() => live && (setRows([]), setError(true)));
     return () => { live = false; };
-  }, [group, sprint, scope, country, vehicleId, circuitId, cls]);
+  }, [group, sprint, scope, country, vehicleId, circuitId, cls, focusTick]);
 
   const top = useMemo(() => rows?.filter((r) => r.rank <= 50) ?? [], [rows]);
   const podium = top.filter((r) => r.rank <= 3).slice(0, 3);

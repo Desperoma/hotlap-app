@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
+import { DriveTelemetry } from '@/components/DriveTelemetry';
+import { buildSamples } from '@/features/drives/telemetry';
 import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { PhotoStrip } from '@/components/PhotoStrip';
 import { ScoreCard } from '@/components/ScoreCard';
@@ -62,6 +64,9 @@ export default function FinishDriveScreen() {
     }).catch(() => {});
   }, [drive]);
 
+  const samples = useMemo(() => buildSamples((drive?.points ?? []).map((p) => ({
+    ts: p.ts, lat: p.lat, lng: p.lng, altitude: p.altitude ?? null, speed: p.speed ?? null,
+  }))), [drive]);
   const summary = useMemo(() => {
     if (!drive) return null;
     return {
@@ -183,7 +188,12 @@ export default function FinishDriveScreen() {
       </View>
 
       <Text style={styles.overline}>DRIVE COMPLETE · NICE DRIVE</Text>
-      <DriveMap path={summary.path} emptyLabel="Not enough GPS points for a route" />
+      {/* Comme sur la page d'un drive : carte interactive avec vitesse, altitude et G à chaque point. */}
+      {samples.length >= 2 ? (
+        <DriveTelemetry samples={samples} />
+      ) : (
+        <DriveMap path={summary.path} emptyLabel="Not enough GPS points for a route" />
+      )}
 
       {drive.mode === 'circuit' && (
         <LapList laps={laps} circuitId={drive.circuitId} circuitName={drive.circuitName}

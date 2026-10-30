@@ -72,7 +72,7 @@ export default function SettingsScreen() {
 
       <Section title="INTERFACE">
         <View style={{ gap: spacing.sm }}>
-          <Text style={styles.rowTitle}>Live drive screen</Text>
+          <Text style={styles.rowTitle}>Default view during a drive</Text>
           <SegmentedControl value={prefs.liveView} onChange={(v) => setPref('liveView', v)}
             options={[{ value: 'map', label: 'Map' }, { value: 'both', label: 'Both' }, { value: 'gforce', label: 'G-force' }]} />
         </View>

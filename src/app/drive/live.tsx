@@ -18,7 +18,7 @@ import { SIM_STYLES, simulatedDrive, simulatedSprint, TEST_TOOLS, type SimStyle 
 import { checkRecording, refusalMessage, type RecordingContext } from '@/features/recording/authorization';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import { useRecorder } from '@/features/recording/useRecorder';
-import { setPref, usePrefs, type LiveView } from '@/features/settings/prefs';
+import { usePrefs, type LiveView } from '@/features/settings/prefs';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
@@ -135,7 +135,8 @@ export default function LiveDriveScreen() {
   const prefs = usePrefs();
   const [picked, setPicked] = useState<LiveView | null>(null);
   const view = picked ?? prefs.liveView;
-  const setView = (v: LiveView) => { setPicked(v); setPref('liveView', v); };
+  // Changer de vue pendant le drive ne touche pas à la vue par défaut (Settings > Interface).
+  const setView = (v: LiveView) => setPicked(v);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!recording) return;
