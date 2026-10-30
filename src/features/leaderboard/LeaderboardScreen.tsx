@@ -13,7 +13,7 @@ import { carImageFor } from '@/features/garage/carImage';
 import { CLASSES, type ClassKey } from '@/features/garage/hpi';
 import { flagOf } from '@/features/places/format';
 import {
-  circuitsWithLaps, leaderboardLaps, leaderboardScore, leaderboardSprint, type LapCircuit, type LeaderRow, type LeaderScope,
+  INCLUDE_TEST_DRIVES, circuitsWithLaps, leaderboardLaps, leaderboardScore, leaderboardSprint, type LapCircuit, type LeaderRow, type LeaderScope,
 } from '@/features/sprint/api';
 import { formatSprint, sprintLabel, type SprintKind } from '@/features/sprint/sprint';
 import { colors, fonts, radius, spacing, type } from '@/theme';
@@ -165,6 +165,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
         <Text style={styles.selectedOver}>SELECTED LEADERBOARD</Text>
         <Text style={styles.selectedTitle}>{selected}</Text>
         <Text style={styles.muted}>{scopeLabel}{classLabel} · {what}</Text>
+        {INCLUDE_TEST_DRIVES && <Text style={styles.faint}>Version de test : les drives simulés (TEST) de tout le monde sont inclus.</Text>}
         {group !== 'laps' && (
           <Text style={styles.faint}>
             {group === 'score' ? 'Best score of a drive on open roads, all cars combined.'
@@ -235,6 +236,7 @@ function Step({ r, place, metric }: { r: LeaderRow; place: 1 | 2 | 3; metric: Me
           <Image source={source} style={[styles.podiumCar, first && { height: 62 }]} resizeMode="contain" />
           <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={first ? 34 : 28} />
           <Text style={styles.stepName} numberOfLines={1}>{nameOf(r)}</Text>
+          {r.isSimulated && <Text style={styles.testTag}>TEST</Text>}
           <Text style={styles.stepCar} numberOfLines={1}>{r.car ?? '—'}</Text>
           {r.cls && <ClassBadge cls={r.cls} size="sm" />}
           <Text style={[styles.stepValue, { color: first ? colors.accent : colors.text }, first && { fontSize: 18 }]} numberOfLines={1}
@@ -339,6 +341,7 @@ const styles = StyleSheet.create({
   },
   medalText: { color: colors.bg, fontFamily: fonts.bold, fontSize: 11 },
   podiumCar: { width: '100%', height: 48, marginTop: 4 },
+  testTag: { color: '#F59E0B', fontFamily: fonts.bold, fontSize: 9, letterSpacing: 1 },
   stepName: { color: colors.text, fontFamily: fonts.semibold, fontSize: 13, maxWidth: '100%' },
   stepCar: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 10, maxWidth: '100%' },
   stepValue: { fontFamily: fonts.bold, fontSize: 15, marginTop: 2 },

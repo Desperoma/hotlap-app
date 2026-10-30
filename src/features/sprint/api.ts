@@ -54,11 +54,26 @@ const toRow = (r: Row): LeaderRow => ({
   hpi: r.hpi ?? null, cls: r.cls ?? null,
 });
 
+/**
+ * Builds de test (Expo Go via update:go, HotLap Test) : les drives simulés des autres apparaissent
+ * aussi, marqués TEST (migration 0030). L'app publiée ne montre que les vrais drives.
+ */
+export const INCLUDE_TEST_DRIVES = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
+
+/** Appel d'un classement ; si la base n'a pas encore la migration 0030, sans les drives de test. */
+async function board(fn: string, args: Record<string, unknown>) {
+  if (INCLUDE_TEST_DRIVES) {
+    const r = await supabase.rpc(fn, { ...args, p_include_sim: true });
+    if (!r.error || !/p_include_sim|function|PGRST202/i.test(`${r.error.code} ${r.error.message}`)) return r;
+  }
+  return supabase.rpc(fn, args);
+}
+
 export type LeaderFilter = { scope: LeaderScope; country?: string | null; vehicleId?: string | null; cls?: ClassKey | null };
 
 export async function leaderboardSprint(kind: SprintKind, f: LeaderFilter): Promise<LeaderRow[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.rpc('leaderboard_sprint', {
+  const { data, error } = await board('leaderboard_sprint', {
     p_kind: kind, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50, ...(f.cls ? { p_class: f.cls } : {}),
   });
   if (error) throw error;
@@ -67,7 +82,7 @@ export async function leaderboardSprint(kind: SprintKind, f: LeaderFilter): Prom
 
 export async function leaderboardLaps(circuitId: string, f: LeaderFilter): Promise<LeaderRow[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.rpc('leaderboard_laps', {
+  const { data, error } = await board('leaderboard_laps', {
     p_circuit: circuitId, p_scope: f.scope, p_country: f.country ?? null, p_vehicle: f.vehicleId ?? null, p_limit: 50, ...(f.cls ? { p_class: f.cls } : {}),
   });
   if (error) throw error;
@@ -77,7 +92,7 @@ export async function leaderboardLaps(circuitId: string, f: LeaderFilter): Promi
 /** Meilleur score sur route ouverte, toutes voitures confondues (migration 0025). */
 export async function leaderboardScore(f: LeaderFilter): Promise<LeaderRow[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.rpc('leaderboard_score', { p_scope: f.scope, p_country: f.country ?? null, p_limit: 50, ...(f.cls ? { p_class: f.cls } : {}) });
+  const { data, error } = await board('leaderboard_score', { p_scope: f.scope, p_country: f.country ?? null, p_limit: 50, ...(f.cls ? { p_class: f.cls } : {}) });
   if (error) throw error;
   return ((data ?? []) as (Omit<Row, 'time_ms'> & { score: number; distance_m: number })[])
     .map((r) => ({ ...toRow({ ...r, time_ms: 0 }), score: r.score, distanceM: r.distance_m }));
