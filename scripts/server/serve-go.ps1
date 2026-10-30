@@ -50,8 +50,7 @@ function Start-Metro {
   $out = Join-Path $logDir "metro-$stamp.log"
   $err = Join-Path $logDir "metro-$stamp.err.log"
 
-  $node = (Get-Command node -ErrorAction SilentlyContinue).Source
-  if (-not $node) { $node = 'C:\Program Files\nodejs\node.exe' }
+  $node = $script:NodeExe
   Log "Démarrage de Metro (Expo Go) sur $($env:REACT_NATIVE_PACKAGER_HOSTNAME):8081 avec Node $(& $node -v) ; journal $([IO.Path]::GetFileName($out))"
   # Node directement (pas cmd /c) : pas de question « Terminer le programme de commandes (O/N) ? »
   # qui bloque le process et son journal.
@@ -98,6 +97,12 @@ function Update-Repo {
 }
 
 Log "=== Démarrage (dépôt $Repo, branche $Branch) ==="
+
+# 0. Node compatible avec Expo, en tête du PATH (npm ci et Metro utilisent alors le même).
+. (Join-Path $PSScriptRoot 'node.ps1')
+$script:NodeExe = Use-SupportedNode
+if (-not $script:NodeExe) { Log 'Aucun Node 22.13+ / 24.3+ installé : arrêt (winget install OpenJS.NodeJS.LTS).'; exit 1 }
+Log "Node choisi : $script:NodeExe ($(& $script:NodeExe -v))"
 
 # 1. Tailscale : au démarrage de Windows, l'IP peut mettre un moment à arriver.
 $ip = $null

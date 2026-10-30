@@ -19,6 +19,12 @@ Set-Location $Repo
 
 function Step([string]$msg) { Write-Host "-> $msg" -ForegroundColor Cyan }
 
+# npm ci doit tourner avec le même Node que Metro (voir node.ps1).
+. (Join-Path $PSScriptRoot 'node.ps1')
+$nodeExe = Use-SupportedNode
+if (-not $nodeExe) { exit 1 }
+Step "Node : $nodeExe ($(& $nodeExe -v))"
+
 if (-not (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
   Write-Host "Tâche « $TaskName » introuvable. Installe-la avec scripts\server\install-autostart.ps1." -ForegroundColor Red
   exit 1
