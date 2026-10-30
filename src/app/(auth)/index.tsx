@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, SegmentedControl, TextField } from '@/components/ui';
@@ -39,7 +39,7 @@ export default function AuthScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={styles.hero}>
-        <Text style={styles.logo}>HOTLAP</Text>
+        <Image source={require('../../../assets/logo/logo-full.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="HotLap" />
         <Text style={styles.tagline}>All your routes in one place</Text>
       </SafeAreaView>
 
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', paddingTop: spacing.xxl, paddingBottom: 48, backgroundColor: '#090A09',
     borderBottomLeftRadius: 0, borderBottomRightRadius: 120,
   },
-  logo: { ...type.hero, color: colors.text, fontSize: 40 },
+  logo: { width: 170, height: 121 },
   tagline: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13, marginTop: 8 },
   form: { padding: spacing.lg, gap: spacing.lg, paddingTop: spacing.xl },
   title: { ...type.h1, color: colors.text },
