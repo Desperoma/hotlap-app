@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { LanguageList } from '@/components/LanguagePicker';
 import { Button, Card, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { VehicleForm } from '@/features/garage/VehicleForm';
@@ -13,6 +14,7 @@ import { colors, fonts, spacing, type } from '@/theme';
 
 import { birthDateError, isoToDisplay, maskBirthDate, parseBirthDate } from './validation';
 
+import { t } from '@/i18n';
 type StepProps = { onNext: () => void };
 
 /** Petit wrapper qui gère l'état « en cours » et les erreurs d'enregistrement. */
@@ -24,7 +26,7 @@ function useSubmit(fn: () => Promise<void>, onNext: () => void) {
       await fn();
       onNext();
     } catch (e) {
-      Alert.alert('Oups', e instanceof Error ? e.message : 'Enregistrement impossible');
+      Alert.alert(t('Oups'), e instanceof Error ? e.message : t('Enregistrement impossible'));
     } finally {
       setBusy(false);
     }
@@ -33,6 +35,17 @@ function useSubmit(fn: () => Promise<void>, onNext: () => void) {
 }
 
 // --- 40 % : identité ---------------------------------------------------------
+/** Langue de l'app (pré-choisie : celle du téléphone). Modifiable ensuite dans Settings. */
+export function LanguageStep({ onNext }: StepProps) {
+  return (
+    <View style={{ gap: spacing.lg }}>
+      <StepTitle title={t('Language')} subtitle={t('Choose the language of the app. You can change it later in Settings.')} />
+      <LanguageList />
+      <Button title={t('Continue')} onPress={onNext} />
+    </View>
+  );
+}
+
 export function IdentityStep({ onNext }: StepProps) {
   const { profile, updateProfile } = useAuth();
   const [first, setFirst] = useState(profile?.first_name ?? '');
@@ -44,7 +57,7 @@ export function IdentityStep({ onNext }: StepProps) {
     onNext,
   );
   const submit = () => {
-    if (!first.trim() || !last.trim()) return setError('Prénom et nom sont obligatoires.');
+    if (!first.trim() || !last.trim()) return setError(t('Prénom et nom sont obligatoires.'));
     const e = birthDateError(birth);
     if (e) return setError(e);
     setError(null);
@@ -52,19 +65,16 @@ export function IdentityStep({ onNext }: StepProps) {
   };
   return (
     <>
-      <StepTitle title="About you" subtitle="Ton nom n'est visible que par toi. Les autres voient ton username." />
-      <TextField label="First name" icon="person-outline" placeholder="Prénom" autoCapitalize="words"
+      <StepTitle title={t('About you')} subtitle={t('Ton nom n\'est visible que par toi. Les autres voient ton username.')} />
+      <TextField label={t('First name')} icon="person-outline" placeholder={t('Prénom')} autoCapitalize="words"
         value={first} onChangeText={setFirst} />
-      <TextField label="Last name" icon="person-outline" placeholder="Nom" autoCapitalize="words"
+      <TextField label={t('Last name')} icon="person-outline" placeholder={t('Nom')} autoCapitalize="words"
         value={last} onChangeText={setLast} />
-      <TextField label="Date of birth" icon="calendar-outline" placeholder="JJ/MM/AAAA" keyboardType="number-pad"
+      <TextField label={t('Date of birth')} icon="calendar-outline" placeholder={t('JJ/MM/AAAA')} keyboardType="number-pad"
         value={birth} onChangeText={(t) => setBirth(maskBirthDate(t))} maxLength={10} editable={!profile?.birth_date} />
-      <Text style={styles.hint}>
-        Elle détermine où tu peux enregistrer un drive (âge minimum selon le pays, sur route ou sur circuit).
-        Elle ne pourra plus être modifiée ensuite.
-      </Text>
+      <Text style={styles.hint}>{t('Elle détermine où tu peux enregistrer un drive (âge minimum selon le pays, sur route ou sur circuit). Elle ne pourra plus être modifiée ensuite.')}</Text>
       {error && <Text style={styles.error}>{error}</Text>}
-      <Button title="Continue" onPress={submit} loading={busy} />
+      <Button title={t('Continue')} onPress={submit} loading={busy} />
     </>
   );
 }
@@ -82,17 +92,17 @@ export function LocationStep({ onNext }: StepProps) {
     await applyHomeZone(zone, false);
   }, onNext);
   const submit = () => {
-    if (!place.countryCode || !place.city.trim()) return Alert.alert('Presque', 'Le pays et la ville sont obligatoires.');
+    if (!place.countryCode || !place.city.trim()) return Alert.alert(t('Presque'), t('Le pays et la ville sont obligatoires.'));
     const e = homeZoneInputError(zone, false);
-    if (e) return Alert.alert('Presque', e);
+    if (e) return Alert.alert(t('Presque'), e);
     run();
   };
   return (
     <>
-      <StepTitle title="Your area" subtitle="Sert à te proposer les drives et les routes autour de toi." />
+      <StepTitle title={t('Your area')} subtitle={t('Sert à te proposer les drives et les routes autour de toi.')} />
       <PlaceFields value={place} onChange={setPlace} />
       <HomeZoneFields value={zone} onChange={setZone} />
-      <Button title="Continue" onPress={submit} loading={busy} />
+      <Button title={t('Continue')} onPress={submit} loading={busy} />
     </>
   );
 }
@@ -102,10 +112,10 @@ export function VehicleStep({ onNext }: StepProps) {
   const { primaryVehicle, saveVehicle } = useAuth();
   return (
     <>
-      <StepTitle title="Your Ride" subtitle="Ton véhicule favori. Tu pourras en ajouter d'autres dans ton garage." />
+      <StepTitle title={t('Your Ride')} subtitle={t('Ton véhicule favori. Tu pourras en ajouter d\'autres dans ton garage.')} />
       <VehicleForm
         initial={primaryVehicle}
-        submitLabel="Continue"
+        submitLabel={t('Continue')}
         onSubmit={async (v) => {
           await saveVehicle(v);
           onNext();
@@ -130,19 +140,19 @@ export function GpsStep({ onFinish }: { onFinish: () => Promise<void> }) {
   };
   const msg = {
     unknown: null,
-    always: 'GPS activé, y compris écran verrouillé.',
-    foreground: 'GPS activé seulement app ouverte : choisis « Toujours » dans les réglages pour enregistrer écran verrouillé.',
-    denied: 'GPS refusé. Tu pourras l’activer au premier drive.',
+    always: t('GPS activé, y compris écran verrouillé.'),
+    foreground: t('GPS activé seulement app ouverte : choisis « Toujours » dans les réglages pour enregistrer écran verrouillé.'),
+    denied: t('GPS refusé. Tu pourras l’activer au premier drive.'),
   }[status];
 
   return (
     <>
-      <StepTitle title="Turn on GPS" subtitle="HotLap enregistre ton tracé, même écran verrouillé, pour que tu n'aies jamais à toucher ton téléphone en roulant." />
+      <StepTitle title={t('Turn on GPS')} subtitle={t('HotLap enregistre ton tracé, même écran verrouillé, pour que tu n\'aies jamais à toucher ton téléphone en roulant.')} />
       <Card style={{ gap: spacing.md }}>
         {[
-          ['locate-outline', 'Position précise pendant les drives uniquement'],
-          ['lock-closed-outline', 'Continue écran verrouillé, avec un indicateur visible'],
-          ['eye-off-outline', 'Drives privés par défaut'],
+          ['locate-outline', t('Position précise pendant les drives uniquement')],
+          ['lock-closed-outline', t('Continue écran verrouillé, avec un indicateur visible')],
+          ['eye-off-outline', t('Drives privés par défaut')],
         ].map(([icon, text]) => (
           <View key={text} style={styles.row}>
             <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={colors.accent} />
@@ -153,11 +163,11 @@ export function GpsStep({ onFinish }: { onFinish: () => Promise<void> }) {
       {msg && <Text style={[styles.hint, status === 'always' && { color: colors.accent }]}>{msg}</Text>}
       {status === 'unknown' ? (
         <>
-          <Button title="Enable GPS" icon="navigate" onPress={ask} />
-          <Button title="Later" variant="ghost" onPress={finish} />
+          <Button title={t('Enable GPS')} icon="navigate" onPress={ask} />
+          <Button title={t('Later')} variant="ghost" onPress={finish} />
         </>
       ) : (
-        <Button title="Finish Setup" icon="flag" onPress={finish} loading={busy} />
+        <Button title={t('Finish Setup')} icon="flag" onPress={finish} loading={busy} />
       )}
     </>
   );

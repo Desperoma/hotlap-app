@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { t } from '@/i18n/core';
 
 /** Notifications de la cloche (migration 0016) : créées par la base, lues ici. */
 export type NotificationType = 'like' | 'comment' | 'follow' | 'follow_request' | 'follow_accepted' | 'crew_invite';
@@ -59,11 +60,11 @@ export async function markAllRead() {
 /** Texte d'une notification, sans le nom de l'auteur (affiché en gras devant). */
 export function notificationText(n: AppNotification): string {
   switch (n.type) {
-    case 'like': return `liked your drive${n.driveTitle ? ` “${n.driveTitle}”` : ''}.`;
-    case 'comment': return `commented${n.driveTitle ? ` on “${n.driveTitle}”` : ''}: ${n.commentExcerpt ?? ''}`;
-    case 'follow': return n.iFollow ? 'followed you back. You are now friends.' : 'started following you.';
-    case 'follow_request': return n.requestPending ? 'wants to follow you.' : 'sent you a follow request.';
-    case 'follow_accepted': return 'accepted your follow request.';
-    case 'crew_invite': return `invited you to join the crew ${n.crewName ?? ''}.`;
+    case 'like': return n.driveTitle ? t('liked your drive “{0}”.', n.driveTitle) : t('liked your drive.');
+    case 'comment': return n.driveTitle ? t('commented on “{0}”: {1}', n.driveTitle, n.commentExcerpt ?? '') : t('commented: {0}', n.commentExcerpt ?? '');
+    case 'follow': return n.iFollow ? t('followed you back. You are now friends.') : t('started following you.');
+    case 'follow_request': return n.requestPending ? t('wants to follow you.') : t('sent you a follow request.');
+    case 'follow_accepted': return t('accepted your follow request.');
+    case 'crew_invite': return t('invited you to join the crew {0}.', n.crewName ?? '');
   }
 }

@@ -1,4 +1,5 @@
 import { MIN_ACCOUNT_AGE } from '@/config';
+import { t } from '@/i18n/core';
 
 /** "JJ/MM/AAAA" -> "AAAA-MM-JJ", ou null si la date n'existe pas. */
 export function parseBirthDate(input: string): string | null {
@@ -22,10 +23,10 @@ export function ageOn(isoBirthDate: string, today = new Date()) {
 /** Renvoie un message d'erreur, ou null si la date est valable. */
 export function birthDateError(input: string): string | null {
   const iso = parseBirthDate(input);
-  if (!iso) return 'Date invalide (format JJ/MM/AAAA).';
+  if (!iso) return t('Date invalide (format JJ/MM/AAAA).');
   const age = ageOn(iso);
-  if (age > 110) return 'Date invalide.';
-  if (age < MIN_ACCOUNT_AGE) return `Il faut avoir au moins ${MIN_ACCOUNT_AGE} ans pour créer un compte.`;
+  if (age > 110) return t('Date invalide.');
+  if (age < MIN_ACCOUNT_AGE) return t('Il faut avoir au moins {0} ans pour créer un compte.', MIN_ACCOUNT_AGE);
   return null;
 }
 

@@ -3,6 +3,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 import { detectSprints, type SprintKind, type SprintPoint } from './sprint';
 
+import { t } from '@/i18n/core';
 /** Sprints et classements (migration 0024). */
 export type DriveSprint = { kind: SprintKind; timeMs: number; exitSpeedKmh: number | null };
 
@@ -109,7 +110,7 @@ export async function circuitsWithLaps(): Promise<LapCircuit[]> {
 
 function sprintError(error: { message: string }) {
   const m = error.message;
-  if (m.includes('sprint_place_not_allowed')) return new Error('Le chrono Sprint n’est accepté que sur circuit ou sur une route chronométrée validée.');
-  if (m.includes('sprint_mode_required')) return new Error('Ce drive n’a pas été enregistré en mode Sprint.');
+  if (m.includes('sprint_place_not_allowed')) return new Error(t('Le chrono Sprint n’est accepté que sur circuit ou sur une route chronométrée validée.'));
+  if (m.includes('sprint_mode_required')) return new Error(t('Ce drive n’a pas été enregistré en mode Sprint.'));
   return new Error(m);
 }

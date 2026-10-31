@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { unreadCount } from '@/features/notifications/api';
 import { colors, fonts } from '@/theme';
 
+import { t } from '@/i18n';
 const POLL_MS = 30_000;
 
 /**
@@ -36,7 +37,7 @@ export function NotificationBell() {
         hitSlop={10}
         style={styles.btn}
         accessibilityRole="button"
-        accessibilityLabel={count > 0 ? `Notifications, ${count} unread` : 'Notifications'}
+        accessibilityLabel={count > 0 ? t('Notifications, {0} unread', count) : t('Notifications')}
       >
         <Ionicons name={count > 0 ? 'notifications' : 'notifications-outline'} size={22} color={colors.text} />
         {count > 0 && (

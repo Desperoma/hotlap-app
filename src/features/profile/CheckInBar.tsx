@@ -5,6 +5,7 @@ import { AccessibilityInfo, Animated, Easing, LayoutAnimation, StyleSheet, Text,
 
 import { colors, type } from '@/theme';
 
+import { t } from '@/i18n';
 const key = (userId: string) => `hotlap:checkin-done:${userId}`;
 
 /**
@@ -54,8 +55,8 @@ export function CheckInBar({ userId, completion }: { userId: string | undefined;
   return (
     <Animated.View style={{ gap: 6, opacity }}>
       <View style={styles.head}>
-        <Text style={styles.overline}>PROFILE CHECK-IN</Text>
-        <Text style={[styles.overline, { color: colors.accent }]}>{complete ? 'COMPLETE' : `${Math.round(completion * 100)}%`}</Text>
+        <Text style={styles.overline}>{t('PROFILE CHECK-IN')}</Text>
+        <Text style={[styles.overline, { color: colors.accent }]}>{complete ? t('COMPLETE') : `${Math.round(completion * 100)}%`}</Text>
       </View>
       <View style={styles.track}>
         <Animated.View style={[styles.fill, { width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CLASSES, type ClassKey } from '@/features/garage/hpi';
 import { fonts } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Badge de classe d'un véhicule (D, C, B, A, S1, S2, X) : parallélogramme de couleur, lettre noire
  * en italique, comme la planche des classes. Avec `hpi`, le score sur 999 suit le badge.
@@ -12,7 +13,7 @@ export function ClassBadge({ cls, hpi, size = 'md' }: { cls: ClassKey; hpi?: num
   const h = size === 'sm' ? 18 : size === 'md' ? 24 : 34;
   const w = h * (cls.length > 1 ? 1.75 : 1.35);
   return (
-    <View style={styles.row} accessibilityLabel={`Class ${cls}${hpi != null ? `, ${hpi} HPI` : ''}`}>
+    <View style={styles.row} accessibilityLabel={t('Class {0}{1}', cls, hpi != null ? `, ${hpi} HPI` : '')}>
       <View style={[styles.tile, { width: w, height: h, borderRadius: h * 0.22, backgroundColor: c.color }]}>
         <Text style={[styles.letter, { fontSize: h * 0.62, lineHeight: h * 0.8 }]}>{cls}</Text>
       </View>

@@ -7,12 +7,13 @@ import { MAPS_AVAILABLE } from '@/lib/maps';
 import { colors, fonts, radius } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
+import { t } from '@/i18n';
 /**
  * Carte figée d'un tracé (fin de drive, détail). La caméra se cale sur le tracé au chargement.
  * Pas de gestes : la carte sert d'aperçu, pas de navigation.
  * `path` : un tracé, ou plusieurs morceaux quand la zone privée d'un autre conducteur le coupe.
  */
-export function DriveMap({ path: input, style, emptyLabel = 'No route to show', lite = false, children }: {
+export function DriveMap({ path: input, style, emptyLabel, lite = false, children }: {
   path: LatLng[] | LatLng[][];
   style?: StyleProp<ViewStyle>;
   emptyLabel?: string;
@@ -33,7 +34,7 @@ export function DriveMap({ path: input, style, emptyLabel = 'No route to show', 
   if (!first || !last || !MAPS_AVAILABLE) {
     return (
       <View style={[styles.box, styles.empty, style]}>
-        <Text style={styles.emptyText}>{MAPS_AVAILABLE ? emptyLabel : 'Map unavailable in this version'}</Text>
+        <Text style={styles.emptyText}>{MAPS_AVAILABLE ? (emptyLabel ?? t('No route to show')) : t('Map unavailable in this version')}</Text>
         {children}
       </View>
     );

@@ -11,12 +11,13 @@ import {
 } from '@/features/social/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 type Kind = 'followers' | 'following' | 'requests';
-const TITLE: Record<Kind, string> = { followers: 'Followers', following: 'Following', requests: 'Follow requests' };
+const TITLE: Record<Kind, string> = { get followers() { return t('Followers'); }, get following() { return t('Following'); }, get requests() { return t('Follow requests'); } };
 const EMPTY: Record<Kind, string> = {
-  followers: 'No followers yet.',
-  following: 'You don’t follow anyone yet.',
-  requests: 'No pending requests.',
+  get followers() { return t('No followers yet.'); },
+  get following() { return t('You don’t follow anyone yet.'); },
+  get requests() { return t('No pending requests.'); },
 };
 
 /** Mes listes (jamais celles des autres) : followers, following, demandes reçues. */
@@ -41,7 +42,7 @@ export default function PeopleScreen() {
       await fn();
       load();
     } catch (e) {
-      Alert.alert('Oups', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Oups'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusyId(null);
     }
@@ -53,22 +54,22 @@ export default function PeopleScreen() {
     if (kind === 'requests') {
       return (
         <View style={styles.actions}>
-          <Button title="Accept" onPress={() => run(p.id, () => answerFollowRequest(p.id, true))} loading={busy} />
-          <Button title="Decline" variant="ghost" onPress={() => run(p.id, () => answerFollowRequest(p.id, false))} disabled={busy} />
+          <Button title={t('Accept')} onPress={() => run(p.id, () => answerFollowRequest(p.id, true))} loading={busy} />
+          <Button title={t('Decline')} variant="ghost" onPress={() => run(p.id, () => answerFollowRequest(p.id, false))} disabled={busy} />
         </View>
       );
     }
     if (kind === 'following') {
-      return <Button title="Unfollow" variant="secondary" onPress={() => run(p.id, () => unfollow(me, p.id))} loading={busy} />;
+      return <Button title={t('Unfollow')} variant="secondary" onPress={() => run(p.id, () => unfollow(me, p.id))} loading={busy} />;
     }
     // Followers : suivre en retour (on devient Friends), ou retirer.
     return (
       <View style={styles.actions}>
-        {!p.iFollow && <Button title="Follow back" onPress={() => run(p.id, () => follow(p.id))} loading={busy} />}
-        <Pressable hitSlop={10} accessibilityLabel="Remove follower" disabled={busy}
-          onPress={() => Alert.alert('Remove this follower?', `@${p.username} will no longer see your Followers drives.`, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Remove', style: 'destructive', onPress: () => run(p.id, () => removeFollower(me, p.id)) },
+        {!p.iFollow && <Button title={t('Follow back')} onPress={() => run(p.id, () => follow(p.id))} loading={busy} />}
+        <Pressable hitSlop={10} accessibilityLabel={t('Remove follower')} disabled={busy}
+          onPress={() => Alert.alert(t('Remove this follower?'), t('@{0} will no longer see your Followers drives.', p.username), [
+            { text: t('Cancel'), style: 'cancel' },
+            { text: t('Remove'), style: 'destructive', onPress: () => run(p.id, () => removeFollower(me, p.id)) },
           ])}>
           <Ionicons name="close-circle-outline" size={22} color={colors.textMuted} />
         </Pressable>
@@ -79,7 +80,7 @@ export default function PeopleScreen() {
   return (
     <Screen style={{ paddingTop: spacing.lg }}>
       <View style={styles.header}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back">
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>{TITLE[kind]}</Text>
@@ -101,7 +102,7 @@ export default function PeopleScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name} numberOfLines={1}>{name}</Text>
                     <Text style={styles.muted} numberOfLines={1}>
-                      @{p.username}{p.iFollow && p.followsMe ? ' · Friends' : ''}
+                      @{p.username}{p.iFollow && p.followsMe ? t(' · Friends') : ''}
                     </Text>
                   </View>
                 </Pressable>

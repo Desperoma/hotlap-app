@@ -12,7 +12,8 @@ import { RANK_IMAGES } from '@/features/levels/images';
 import { levelFromXp, RANKS, XP_RULES } from '@/features/levels/levels';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
-const n = (v: number) => v.toLocaleString('en-US');
+import {  t, locale  } from '@/i18n';
+const n = (v: number) => v.toLocaleString(locale());
 
 /** Rangs et niveaux : rang actuel, les 12 rangs, barème d'XP, XP gagnée par activité, classes de véhicules. */
 export default function RanksScreen() {
@@ -27,12 +28,12 @@ export default function RanksScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))} hitSlop={12}
-        accessibilityLabel="Back" style={{ alignSelf: 'flex-start', padding: 4 }}>
+        accessibilityLabel={t('Back')} style={{ alignSelf: 'flex-start', padding: 4 }}>
         <Ionicons name="arrow-back" size={24} color={colors.text} />
       </Pressable>
       <View style={{ gap: 4 }}>
-        <Text style={styles.overline}>HOTLAP DRIVER PROFILE</Text>
-        <Text style={styles.title}>{info ? `Level ${info.level}` : 'Driver ranks'}</Text>
+        <Text style={styles.overline}>{t('HOTLAP DRIVER PROFILE')}</Text>
+        <Text style={styles.title}>{info ? t('Level {0}', info.level) : t('Driver ranks')}</Text>
         {info && <Text style={[styles.muted, { color: info.rank.color }]}>{info.rank.name} · {info.rank.tagline}</Text>}
       </View>
 
@@ -41,29 +42,29 @@ export default function RanksScreen() {
           <View style={styles.heroRow}>
             <Image source={RANK_IMAGES[info.rank.key]} style={{ width: 96, height: 96 }} />
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={styles.strong}>Level progression</Text>
+              <Text style={styles.strong}>{t('Level progression')}</Text>
               <Text style={styles.accent}>{n(info.into)} / {n(info.span)} XP</Text>
               <View style={styles.track}><View style={[styles.fill, { width: `${info.progress * 100}%` }]} /></View>
               <View style={styles.between}>
-                <Text style={styles.faint}>Level {info.level}</Text>
-                <Text style={styles.faint}>Level {info.level + 1}</Text>
+                <Text style={styles.faint}>{t('Level')}{' '}{info.level}</Text>
+                <Text style={styles.faint}>{t('Level')}{' '}{info.level + 1}</Text>
               </View>
             </View>
           </View>
-          <Text style={styles.faint}>{n(info.xp)} XP in total{isMe ? '' : ' (real drives only)'}</Text>
+          <Text style={styles.faint}>{n(info.xp)}{' '}{t('XP in total')}{isMe ? '' : t(' (real drives only)')}</Text>
           <View style={{ gap: 6 }}>
-            <Earned label="Distance" xp={data.breakdown.distance} detail={`${n(Math.round(data.distanceM / 1000))} km`} />
-            <Earned label="New tracks" xp={data.breakdown.tracks} detail={`${data.tracksVisited}`} />
-            <Earned label="Verified sessions" xp={data.breakdown.sessions} detail={`${data.sessions}`} />
-            <Earned label="Personal lap records" xp={data.breakdown.personalBests} detail={`${data.personalBests}`} />
-            <Earned label="Track categories" xp={data.breakdown.categories} detail={`${data.categories}`} />
+            <Earned label={t('Distance')} xp={data.breakdown.distance} detail={`${n(Math.round(data.distanceM / 1000))} km`} />
+            <Earned label={t('New tracks')} xp={data.breakdown.tracks} detail={`${data.tracksVisited}`} />
+            <Earned label={t('Verified sessions')} xp={data.breakdown.sessions} detail={`${data.sessions}`} />
+            <Earned label={t('Personal lap records')} xp={data.breakdown.personalBests} detail={`${data.personalBests}`} />
+            <Earned label={t('Track categories')} xp={data.breakdown.categories} detail={`${data.categories}`} />
           </View>
         </Card>
       ) : (
-        <Text style={styles.muted}>Niveau indisponible pour le moment.</Text>
+        <Text style={styles.muted}>{t('Niveau indisponible pour le moment.')}</Text>
       )}
 
-      <Text style={styles.section}>12 RANKS</Text>
+      <Text style={styles.section}>{t('12 RANKS')}</Text>
       <View style={styles.grid}>
         {RANKS.map((r) => {
           const current = info?.rank.key === r.key;
@@ -79,26 +80,20 @@ export default function RanksScreen() {
         })}
       </View>
 
-      <Text style={styles.section}>HOW TO EARN XP</Text>
+      <Text style={styles.section}>{t('HOW TO EARN XP')}</Text>
       <Card style={{ paddingVertical: spacing.sm }}>
         {XP_RULES.map((r, i) => (
           <View key={r.label} style={[styles.rule, i > 0 && styles.ruleSep]}>
-            <Text style={[styles.ruleLabel, r.soon && { color: colors.textFaint }]}>{r.label}{r.soon ? ' · soon' : ''}</Text>
+            <Text style={[styles.ruleLabel, r.soon && { color: colors.textFaint }]}>{r.label}{r.soon ? t(' · soon') : ''}</Text>
             <Text style={[styles.ruleXp, r.soon && { color: colors.textFaint }]}>{r.xp}</Text>
           </View>
         ))}
       </Card>
-      <Text style={styles.faint}>
-        Une session validée est un drive lancé depuis la fiche d’un circuit avec au moins un tour chronométré.
-        L’XP se recalcule depuis tes drives : supprimer un drive retire l’XP qu’il rapportait.
-      </Text>
+      <Text style={styles.faint}>{t('Une session validée est un drive lancé depuis la fiche d’un circuit avec au moins un tour chronométré. L’XP se recalcule depuis tes drives : supprimer un drive retire l’XP qu’il rapportait.')}</Text>
 
-      <Text style={styles.section}>VEHICLE CLASSES</Text>
+      <Text style={styles.section}>{t('VEHICLE CLASSES')}</Text>
       <Card style={{ gap: spacing.md }}>
-        <Text style={styles.muted}>
-          HPI sur 999 = 999 × (0,60 × rapport poids/puissance + 0,40 × accélération). L’accélération est ton meilleur
-          0-100 km/h mesuré en Sprint avec la voiture, sinon une estimation. Renseigne puissance et poids dans le garage.
-        </Text>
+        <Text style={styles.muted}>{t('HPI sur 999 = 999 × (0,60 × rapport poids/puissance + 0,40 × accélération). L’accélération est ton meilleur 0-100 km/h mesuré en Sprint avec la voiture, sinon une estimation. Renseigne puissance et poids dans le garage.')}</Text>
         {CLASSES.map((c) => (
           <View key={c.key} style={styles.classRow}>
             <ClassBadge cls={c.key} />

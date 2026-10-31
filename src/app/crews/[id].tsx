@@ -15,7 +15,8 @@ import {
 import { displayName } from '@/features/social/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
-const ROLE_LABEL = { owner: 'OWNER', admin: 'ADMIN', member: '' } as const;
+import { t } from '@/i18n';
+const ROLE_LABEL = { get owner() { return t('OWNER'); }, get admin() { return t('ADMIN'); }, member: '' } as const;
 
 /**
  * Détail d'un crew : rejoindre / demander / quitter ; pour les admins, valider les demandes,
@@ -47,8 +48,8 @@ export default function CrewScreen() {
   if (!crew || !me) {
     return (
       <Screen style={styles.center}>
-        <Text style={styles.muted}>This crew doesn’t exist anymore.</Text>
-        <Button title="Back" variant="secondary" onPress={back} />
+        <Text style={styles.muted}>{t('This crew doesn’t exist anymore.')}</Text>
+        <Button title={t('Back')} variant="secondary" onPress={back} />
       </Screen>
     );
   }
@@ -76,45 +77,45 @@ export default function CrewScreen() {
   const join = () =>
     run(async () => {
       const status = await joinCrew(crew.id);
-      if (status === 'pending') Alert.alert('Request sent', `An admin of ${crew.name} will review it.`);
-    }, 'Couldn’t join');
+      if (status === 'pending') Alert.alert(t('Request sent'), t('An admin of {0} will review it.', crew.name));
+    }, t('Couldn’t join'));
 
   const leave = () =>
-    Alert.alert(crew.myStatus === 'pending' ? 'Cancel your request?' : `Leave ${crew.name}?`, undefined, [
-      { text: 'Stay', style: 'cancel' },
-      { text: crew.myStatus === 'pending' ? 'Cancel request' : 'Leave', style: 'destructive', onPress: () => run(() => leaveCrew(crew.id), 'Couldn’t leave') },
+    Alert.alert(crew.myStatus === 'pending' ? t('Cancel your request?') : t('Leave {0}?', crew.name), undefined, [
+      { text: t('Stay'), style: 'cancel' },
+      { text: crew.myStatus === 'pending' ? t('Cancel request') : t('Leave'), style: 'destructive', onPress: () => run(() => leaveCrew(crew.id), t('Couldn’t leave')) },
     ]);
 
   const confirmDelete = () =>
     later(() =>
-      Alert.alert(`Delete ${crew.name}?`, 'The crew and its member list are deleted for everyone. Drives are not affected.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete crew', style: 'destructive', onPress: () => run(async () => { await deleteCrew(crew.id); back(); }, 'Couldn’t delete') },
+      Alert.alert(t('Delete {0}?', crew.name), t('The crew and its member list are deleted for everyone. Drives are not affected.'), [
+        { text: t('Cancel'), style: 'cancel' },
+        { text: t('Delete crew'), style: 'destructive', onPress: () => run(async () => { await deleteCrew(crew.id); back(); }, t('Couldn’t delete')) },
       ]));
 
   const memberOptions = (m: CrewMember): SheetOption[] => {
     const name = displayName(m.profile);
-    const opts: SheetOption[] = [{ label: 'View profile', onPress: () => router.push(`/user/${m.userId}`) }];
+    const opts: SheetOption[] = [{ label: t('View profile'), onPress: () => router.push(`/user/${m.userId}`) }];
     if (m.userId === me || m.role === 'owner') return opts;
     if (isOwner) {
       opts.push(m.role === 'admin'
-        ? { label: 'Remove admin role', onPress: () => run(() => setMemberRole(crew.id, m.userId, 'member'), 'Update failed') }
-        : { label: 'Make admin', onPress: () => run(() => setMemberRole(crew.id, m.userId, 'admin'), 'Update failed') });
+        ? { label: t('Remove admin role'), onPress: () => run(() => setMemberRole(crew.id, m.userId, 'member'), t('Update failed')) }
+        : { label: t('Make admin'), onPress: () => run(() => setMemberRole(crew.id, m.userId, 'admin'), t('Update failed')) });
       opts.push({
-        label: `Transfer ownership to ${name}`,
-        onPress: () => later(() => Alert.alert(`Give ${crew.name} to ${name}?`, 'You will stay in the crew as an admin.', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Transfer', onPress: () => run(() => transferCrew(crew.id, m.userId), 'Transfer failed') },
+        label: t('Transfer ownership to {0}', name),
+        onPress: () => later(() => Alert.alert(t('Give {0} to {1}?', crew.name, name), t('You will stay in the crew as an admin.'), [
+          { text: t('Cancel'), style: 'cancel' },
+          { text: t('Transfer'), onPress: () => run(() => transferCrew(crew.id, m.userId), t('Transfer failed')) },
         ])),
       });
     }
     if (isOwner || (isAdmin && m.role === 'member')) {
       opts.push({
-        label: `Remove ${name} from the crew`,
+        label: t('Remove {0} from the crew', name),
         destructive: true,
-        onPress: () => later(() => Alert.alert(`Remove ${name}?`, undefined, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Remove', style: 'destructive', onPress: () => run(() => removeMember(crew.id, m.userId), 'Remove failed') },
+        onPress: () => later(() => Alert.alert(t('Remove {0}?', name), undefined, [
+          { text: t('Cancel'), style: 'cancel' },
+          { text: t('Remove'), style: 'destructive', onPress: () => run(() => removeMember(crew.id, m.userId), t('Remove failed')) },
         ])),
       });
     }
@@ -122,19 +123,19 @@ export default function CrewScreen() {
   };
 
   const crewOptions: SheetOption[] = [
-    ...(isAdmin ? [{ label: 'Edit crew', onPress: () => router.push({ pathname: '/crews/form', params: { id: crew.id } }) }] : []),
-    ...(isOwner ? [{ label: 'Delete crew', destructive: true, onPress: confirmDelete }] : []),
-    ...(!isOwner ? [{ label: 'Report this crew', onPress: () => later(() => setReport({ type: 'crew', id: crew.id, userId: crew.owner_id, userName: crew.name })) }] : []),
+    ...(isAdmin ? [{ label: t('Edit crew'), onPress: () => router.push({ pathname: '/crews/form', params: { id: crew.id } }) }] : []),
+    ...(isOwner ? [{ label: t('Delete crew'), destructive: true, onPress: confirmDelete }] : []),
+    ...(!isOwner ? [{ label: t('Report this crew'), onPress: () => later(() => setReport({ type: 'crew', id: crew.id, userId: crew.owner_id, userName: crew.name })) }] : []),
   ];
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         {crewOptions.length > 0 && (
-          <Pressable onPress={() => setCrewMenu(true)} hitSlop={12} accessibilityLabel="Crew options" style={{ padding: 4 }}>
+          <Pressable onPress={() => setCrewMenu(true)} hitSlop={12} accessibilityLabel={t('Crew options')} style={{ padding: 4 }}>
             <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
           </Pressable>
         )}
@@ -144,47 +145,47 @@ export default function CrewScreen() {
         <View style={styles.badge}><Text style={styles.badgeText}>{crew.name.slice(0, 2).toUpperCase()}</Text></View>
         <Text style={styles.title}>{crew.name}</Text>
         <Text style={styles.muted}>
-          {[`${crew.member_count} ${crew.member_count === 1 ? 'member' : 'members'}`, crew.home_city,
-            crew.join_policy === 'approval' ? 'Joins on request' : 'Open crew'].filter(Boolean).join(' · ')}
+          {[crew.member_count === 1 ? t('1 member') : t('{0} members', crew.member_count), crew.home_city,
+            crew.join_policy === 'approval' ? t('Joins on request') : t('Open crew')].filter(Boolean).join(' · ')}
         </Text>
         {crew.description ? <Text style={styles.desc}>{crew.description}</Text> : null}
         {invite && !active && (
           <View style={styles.invite}>
-            <Text style={styles.inviteText}><Text style={styles.name}>{invite.inviterName}</Text> invited you to join.</Text>
+            <Text style={styles.inviteText}><Text style={styles.name}>{invite.inviterName}</Text>{' '}{t('invited you to join.')}</Text>
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <Button title="Decline" variant="secondary" style={{ flex: 1 }} disabled={busy}
-                onPress={() => run(() => respondCrewInvite(crew.id, false), 'Update failed')} />
-              <Button title="Join" icon="checkmark" style={{ flex: 1 }} loading={busy}
-                onPress={() => run(() => respondCrewInvite(crew.id, true), 'Couldn’t join')} />
+              <Button title={t('Decline')} variant="secondary" style={{ flex: 1 }} disabled={busy}
+                onPress={() => run(() => respondCrewInvite(crew.id, false), t('Update failed'))} />
+              <Button title={t('Join')} icon="checkmark" style={{ flex: 1 }} loading={busy}
+                onPress={() => run(() => respondCrewInvite(crew.id, true), t('Couldn’t join'))} />
             </View>
           </View>
         )}
         {crew.myStatus === null && !invite && (
-          <Button title={crew.join_policy === 'open' ? 'Join crew' : 'Ask to join'} icon="people" onPress={join} loading={busy} />
+          <Button title={crew.join_policy === 'open' ? t('Join crew') : t('Ask to join')} icon="people" onPress={join} loading={busy} />
         )}
         {canInvite && (
-          <Button title="Invite drivers" variant="secondary" icon="person-add-outline"
+          <Button title={t('Invite drivers')} variant="secondary" icon="person-add-outline"
             onPress={() => router.push({ pathname: '/crews/invite', params: { id: crew.id } })} />
         )}
         {crew.myStatus === 'pending' && (
-          <Button title="Request sent · Cancel" variant="secondary" icon="time-outline" onPress={leave} disabled={busy} />
+          <Button title={t('Request sent · Cancel')} variant="secondary" icon="time-outline" onPress={leave} disabled={busy} />
         )}
-        {active && !isOwner && <Button title="Leave crew" variant="ghost" icon="exit-outline" onPress={leave} disabled={busy} />}
+        {active && !isOwner && <Button title={t('Leave crew')} variant="ghost" icon="exit-outline" onPress={leave} disabled={busy} />}
       </Card>
 
       {isAdmin && pending.length > 0 && (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.section}>REQUESTS ({pending.length})</Text>
+          <Text style={styles.section}>{t('REQUESTS (')}{pending.length})</Text>
           {pending.map((m) => (
             <Card key={m.userId} style={styles.member}>
               <Avatar url={m.profile?.avatar_url} name={displayName(m.profile)} size={40} />
               <Text style={[styles.name, { flex: 1 }]} numberOfLines={1}>{displayName(m.profile)}</Text>
-              <Pressable onPress={() => run(() => answerRequest(crew.id, m.userId, false), 'Update failed')} hitSlop={8}
-                accessibilityLabel={`Decline ${displayName(m.profile)}`} style={styles.iconBtn}>
+              <Pressable onPress={() => run(() => answerRequest(crew.id, m.userId, false), t('Update failed'))} hitSlop={8}
+                accessibilityLabel={t('Decline {0}', displayName(m.profile))} style={styles.iconBtn}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </Pressable>
-              <Pressable onPress={() => run(() => answerRequest(crew.id, m.userId, true), 'Update failed')} hitSlop={8}
-                accessibilityLabel={`Accept ${displayName(m.profile)}`} style={[styles.iconBtn, { backgroundColor: colors.accent }]}>
+              <Pressable onPress={() => run(() => answerRequest(crew.id, m.userId, true), t('Update failed'))} hitSlop={8}
+                accessibilityLabel={t('Accept {0}', displayName(m.profile))} style={[styles.iconBtn, { backgroundColor: colors.accent }]}>
                 <Ionicons name="checkmark" size={20} color={colors.accentText} />
               </Pressable>
             </Card>
@@ -192,12 +193,12 @@ export default function CrewScreen() {
         </View>
       )}
 
-      <Text style={styles.section}>MEMBERS</Text>
+      <Text style={styles.section}>{t('MEMBERS')}</Text>
       {roster.map((m) => (
         <Card key={m.userId} style={styles.member} onPress={() => setMemberMenu(m)}>
           <Avatar url={m.profile?.avatar_url} name={displayName(m.profile)} size={40} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.name} numberOfLines={1}>{m.userId === me ? 'You' : displayName(m.profile)}</Text>
+            <Text style={styles.name} numberOfLines={1}>{m.userId === me ? t('You') : displayName(m.profile)}</Text>
             {m.profile?.username ? <Text style={styles.meta}>@{m.profile.username}</Text> : null}
           </View>
           {ROLE_LABEL[m.role] ? <Text style={styles.role}>{ROLE_LABEL[m.role]}</Text> : null}

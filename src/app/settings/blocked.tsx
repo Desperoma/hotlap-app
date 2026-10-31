@@ -10,6 +10,7 @@ import { unblock } from '@/features/moderation/api';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import {  t, locale  } from '@/i18n';
 type Blocked = { user_id: string; username: string; display_name: string | null; avatar_url: string | null; blocked_at: string };
 
 /** Comptes bloqués : la liste, et « Unblock » pour chacun (migration 0032). */
@@ -23,30 +24,30 @@ export default function BlockedScreen() {
   }, []);
   useEffect(load, [load]);
 
-  const doUnblock = (b: Blocked) => Alert.alert(`Unblock @${b.username}?`, 'You will see each other’s public drives and comments again. Follows are not restored.', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Unblock', onPress: async () => {
+  const doUnblock = (b: Blocked) => Alert.alert(t('Unblock @{0}?', b.username), t('You will see each other’s public drives and comments again. Follows are not restored.'), [
+    { text: t('Cancel'), style: 'cancel' },
+    { text: t('Unblock'), onPress: async () => {
       if (!session) return;
-      try { await unblock(session.user.id, b.user_id); load(); } catch (e) { Alert.alert('Unblock failed', e instanceof Error ? e.message : String(e)); }
+      try { await unblock(session.user.id, b.user_id); load(); } catch (e) { Alert.alert(t('Unblock failed'), e instanceof Error ? e.message : String(e)); }
     } },
   ]);
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.header}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back"><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
-        <Text style={styles.title}>Blocked accounts</Text>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')}><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
+        <Text style={styles.title}>{t('Blocked accounts')}</Text>
       </View>
       {list === null ? <ActivityIndicator color={colors.accent} /> : list.length === 0 ? (
-        <Text style={styles.hint}>You haven’t blocked anyone.</Text>
+        <Text style={styles.hint}>{t('You haven’t blocked anyone.')}</Text>
       ) : list.map((b) => (
         <Card key={b.user_id} style={styles.row}>
           <Avatar url={b.avatar_url} name={b.display_name ?? b.username} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={styles.name} numberOfLines={1}>{b.display_name ?? b.username}</Text>
-            <Text style={styles.hint}>@{b.username} · {new Date(b.blocked_at).toLocaleDateString()}</Text>
+            <Text style={styles.hint}>@{b.username} · {new Date(b.blocked_at).toLocaleDateString(locale())}</Text>
           </View>
-          <Button title="Unblock" variant="secondary" onPress={() => doUnblock(b)} />
+          <Button title={t('Unblock')} variant="secondary" onPress={() => doUnblock(b)} />
         </Card>
       ))}
     </Screen>

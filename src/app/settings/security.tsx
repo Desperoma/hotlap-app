@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Sécurité : changer de mot de passe, se déconnecter de tous les appareils. */
 export default function SecurityScreen() {
   const { session, signOut } = useAuth();
@@ -15,7 +16,7 @@ export default function SecurityScreen() {
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/settings'));
-  const err = pwd && pwd.length < 8 ? '8 caractères minimum' : confirm && confirm !== pwd ? 'Les deux mots de passe diffèrent' : null;
+  const err = pwd && pwd.length < 8 ? t('8 caractères minimum') : confirm && confirm !== pwd ? t('Les deux mots de passe diffèrent') : null;
 
   const change = async () => {
     if (!isSupabaseConfigured || err || !pwd) return;
@@ -24,38 +25,38 @@ export default function SecurityScreen() {
     setBusy(false);
     if (error) {
       const m = error.message.toLowerCase();
-      return Alert.alert('Changement impossible',
-        m.includes('reauth') || m.includes('nonce') ? 'Reconnecte-toi puis réessaie (connexion trop ancienne).'
-          : m.includes('same') ? 'Choisis un mot de passe différent de l’actuel.'
-          : m.includes('weak') ? 'Mot de passe trop faible.' : error.message);
+      return Alert.alert(t('Changement impossible'),
+        m.includes('reauth') || m.includes('nonce') ? t('Reconnecte-toi puis réessaie (connexion trop ancienne).')
+          : m.includes('same') ? t('Choisis un mot de passe différent de l’actuel.')
+          : m.includes('weak') ? t('Mot de passe trop faible.') : error.message);
     }
     setPwd(''); setConfirm('');
-    Alert.alert('Mot de passe changé', 'Utilise-le à ta prochaine connexion.');
+    Alert.alert(t('Mot de passe changé'), t('Utilise-le à ta prochaine connexion.'));
   };
 
-  const signOutEverywhere = () => Alert.alert('Sign out everywhere?', 'All your devices will need to log in again.', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Sign out', style: 'destructive', onPress: async () => { await supabase.auth.signOut({ scope: 'global' }).catch(() => {}); await signOut(); } },
+  const signOutEverywhere = () => Alert.alert(t('Sign out everywhere?'), t('All your devices will need to log in again.'), [
+    { text: t('Cancel'), style: 'cancel' },
+    { text: t('Sign out'), style: 'destructive', onPress: async () => { await supabase.auth.signOut({ scope: 'global' }).catch(() => {}); await signOut(); } },
   ]);
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.header}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back"><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
-        <Text style={styles.title}>Security</Text>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')}><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
+        <Text style={styles.title}>{t('Security')}</Text>
       </View>
       <Card style={{ gap: spacing.md }}>
-        <Text style={styles.label}>Change password</Text>
-        <Text style={styles.hint}>Compte : {session?.user.email ?? '—'}</Text>
-        <TextField label="New password" icon="lock-closed-outline" value={pwd} onChangeText={setPwd} secure autoCapitalize="none" />
-        <TextField label="Confirm" icon="lock-closed-outline" value={confirm} onChangeText={setConfirm} secure autoCapitalize="none" />
+        <Text style={styles.label}>{t('Change password')}</Text>
+        <Text style={styles.hint}>{t('Compte :')}{' '}{session?.user.email ?? '—'}</Text>
+        <TextField label={t('New password')} icon="lock-closed-outline" value={pwd} onChangeText={setPwd} secure autoCapitalize="none" />
+        <TextField label={t('Confirm')} icon="lock-closed-outline" value={confirm} onChangeText={setConfirm} secure autoCapitalize="none" />
         {err ? <Text style={styles.error}>{err}</Text> : null}
-        <Button title="Update password" onPress={change} loading={busy} disabled={!pwd || !confirm || !!err} />
+        <Button title={t('Update password')} onPress={change} loading={busy} disabled={!pwd || !confirm || !!err} />
       </Card>
       <Card style={{ gap: spacing.md }}>
-        <Text style={styles.label}>Sessions</Text>
-        <Text style={styles.hint}>Déconnecte HotLap sur tous tes téléphones, celui-ci compris.</Text>
-        <Button title="Sign out everywhere" variant="secondary" icon="log-out-outline" onPress={signOutEverywhere} />
+        <Text style={styles.label}>{t('Sessions')}</Text>
+        <Text style={styles.hint}>{t('Déconnecte HotLap sur tous tes téléphones, celui-ci compris.')}</Text>
+        <Button title={t('Sign out everywhere')} variant="secondary" icon="log-out-outline" onPress={signOutEverywhere} />
       </Card>
     </Screen>
   );

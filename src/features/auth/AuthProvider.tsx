@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Profile, Vehicle } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+import { t } from '@/i18n';
 export type ProfilePatch = Partial<
   Pick<Profile, 'first_name' | 'last_name' | 'birth_date' | 'phone' | 'country_code' | 'region' | 'home_city' |
     'display_name' | 'bio' | 'avatar_url' | 'onboarded_at' | 'follow_policy' | 'details_visibility' | 'default_drive_visibility'>
@@ -123,13 +124,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // --- Connexion / inscription ------------------------------------------------
   const signIn = useCallback<AuthState['signIn']>(async (identifier, password) => {
     const id = identifier.trim();
-    if (!id || !password) throw new Error('Saisis ton email (ou ton pseudo) et ton mot de passe.');
+    if (!id || !password) throw new Error(t('Saisis ton email (ou ton pseudo) et ton mot de passe.'));
     if (!isSupabaseConfigured) {
       // Démo : un « ancien » compte, onboarding déjà fait.
       const p = demoProfile(id.split('@')[0] || 'driver');
       setLoaded({
         userId: 'demo-user',
-        profile: { ...p, first_name: 'Demo', birth_date: '1995-05-01', country_code: 'FR', home_city: 'Metz', onboarded_at: p.created_at },
+        profile: { ...p, first_name: t('Demo'), birth_date: '1995-05-01', country_code: 'FR', home_city: t('Metz'), onboarded_at: p.created_at },
         vehicles: [demoVehicle({ make: 'Audi', model: 'A3 e-tron', year: 2017 }, true)],
       });
       setSession(DEMO_SESSION);
@@ -139,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: { identifier: id, password },
     });
     if (error) throw new Error(await functionErrorMessage(error));
-    if (!data?.access_token) throw new Error('Connexion impossible pour le moment.');
+    if (!data?.access_token) throw new Error(t('Connexion impossible pour le moment.'));
     const { error: e } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
     if (e) throw e;
   }, []);
@@ -159,22 +160,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) {
       // Le trigger handle_new_user crée le profil : une erreur de base à l'inscription vient du pseudo.
-      if (/profiles_username_check/i.test(error.message)) throw new Error(USERNAME_RULE);
+      if (/profiles_username_check/i.test(error.message)) throw new Error(usernameRule());
       if (/duplicate key|profiles_username_key|database error saving new user/i.test(error.message)) {
-        throw new Error('Ce pseudo est déjà pris (ou invalide). ' + USERNAME_RULE);
+        throw new Error(t('Ce pseudo est déjà pris (ou invalide).') + ' ' + usernameRule());
       }
       throw error;
     }
     if (data.session) {
       // « Confirm email » désactivé dans Supabase : le compte serait ouvert sans vérification.
       await supabase.auth.signOut({ scope: 'local' });
-      throw new Error('La vérification par email est désactivée côté serveur. Inscription impossible pour le moment.');
+      throw new Error(t('La vérification par email est désactivée côté serveur. Inscription impossible pour le moment.'));
     }
     return true; // un code a été envoyé par email
   }, []);
 
   const verifyEmail = useCallback<AuthState['verifyEmail']>(async (email, code) => {
-    if (!isCode(code)) throw new Error('Saisis le code complet reçu par email.');
+    if (!isCode(code)) throw new Error(t('Saisis le code complet reçu par email.'));
     if (!isSupabaseConfigured) {
       setLoaded({
         userId: 'demo-user',
@@ -185,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'signup' });
-    if (error) throw new Error('Code invalide ou expiré.');
+    if (error) throw new Error(t('Code invalide ou expiré.'));
   }, [demoSignup]);
 
   const resendEmailCode = useCallback<AuthState['resendEmailCode']>(async (email) => {
@@ -210,8 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select().single();
       if (error) {
-        if (error.message.includes('birth_date_locked')) throw new Error('La date de naissance ne peut plus être modifiée. Contacte le support.');
-        if (error.message.includes('profiles_bio_check')) throw new Error('La bio fait 280 caractères maximum.');
+        if (error.message.includes('birth_date_locked')) throw new Error(t('La date de naissance ne peut plus être modifiée. Contacte le support.'));
+        if (error.message.includes('profiles_bio_check')) throw new Error(t('La bio fait 280 caractères maximum.'));
         throw error;
       }
       patchLoaded((l) => ({ ...l, profile: data as Profile }));
@@ -222,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // --- Garage ---------------------------------------------------------------------
   const addVehicle = useCallback<AuthState['addVehicle']>(
     async (v, makePrimary = false) => {
-      if (!userId) throw new Error('Not signed in');
+      if (!userId) throw new Error(t('Not signed in'));
       const first = (current?.vehicles.length ?? 0) === 0;
       const primary = makePrimary || first;
       if (!isSupabaseConfigured) {
@@ -318,7 +319,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth doit être utilisé dans <AuthProvider>');
+  if (!ctx) throw new Error(t('useAuth doit être utilisé dans <AuthProvider>'));
   return ctx;
 }
 
@@ -349,11 +350,11 @@ async function functionErrorMessage(error: unknown): Promise<string> {
       // corps illisible : message générique ci-dessous
     }
   }
-  return 'Connexion impossible. Vérifie ta connexion internet.';
+  return t('Connexion impossible. Vérifie ta connexion internet.');
 }
 
 function garageError(error: { message: string }) {
-  if (error.message.includes('garage_full')) return new Error('Ton garage est plein (20 véhicules maximum).');
+  if (error.message.includes('garage_full')) return new Error(t('Ton garage est plein (20 véhicules maximum).'));
   return error;
 }
 
@@ -373,7 +374,7 @@ function demoVehicle(v: VehicleInput, primary: boolean): Vehicle {
 }
 
 /** Même règle que la contrainte profiles_username_check (migration 0001). */
-export const USERNAME_RULE = 'Pseudo : 3 à 24 caractères, lettres sans accent, chiffres, « _ » ou « . », sans espace.';
+export const usernameRule = () => t('Pseudo : 3 à 24 caractères, lettres sans accent, chiffres, « _ » ou « . », sans espace.');
 export function checkUsername(username: string): string | null {
-  return /^[a-zA-Z0-9_.]{3,24}$/.test(username.trim()) ? null : USERNAME_RULE;
+  return /^[a-zA-Z0-9_.]{3,24}$/.test(username.trim()) ? null : usernameRule();
 }

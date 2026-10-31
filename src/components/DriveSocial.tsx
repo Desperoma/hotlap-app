@@ -10,6 +10,7 @@ import {
 } from '@/features/social/api';
 import { colors, fonts, radius, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 /** Likes et commentaires sous un drive. */
 export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; likeCount: number; isOwner: boolean }) {
   const { session } = useAuth();
@@ -42,7 +43,7 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
     } catch (e) {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));
-      Alert.alert('Like failed', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Like failed'), e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -54,24 +55,24 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
       setDraft('');
       loadComments();
     } catch (e) {
-      Alert.alert('Comment not sent', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Comment not sent'), e instanceof Error ? e.message : String(e));
     } finally {
       setSending(false);
     }
   };
 
   const remove = (c: Comment) =>
-    Alert.alert('Delete this comment?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('Delete this comment?'), undefined, [
+      { text: t('Cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteComment(c.id);
             setComments((list) => list?.filter((x) => x.id !== c.id) ?? null);
           } catch (e) {
-            Alert.alert('Delete failed', e instanceof Error ? e.message : String(e));
+            Alert.alert(t('Delete failed'), e instanceof Error ? e.message : String(e));
           }
         },
       },
@@ -80,7 +81,7 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
   return (
     <View style={{ gap: spacing.md }}>
       <View style={styles.actions}>
-        <Pressable style={styles.action} onPress={toggleLike} hitSlop={8} accessibilityLabel={liked ? 'Unlike' : 'Like'}>
+        <Pressable style={styles.action} onPress={toggleLike} hitSlop={8} accessibilityLabel={liked ? t('Unlike') : t('Like')}>
           <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? colors.like : colors.textMuted} />
           <Text style={[styles.actionText, liked ? { color: colors.like } : null]}>{likes}</Text>
         </Pressable>
@@ -90,11 +91,11 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
         </View>
       </View>
 
-      <Text style={styles.section}>COMMENTS</Text>
+      <Text style={styles.section}>{t('COMMENTS')}</Text>
       {comments === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : comments.length === 0 ? (
-        <Text style={styles.muted}>No comments yet.</Text>
+        <Text style={styles.muted}>{t('No comments yet.')}</Text>
       ) : (
         comments.map((c) => {
           const name = displayName(c.author);
@@ -103,10 +104,10 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
               key={c.id}
               style={styles.comment}
               onLongPress={() => !c.isMine && c.author && setMenu({ type: 'comment', id: c.id, userId: c.author.id, userName: name })}
-              accessibilityHint={c.isMine ? undefined : 'Long press to report or block'}
+              accessibilityHint={c.isMine ? undefined : t('Long press to report or block')}
             >
               <Pressable onPress={() => c.author && router.push(`/user/${c.author.id}`)} style={styles.avatar}
-                accessibilityLabel={`Open ${name}'s profile`}>
+                accessibilityLabel={t('Open {0}\'s profile', name)}>
                 <Text style={styles.initials}>{initials(name)}</Text>
               </Pressable>
               <View style={{ flex: 1, gap: 2 }}>
@@ -117,13 +118,13 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
                 <Pressable
                   onPress={() => c.author && setMenu({ type: 'comment', id: c.id, userId: c.author.id, userName: name })}
                   hitSlop={8}
-                  accessibilityLabel="Report or block"
+                  accessibilityLabel={t('Report or block')}
                 >
                   <Ionicons name="ellipsis-horizontal" size={16} color={colors.textMuted} />
                 </Pressable>
               )}
               {(c.isMine || isOwner) && (
-                <Pressable onPress={() => remove(c)} hitSlop={8} accessibilityLabel="Delete comment">
+                <Pressable onPress={() => remove(c)} hitSlop={8} accessibilityLabel={t('Delete comment')}>
                   <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
                 </Pressable>
               )}
@@ -137,13 +138,13 @@ export function DriveSocial({ driveId, likeCount, isOwner }: { driveId: string; 
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Add a comment…"
+          placeholder={t('Add a comment…')}
           placeholderTextColor={colors.textFaint}
           style={styles.input}
           maxLength={1000}
           multiline
         />
-        <Pressable onPress={send} disabled={sending || !draft.trim()} style={styles.send} accessibilityLabel="Send comment">
+        <Pressable onPress={send} disabled={sending || !draft.trim()} style={styles.send} accessibilityLabel={t('Send comment')}>
           {sending ? <ActivityIndicator color={colors.accentText} /> : <Ionicons name="arrow-up" size={20} color={colors.accentText} />}
         </Pressable>
       </View>

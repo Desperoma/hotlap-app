@@ -2,15 +2,16 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 import { geoToRings, type Lap, type LL } from './laps';
 
+import { t } from '@/i18n/core';
 /** Catégories de circuits (filtres et couleurs de la carte), migration 0026. */
 export type CircuitCategory = 'racing' | 'dirt' | 'offroad' | 'drag' | 'karting' | 'drift';
 export const CATEGORIES: { key: CircuitCategory; label: string; color: string; icon: string }[] = [
-  { key: 'racing', label: 'Racing circuit', color: '#1E8BFF', icon: 'go-kart-track' },
-  { key: 'dirt', label: 'Dirt / Rally', color: '#F04444', icon: 'road-variant' },
-  { key: 'offroad', label: 'Off-road', color: '#22C55E', icon: 'terrain' },
-  { key: 'drag', label: 'Drag strip', color: '#A855F7', icon: 'road' },
-  { key: 'karting', label: 'Karting', color: '#F5B814', icon: 'go-kart' },
-  { key: 'drift', label: 'Drift', color: '#EC4899', icon: 'car-traction-control' },
+  { key: 'racing', get label() { return t('Racing circuit'); }, color: '#1E8BFF', icon: 'go-kart-track' },
+  { key: 'dirt', get label() { return t('Dirt / Rally'); }, color: '#F04444', icon: 'road-variant' },
+  { key: 'offroad', get label() { return t('Off-road'); }, color: '#22C55E', icon: 'terrain' },
+  { key: 'drag', get label() { return t('Drag strip'); }, color: '#A855F7', icon: 'road' },
+  { key: 'karting', get label() { return t('Karting'); }, color: '#F5B814', icon: 'go-kart' },
+  { key: 'drift', get label() { return t('Drift'); }, color: '#EC4899', icon: 'car-traction-control' },
 ];
 export const categoryOf = (k: string | null | undefined) => CATEGORIES.find((c) => c.key === k) ?? CATEGORIES[0];
 
@@ -62,8 +63,8 @@ export async function listDriveLaps(driveId: string): Promise<Lap[]> {
 
 function lapError(error: { message: string }) {
   const m = error.message;
-  if (m.includes('circuit_start_outside')) return new Error('Le drive n’a pas démarré sur le circuit : les tours ne sont pas chronométrés.');
-  if (m.includes('circuit_mode_required')) return new Error('Ce drive n’a pas été lancé depuis un circuit.');
+  if (m.includes('circuit_start_outside')) return new Error(t('Le drive n’a pas démarré sur le circuit : les tours ne sont pas chronométrés.'));
+  if (m.includes('circuit_mode_required')) return new Error(t('Ce drive n’a pas été lancé depuis un circuit.'));
   return new Error(m);
 }
 
@@ -72,7 +73,7 @@ export async function devSetCircuitPath(id: string, points: LL[] | null) {
   const { error } = await supabase.rpc('dev_set_circuit_path', {
     p_circuit: id, p_points: points ? points.map((p) => [Number(p.longitude.toFixed(7)), Number(p.latitude.toFixed(7))]) : null,
   });
-  if (error) throw new Error(error.message.includes('dev_only') ? 'Réservé aux comptes développeurs.' : error.message);
+  if (error) throw new Error(error.message.includes('dev_only') ? t('Réservé aux comptes développeurs.') : error.message);
 }
 
 /** Comptes dev (migration 0032) : catégorie d'un circuit. */
@@ -84,6 +85,6 @@ export async function devSetCircuitCategory(id: string, category: CircuitCategor
 /** Comptes dev (migration 0032) : nouveau circuit au point touché, emprise de 400 m. Renvoie son id. */
 export async function devCreateCircuit(name: string, category: CircuitCategory, at: LL): Promise<string> {
   const { data, error } = await supabase.rpc('dev_create_circuit', { p_name: name, p_category: category, p_lat: at.latitude, p_lng: at.longitude });
-  if (error) throw new Error(error.message.includes('dev_only') ? 'Réservé aux comptes développeurs.' : error.message);
+  if (error) throw new Error(error.message.includes('dev_only') ? t('Réservé aux comptes développeurs.') : error.message);
   return data as string;
 }

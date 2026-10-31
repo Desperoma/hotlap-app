@@ -10,12 +10,13 @@ import { MAPS_AVAILABLE } from '@/lib/maps';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
+import { t } from '@/i18n';
 type Metric = 'speed' | 'alt' | 'grade' | 'accel';
 const METRICS: { key: Metric; label: string; unit: string; get: (s: Sample) => number | null; digits: number }[] = [
-  { key: 'speed', label: 'Speed', unit: 'km/h', get: (s) => s.speedKmh, digits: 0 },
-  { key: 'alt', label: 'Elevation', unit: 'm', get: (s) => s.altM, digits: 0 },
-  { key: 'grade', label: 'Grade', unit: '%', get: (s) => s.gradePct, digits: 1 },
-  { key: 'accel', label: 'Accel.', unit: 'G', get: (s) => s.accelG, digits: 2 },
+  { key: 'speed', get label() { return t('Speed'); }, unit: 'km/h', get: (s) => s.speedKmh, digits: 0 },
+  { key: 'alt', get label() { return t('Elevation'); }, unit: 'm', get: (s) => s.altM, digits: 0 },
+  { key: 'grade', get label() { return t('Grade'); }, unit: '%', get: (s) => s.gradePct, digits: 1 },
+  { key: 'accel', get label() { return t('Accel.'); }, unit: 'G', get: (s) => s.accelG, digits: 2 },
 ];
 const CHART_H = 130;
 const COLUMNS = 120;
@@ -47,14 +48,14 @@ export function DriveTelemetry({ samples }: { samples: Sample[] }) {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.overline}>TELEMETRY</Text>
+      <Text style={styles.overline}>{t('TELEMETRY')}</Text>
       <View style={styles.tiles}>
-        <Tile label="Top speed" value={summary.maxSpeedKmh.toFixed(0)} unit="km/h" accent />
-        <Tile label="Avg. moving" value={summary.avgMovingKmh.toFixed(0)} unit="km/h" />
-        {hasAlt ? <Tile label="Climb" value={summary.climbM.toFixed(0)} unit="m" /> : null}
-        <Tile label="Max accel." value={summary.maxAccelG.toFixed(2)} unit="G" />
-        <Tile label="Max braking" value={summary.maxBrakeG.toFixed(2)} unit="G" />
-        {hasAlt ? <Tile label="Highest" value={summary.maxAltM!.toFixed(0)} unit="m" /> : null}
+        <Tile label={t('Top speed')} value={summary.maxSpeedKmh.toFixed(0)} unit="km/h" accent />
+        <Tile label={t('Avg. moving')} value={summary.avgMovingKmh.toFixed(0)} unit="km/h" />
+        {hasAlt ? <Tile label={t('Climb')} value={summary.climbM.toFixed(0)} unit="m" /> : null}
+        <Tile label={t('Max accel.')} value={summary.maxAccelG.toFixed(2)} unit="G" />
+        <Tile label={t('Max braking')} value={summary.maxBrakeG.toFixed(2)} unit="G" />
+        {hasAlt ? <Tile label={t('Highest')} value={summary.maxAltM!.toFixed(0)} unit="m" /> : null}
       </View>
 
       {MAPS_AVAILABLE ? (
@@ -114,18 +115,18 @@ export function DriveTelemetry({ samples }: { samples: Sample[] }) {
       <View style={styles.readout}>
         {at ? (
           <>
-            <Read label="Time" value={clock(at.t)} />
-            <Read label="Dist." value={(at.d / 1000).toFixed(2)} unit="km" />
-            <Read label="Speed" value={at.speedKmh.toFixed(0)} unit="km/h" />
-            {at.altM != null ? <Read label="Elev." value={at.altM.toFixed(0)} unit="m" /> : null}
-            {at.gradePct != null ? <Read label="Grade" value={at.gradePct.toFixed(1)} unit="%" /> : null}
-            <Read label="Accel." value={at.accelG.toFixed(2)} unit="G" />
+            <Read label={t('Time')} value={clock(at.t)} />
+            <Read label={t('Dist.')} value={(at.d / 1000).toFixed(2)} unit="km" />
+            <Read label={t('Speed')} value={at.speedKmh.toFixed(0)} unit="km/h" />
+            {at.altM != null ? <Read label={t('Elev.')} value={at.altM.toFixed(0)} unit="m" /> : null}
+            {at.gradePct != null ? <Read label={t('Grade')} value={at.gradePct.toFixed(1)} unit="%" /> : null}
+            <Read label={t('Accel.')} value={at.accelG.toFixed(2)} unit="G" />
           </>
         ) : (
-          <Text style={styles.hint}>Glisse sur le graphique ou touche le tracé pour voir chaque point.</Text>
+          <Text style={styles.hint}>{t('Glisse sur le graphique ou touche le tracé pour voir chaque point.')}</Text>
         )}
       </View>
-      <Text style={styles.hint}>Visible par toi seul.</Text>
+      <Text style={styles.hint}>{t('Visible par toi seul.')}</Text>
     </View>
   );
 }

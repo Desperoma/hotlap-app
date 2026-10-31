@@ -8,13 +8,14 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { createCrew, getCrew, updateCrew, type CrewJoinPolicy } from '@/features/crews/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 const POLICIES: { value: CrewJoinPolicy; label: string }[] = [
-  { value: 'open', label: 'Open' },
-  { value: 'approval', label: 'On request' },
+  { value: 'open', get label() { return t('Open'); } },
+  { value: 'approval', get label() { return t('On request'); } },
 ];
 const POLICY_HINT: Record<CrewJoinPolicy, string> = {
-  open: 'Anyone can join right away.',
-  approval: 'Drivers ask to join; you or an admin accept them.',
+  get open() { return t('Anyone can join right away.'); },
+  get approval() { return t('Drivers ask to join; you or an admin accept them.'); },
 };
 
 /** Créer un crew, ou le modifier (paramètre id, admins). */
@@ -46,7 +47,7 @@ export default function CrewFormScreen() {
 
   const save = async () => {
     if (!me) return;
-    if (name.trim().length < 3) return Alert.alert('Presque', 'Le nom du crew fait au moins 3 caractères.');
+    if (name.trim().length < 3) return Alert.alert(t('Presque'), t('Le nom du crew fait au moins 3 caractères.'));
     setBusy(true);
     try {
       const input = { name, description, joinPolicy: policy, homeCity: city, countryCode: profile?.country_code ?? null };
@@ -58,7 +59,7 @@ export default function CrewFormScreen() {
         router.replace(`/crews/${newId}`);
       }
     } catch (e) {
-      Alert.alert('Not saved', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Not saved'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -69,24 +70,24 @@ export default function CrewFormScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>{id ? 'Edit crew' : 'New crew'}</Text>
+        <Text style={styles.headerTitle}>{id ? t('Edit crew') : t('New crew')}</Text>
       </View>
-      <TextField label="Name" icon="people-outline" placeholder="ex. Lorraine Twisties" autoCapitalize="words"
+      <TextField label={t('Name')} icon="people-outline" placeholder={t('ex. Lorraine Twisties')} autoCapitalize="words"
         value={name} onChangeText={setName} maxLength={40} />
-      <TextField label="Description" icon="create-outline" placeholder="Who you are, where you drive (optional)"
+      <TextField label={t('Description')} icon="create-outline" placeholder={t('Who you are, where you drive (optional)')}
         autoCapitalize="sentences" value={description} onChangeText={setDescription} maxLength={280} multiline />
-      <TextField label="Home city (optional)" icon="location-outline" placeholder="ex. Metz" autoCapitalize="words"
+      <TextField label={t('Home city (optional)')} icon="location-outline" placeholder={t('ex. Metz')} autoCapitalize="words"
         value={city} onChangeText={setCity} maxLength={80} />
       <View style={{ gap: spacing.sm }}>
-        <Text style={styles.label}>Who can join</Text>
+        <Text style={styles.label}>{t('Who can join')}</Text>
         <SegmentedControl options={POLICIES} value={policy} onChange={setPolicy} />
         <Text style={styles.muted}>{POLICY_HINT[policy]}</Text>
       </View>
-      <Text style={styles.muted}>Crew names and descriptions are public. Keep them friendly: no street-racing calls.</Text>
-      <Button title={id ? 'Save' : 'Create crew'} icon="checkmark" onPress={save} loading={busy} />
+      <Text style={styles.muted}>{t('Crew names and descriptions are public. Keep them friendly: no street-racing calls.')}</Text>
+      <Button title={id ? t('Save') : t('Create crew')} icon="checkmark" onPress={save} loading={busy} />
     </Screen>
   );
 }

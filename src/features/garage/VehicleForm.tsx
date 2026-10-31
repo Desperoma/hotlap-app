@@ -12,7 +12,8 @@ import { colors, fonts, spacing } from '@/theme';
 
 import { HP_PER_KW, kwToHp } from './units';
 
-const MANUAL = 'Autre (saisie manuelle)';
+import { t } from '@/i18n';
+const manualLabel = () => t('Autre (saisie manuelle)');
 const parseNum = (s: string) => { const n = Number(s.replace(',', '.').replace(/\s/g, '')); return s.trim() && Number.isFinite(n) ? n : null; };
 
 /**
@@ -96,10 +97,10 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
   const modelName = manualMake || manualModel ? typedModel.trim() : model?.name ?? '';
 
   const submit = async () => {
-    if (!makeName || !modelName) return Alert.alert('Presque', 'Choisis ou saisis la marque et le modèle.');
+    if (!makeName || !modelName) return Alert.alert(t('Presque'), t('Choisis ou saisis la marque et le modèle.'));
     const hp = parseNum(power), kg = parseNum(weight);
-    if (hp != null && (hp < 1 || hp > 3000)) return Alert.alert('Presque', 'Puissance entre 1 et 3 000 ch.');
-    if (kg != null && (kg < 200 || kg > 8000)) return Alert.alert('Presque', 'Poids entre 200 et 8 000 kg.');
+    if (hp != null && (hp < 1 || hp > 3000)) return Alert.alert(t('Presque'), t('Puissance entre 1 et 3 000 ch.'));
+    if (kg != null && (kg < 200 || kg > 8000)) return Alert.alert(t('Presque'), t('Poids entre 200 et 8 000 kg.'));
     setBusy(true);
     try {
       const manual = manualMake || manualModel;
@@ -111,7 +112,7 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
         weightKg: kg != null ? Math.round(kg) : null,
       });
     } catch (e) {
-      Alert.alert('Oups', e instanceof Error ? e.message : 'Enregistrement impossible');
+      Alert.alert(t('Oups'), e instanceof Error ? e.message : t('Enregistrement impossible'));
     } finally {
       setBusy(false);
     }
@@ -126,43 +127,43 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
   return (
     <>
       {manualMake ? (
-        <TextField label="Brand" icon="car-sport-outline" placeholder="ex. Lancia" autoCapitalize="words"
+        <TextField label={t('Brand')} icon="car-sport-outline" placeholder={t('ex. Lancia')} autoCapitalize="words"
           value={typedMake} onChangeText={setTypedMake} maxLength={60} />
       ) : (
-        <Picker label="Brand" placeholder="Select Brand" value={make?.name ?? null}
-          options={[...makes.map((m) => m.name), MANUAL]}
+        <Picker label={t('Brand')} placeholder={t('Select Brand')} value={make?.name ?? null}
+          options={[...makes.map((m) => m.name), manualLabel()]}
           onChange={(name) => {
             setModel(null);
             setManualModel(false);
-            if (name === MANUAL) { setManualMake(true); setMake(null); }
+            if (name === manualLabel()) { setManualMake(true); setMake(null); }
             else setMake(makes.find((m) => m.name === name) ?? null);
           }} />
       )}
       {manualMake || manualModel ? (
-        <TextField label="Model" icon="car-outline" placeholder="ex. Delta HF Integrale"
+        <TextField label={t('Model')} icon="car-outline" placeholder={t('ex. Delta HF Integrale')}
           value={typedModel} onChangeText={setTypedModel} maxLength={80} />
       ) : (
-        <Picker label="Model" placeholder="Select Model" value={model?.name ?? null}
-          options={[...models.map((m) => m.name), MANUAL]} disabled={!make}
+        <Picker label={t('Model')} placeholder={t('Select Model')} value={model?.name ?? null}
+          options={[...models.map((m) => m.name), manualLabel()]} disabled={!make}
           onChange={(name) => {
-            if (name === MANUAL) { setManualModel(true); setModel(null); setTypedModel(''); }
+            if (name === manualLabel()) { setManualModel(true); setModel(null); setTypedModel(''); }
             else setModel(models.find((m) => m.name === name) ?? null);
           }} />
       )}
       {suggestions.length > 0 && (
         <View style={{ gap: 8 }}>
-          <Text style={styles.hint}>Tu voulais dire :</Text>
+          <Text style={styles.hint}>{t('Tu voulais dire :')}</Text>
           <View style={styles.chips}>
             {suggestions.map((s) => <Chip key={`${s.id}-${s.name}`} label={`${make?.name} ${s.name}`} onPress={() => pickSuggestion(s)} />)}
           </View>
         </View>
       )}
       {(manualMake || manualModel) && (
-        <Text style={styles.hint}>Si ta voiture n'existe pas encore, elle sera ajoutée au catalogue après vérification par l'équipe.</Text>
+        <Text style={styles.hint}>{t('Si ta voiture n\'existe pas encore, elle sera ajoutée au catalogue après vérification par l\'équipe.')}</Text>
       )}
-      <Picker label="Year" placeholder="Select Year (e.g. 2016)" value={year} options={YEARS.map(String)} onChange={setYear} />
+      <Picker label={t('Year')} placeholder={t('Select Year (e.g. 2016)')} value={year} options={YEARS.map(String)} onChange={setYear} />
       <View style={{ gap: 8 }}>
-        <Text style={styles.label}>Color</Text>
+        <Text style={styles.label}>{t('Color')}</Text>
         <View style={styles.swatches}>
           {CAR_COLORS.map((c) => (
             <Pressable key={c.value} onPress={() => setColor(color === c.value ? null : c.value)}
@@ -170,23 +171,23 @@ export function VehicleForm({ initial, submitLabel, onSubmit, showNickname = fal
               style={[styles.swatch, { backgroundColor: c.hex }, color === c.value && styles.swatchOn]} />
           ))}
         </View>
-        <Text style={styles.hint}>{CAR_COLORS.find((c) => c.value === color)?.label ?? 'No color selected'}</Text>
+        <Text style={styles.hint}>{CAR_COLORS.find((c) => c.value === color)?.label ?? t('No color selected')}</Text>
       </View>
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
-          <TextField label="Power (hp)" icon="flash-outline" placeholder="ex. 385" keyboardType="number-pad"
+          <TextField label={t('Power (hp)')} icon="flash-outline" placeholder={t('ex. 385')} keyboardType="number-pad"
             value={power} onChangeText={(t) => { setPower(t); setSpecsFromCatalog(false); }} maxLength={4} />
         </View>
         <View style={{ flex: 1 }}>
-          <TextField label="Weight (kg)" icon="barbell-outline" placeholder="ex. 1450" keyboardType="number-pad"
+          <TextField label={t('Weight (kg)')} icon="barbell-outline" placeholder={t('ex. 1450')} keyboardType="number-pad"
             value={weight} onChangeText={(t) => { setWeight(t); setSpecsFromCatalog(false); }} maxLength={4} />
         </View>
       </View>
       <Text style={styles.hint}>
-        {specsFromCatalog ? 'Valeurs théoriques du catalogue (Wikidata), modifiables.' : 'Facultatif : affiché dans ton garage.'}
+        {specsFromCatalog ? t('Valeurs théoriques du catalogue (Wikidata), modifiables.') : t('Facultatif : affiché dans ton garage.')}
       </Text>
       {showNickname && (
-        <TextField label="Nickname (optional)" icon="pricetag-outline" placeholder="ex. La Bleue" autoCapitalize="words"
+        <TextField label={t('Nickname (optional)')} icon="pricetag-outline" placeholder={t('ex. La Bleue')} autoCapitalize="words"
           value={nickname} onChangeText={setNickname} maxLength={40} />
       )}
       <Button title={submitLabel} onPress={submit} loading={busy} />

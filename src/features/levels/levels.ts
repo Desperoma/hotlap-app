@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 /**
  * Niveaux et rangs des conducteurs (document HOTLAP Driver Ranks v3).
  *
@@ -21,18 +22,18 @@ export type RankKey =
 export type Rank = { key: RankKey; name: string; minLevel: number; maxLevel: number | null; tagline: string; color: string };
 
 export const RANKS: Rank[] = [
-  { key: 'rookie', name: 'Rookie', minLevel: 1, maxLevel: 10, tagline: 'Just getting started', color: '#E8804A' },
-  { key: 'amateur', name: 'Amateur', minLevel: 11, maxLevel: 20, tagline: 'Building experience', color: '#D9864F' },
-  { key: 'driver', name: 'Driver', minLevel: 21, maxLevel: 30, tagline: 'Active driver', color: '#C9CED6' },
-  { key: 'skilled', name: 'Skilled', minLevel: 31, maxLevel: 40, tagline: 'Consistent performance', color: '#F5D33B' },
-  { key: 'experienced', name: 'Experienced', minLevel: 41, maxLevel: 50, tagline: 'Well rounded driver', color: '#22C55E' },
-  { key: 'pro', name: 'Pro', minLevel: 51, maxLevel: 60, tagline: 'High performance', color: '#2F8CFF' },
-  { key: 'elite', name: 'Elite', minLevel: 61, maxLevel: 70, tagline: 'Top tier driver', color: '#A63CF2' },
-  { key: 'veteran', name: 'Veteran', minLevel: 71, maxLevel: 80, tagline: 'Extensive experience', color: '#E33535' },
-  { key: 'master', name: 'Master', minLevel: 81, maxLevel: 90, tagline: 'Exceptional skill', color: '#2CD5E8' },
-  { key: 'grandmaster', name: 'Grandmaster', minLevel: 91, maxLevel: 100, tagline: 'Elite performance', color: '#F5C542' },
-  { key: 'champion', name: 'Champion', minLevel: 101, maxLevel: 150, tagline: 'Proven excellence', color: '#F06A2C' },
-  { key: 'legend', name: 'Legend', minLevel: 151, maxLevel: null, tagline: 'The highest rank in HOTLAP', color: '#C6F432' },
+  { key: 'rookie', name: 'Rookie', minLevel: 1, maxLevel: 10, get tagline() { return t('Just getting started'); }, color: '#E8804A' },
+  { key: 'amateur', name: 'Amateur', minLevel: 11, maxLevel: 20, get tagline() { return t('Building experience'); }, color: '#D9864F' },
+  { key: 'driver', name: 'Driver', minLevel: 21, maxLevel: 30, get tagline() { return t('Active driver'); }, color: '#C9CED6' },
+  { key: 'skilled', name: 'Skilled', minLevel: 31, maxLevel: 40, get tagline() { return t('Consistent performance'); }, color: '#F5D33B' },
+  { key: 'experienced', name: 'Experienced', minLevel: 41, maxLevel: 50, get tagline() { return t('Well rounded driver'); }, color: '#22C55E' },
+  { key: 'pro', name: 'Pro', minLevel: 51, maxLevel: 60, get tagline() { return t('High performance'); }, color: '#2F8CFF' },
+  { key: 'elite', name: 'Elite', minLevel: 61, maxLevel: 70, get tagline() { return t('Top tier driver'); }, color: '#A63CF2' },
+  { key: 'veteran', name: 'Veteran', minLevel: 71, maxLevel: 80, get tagline() { return t('Extensive experience'); }, color: '#E33535' },
+  { key: 'master', name: 'Master', minLevel: 81, maxLevel: 90, get tagline() { return t('Exceptional skill'); }, color: '#2CD5E8' },
+  { key: 'grandmaster', name: 'Grandmaster', minLevel: 91, maxLevel: 100, get tagline() { return t('Elite performance'); }, color: '#F5C542' },
+  { key: 'champion', name: 'Champion', minLevel: 101, maxLevel: 150, get tagline() { return t('Proven excellence'); }, color: '#F06A2C' },
+  { key: 'legend', name: 'Legend', minLevel: 151, maxLevel: null, get tagline() { return t('The highest rank in HOTLAP'); }, color: '#C6F432' },
 ];
 
 export const rankFor = (level: number) =>
@@ -56,12 +57,12 @@ export function levelFromXp(xpRaw: number): LevelInfo {
 
 /** Barème affiché dans l'app (le même que driver_xp). */
 export const XP_RULES: { label: string; xp: string; soon?: boolean }[] = [
-  { label: 'Drive 1 km', xp: '+10 XP' },
-  { label: 'First visit to a new track', xp: '+100 XP' },
-  { label: 'First verified track session', xp: '+250 XP' },
-  { label: 'Complete a verified session', xp: '+100 XP' },
-  { label: 'Beat your personal lap record', xp: '+200 XP' },
-  { label: 'First session in a new track category', xp: '+150 XP' },
-  { label: 'Participate in an organised track event', xp: '+300 XP', soon: true },
-  { label: 'Unlock an achievement', xp: '+100–500 XP', soon: true },
+  { get label() { return t('Drive 1 km'); }, get xp() { return t('+10 XP'); } },
+  { get label() { return t('First visit to a new track'); }, get xp() { return t('+100 XP'); } },
+  { get label() { return t('First verified track session'); }, get xp() { return t('+250 XP'); } },
+  { get label() { return t('Complete a verified session'); }, get xp() { return t('+100 XP'); } },
+  { get label() { return t('Beat your personal lap record'); }, get xp() { return t('+200 XP'); } },
+  { get label() { return t('First session in a new track category'); }, get xp() { return t('+150 XP'); } },
+  { get label() { return t('Participate in an organised track event'); }, get xp() { return t('+300 XP'); }, soon: true },
+  { get label() { return t('Unlock an achievement'); }, get xp() { return t('+100–500 XP'); }, soon: true },
 ];

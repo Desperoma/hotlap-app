@@ -8,10 +8,11 @@ import { promptPendingDrive } from '@/features/drives/pending';
 import { useRecorder } from '@/features/recording/useRecorder';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 const PROMISES = [
-  { icon: 'locate-outline', title: 'Navigation-grade GPS', text: 'Filters weak fixes for a cleaner route' },
-  { icon: 'pulse-outline', title: 'Live drive stats', text: 'Distance, elapsed time and average speed' },
-  { icon: 'shield-checkmark-outline', title: 'Private by default', text: 'Only you can access your recorded route' },
+  { icon: 'locate-outline', get title() { return t('Navigation-grade GPS'); }, get text() { return t('Filters weak fixes for a cleaner route'); } },
+  { icon: 'pulse-outline', get title() { return t('Live drive stats'); }, get text() { return t('Distance, elapsed time and average speed'); } },
+  { icon: 'shield-checkmark-outline', get title() { return t('Private by default'); }, get text() { return t('Only you can access your recorded route'); } },
 ] as const;
 
 /** Drive Mode (onglet « + ») : écran d'intro avant d'ouvrir le Live drive. */
@@ -25,7 +26,7 @@ export default function RecordScreen() {
   }, []);
   return (
     <Screen scroll style={{ gap: spacing.xl, paddingTop: spacing.lg, alignItems: 'stretch' }}>
-      <Text style={styles.overline}>HOTLAP / DRIVE MODE</Text>
+      <Text style={styles.overline}>{t('HOTLAP / DRIVE MODE')}</Text>
 
       <View style={styles.iconRing}>
         <View style={styles.iconInner}>
@@ -33,10 +34,8 @@ export default function RecordScreen() {
         </View>
       </View>
 
-      <Text style={styles.title}>Your road.{'\n'}Your story.</Text>
-      <Text style={styles.subtitle}>
-        Record a precise GPS track, watch your stats come alive and save every drive to your private log.
-      </Text>
+      <Text style={styles.title}>{t('Your road.')}{'\n'}{t('Your story.')}</Text>
+      <Text style={styles.subtitle}>{t('Record a precise GPS track, watch your stats come alive and save every drive to your private log.')}</Text>
 
       <Card style={{ gap: spacing.lg }}>
         {PROMISES.map((p) => (
@@ -51,11 +50,11 @@ export default function RecordScreen() {
         ))}
       </Card>
 
-      <Text style={styles.warning}>Set up before you move. Never interact with your phone while driving.</Text>
+      <Text style={styles.warning}>{t('Set up before you move. Never interact with your phone while driving.')}</Text>
 
-      <Button title={recording ? 'BACK TO LIVE DRIVE' : 'OPEN LIVE DRIVE'} icon="radio-button-on" trailingIcon="arrow-forward"
+      <Button title={recording ? t('BACK TO LIVE DRIVE') : t('OPEN LIVE DRIVE')} icon="radio-button-on" trailingIcon="arrow-forward"
         onPress={() => router.push('/drive/live')} />
-      <Text style={styles.footnote}>Location is requested only when you enter the map or start a drive.</Text>
+      <Text style={styles.footnote}>{t('Location is requested only when you enter the map or start a drive.')}</Text>
     </Screen>
   );
 }

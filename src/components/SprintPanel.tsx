@@ -6,6 +6,7 @@ import type { TrackPoint } from '@/features/recording/geo';
 import { detectSprints, formatSprint, SPRINTS, sprintLive } from '@/features/sprint/sprint';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Mode Sprint pendant l'enregistrement : aucune action à faire. S'arrêter complètement arme le
  * chrono, qui part tout seul au démarrage ; chaque objectif atteint s'affiche. Gros caractères,
@@ -23,17 +24,17 @@ export function SprintPanel({ points }: { points: TrackPoint[] }) {
   const speed = Math.round(((points.at(-1)?.speed ?? 0) || 0) * 3.6);
 
   const banner =
-    live.phase === 'ready' ? { icon: 'flag' as const, text: 'READY · LAUNCH WHEN YOU WANT', color: colors.accent }
+    live.phase === 'ready' ? { icon: 'flag' as const, text: t('READY · LAUNCH WHEN YOU WANT'), color: colors.accent }
     : live.phase === 'running' ? { icon: 'timer' as const, text: formatSprint(live.elapsedMs), color: colors.text }
-    : live.phase === 'done' ? { icon: 'checkmark-circle' as const, text: 'RUN DONE · STOP TO GO AGAIN', color: colors.accent }
-    : { icon: 'hand-left' as const, text: 'STOP COMPLETELY TO ARM', color: '#F59E0B' };
+    : live.phase === 'done' ? { icon: 'checkmark-circle' as const, text: t('RUN DONE · STOP TO GO AGAIN'), color: colors.accent }
+    : { icon: 'hand-left' as const, text: t('STOP COMPLETELY TO ARM'), color: '#F59E0B' };
 
   return (
     <View style={{ gap: spacing.md }}>
       <View style={styles.top}>
         <View>
           <Text style={styles.speed}>{speed}</Text>
-          <Text style={styles.unit}>KM/H</Text>
+          <Text style={styles.unit}>{t('KM/H')}</Text>
         </View>
         <View style={[styles.banner, { borderColor: banner.color }]}>
           <Ionicons name={banner.icon} size={18} color={banner.color} />

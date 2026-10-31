@@ -9,6 +9,7 @@ import { birthDateError, isoToDisplay, maskBirthDate, parseBirthDate } from '@/f
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import {  t, locale  } from '@/i18n';
 type Req = { id: string; requested: string; reason: string | null; status: 'pending' | 'approved' | 'rejected'; created_at: string };
 
 /**
@@ -40,7 +41,7 @@ export default function BirthDateScreen() {
     setBusy(true);
     const { error } = await supabase.from('birth_date_requests').insert({ user_id: session.user.id, requested: iso, reason: reason.trim() || null });
     setBusy(false);
-    if (error) return Alert.alert('Demande impossible', error.message.includes('one_pending') ? 'Une demande est déjà en attente.' : error.message);
+    if (error) return Alert.alert(t('Demande impossible'), error.message.includes('one_pending') ? t('Une demande est déjà en attente.') : error.message);
     setDate(''); setReason(''); load();
   };
   const cancel = async () => {
@@ -52,35 +53,35 @@ export default function BirthDateScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.header}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back"><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
-        <Text style={styles.title}>Date of birth</Text>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')}><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
+        <Text style={styles.title}>{t('Date of birth')}</Text>
       </View>
       <Card style={{ gap: 6 }}>
-        <Text style={styles.label}>Current</Text>
+        <Text style={styles.label}>{t('Current')}</Text>
         <Text style={styles.value}>{profile?.birth_date ? isoToDisplay(profile.birth_date) : '—'}</Text>
-        <Text style={styles.hint}>Elle conditionne l’âge minimal pour enregistrer des drives : tu ne peux pas la modifier toi-même.</Text>
+        <Text style={styles.hint}>{t('Elle conditionne l’âge minimal pour enregistrer des drives : tu ne peux pas la modifier toi-même.')}</Text>
       </Card>
 
       {reqs === null ? <ActivityIndicator color={colors.accent} /> : pending ? (
         <Card style={{ gap: spacing.md }}>
-          <Text style={styles.label}>Request pending</Text>
-          <Text style={styles.hint}>Nouvelle date demandée : {isoToDisplay(pending.requested)}{pending.reason ? ` · « ${pending.reason} »` : ''}</Text>
-          <Button title="Cancel request" variant="secondary" onPress={cancel} />
+          <Text style={styles.label}>{t('Request pending')}</Text>
+          <Text style={styles.hint}>{t('Nouvelle date demandée :')}{' '}{isoToDisplay(pending.requested)}{pending.reason ? ` · « ${pending.reason} »` : ''}</Text>
+          <Button title={t('Cancel request')} variant="secondary" onPress={cancel} />
         </Card>
       ) : (
         <Card style={{ gap: spacing.md }}>
-          <Text style={styles.label}>Ask for a correction</Text>
-          <TextField label="Correct date (DD/MM/YYYY)" icon="calendar-outline" value={date} keyboardType="number-pad"
-            onChangeText={(t) => setDate(maskBirthDate(t))} placeholder="DD/MM/YYYY" />
+          <Text style={styles.label}>{t('Ask for a correction')}</Text>
+          <TextField label={t('Correct date (DD/MM/YYYY)')} icon="calendar-outline" value={date} keyboardType="number-pad"
+            onChangeText={(t) => setDate(maskBirthDate(t))} placeholder={t('DD/MM/YYYY')} />
           {err ? <Text style={styles.error}>{err}</Text> : null}
-          <TextField label="Reason (optional)" icon="chatbox-outline" value={reason} onChangeText={setReason} maxLength={300} />
-          <Button title="Send request" onPress={submit} loading={busy} disabled={!date || !!err} />
+          <TextField label={t('Reason (optional)')} icon="chatbox-outline" value={reason} onChangeText={setReason} maxLength={300} />
+          <Button title={t('Send request')} onPress={submit} loading={busy} disabled={!date || !!err} />
         </Card>
       )}
 
       {reqs?.filter((r) => r.status !== 'pending').map((r) => (
         <Text key={r.id} style={styles.hint}>
-          {new Date(r.created_at).toLocaleDateString()} · {isoToDisplay(r.requested)} · {r.status === 'approved' ? 'acceptée' : 'refusée'}
+          {new Date(r.created_at).toLocaleDateString(locale())} · {isoToDisplay(r.requested)} · {r.status === 'approved' ? t('acceptée') : t('refusée')}
         </Text>
       ))}
     </Screen>

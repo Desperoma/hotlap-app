@@ -11,6 +11,7 @@ import { myVehicleStats, type VehicleStats } from '@/features/garage/stats';
 import type { Vehicle } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Garage : tous les véhicules de l'utilisateur. Le favori est celui proposé par défaut avant un drive. */
 export default function GarageScreen() {
   const { vehicles, setPrimaryVehicle, removeVehicle } = useAuth();
@@ -25,41 +26,41 @@ export default function GarageScreen() {
 
   const confirmRemove = (v: Vehicle) =>
     setTimeout(() =>
-      Alert.alert(`Remove ${v.make} ${v.model}?`, 'Your drives with this car are kept, without the car attached.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => run(() => removeVehicle(v.id), 'Remove failed') },
+      Alert.alert(t('Remove {0} {1}?', v.make, v.model), t('Your drives with this car are kept, without the car attached.'), [
+        { text: t('Cancel'), style: 'cancel' },
+        { text: t('Remove'), style: 'destructive', onPress: () => run(() => removeVehicle(v.id), t('Remove failed')) },
       ]), 400);
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={styles.overline}>MY GARAGE</Text>
+        <Text style={styles.overline}>{t('MY GARAGE')}</Text>
         <Text style={styles.title}>{vehicles?.length ?? 0} {vehicles?.length === 1 ? 'machine' : 'machines'}</Text>
-        <Text style={styles.muted}>Your favorite is picked by default before a drive. You can change the car on each drive.</Text>
+        <Text style={styles.muted}>{t('Your favorite is picked by default before a drive. You can change the car on each drive.')}</Text>
       </View>
 
       {vehicles?.map((v, i) => (
         <GarageCarCard key={v.id} car={v} stats={stats.get(v.id)} flip={i % 2 === 1} index={i} onPress={() => setMenu(v)} />
       ))}
       {vehicles && vehicles.length > 0 && (
-        <Text style={styles.muted}>Top speed and drive totals are only shown to you. Touch a car to edit it.</Text>
+        <Text style={styles.muted}>{t('Top speed and drive totals are only shown to you. Touch a car to edit it.')}</Text>
       )}
 
-      <Button title="Add a vehicle" icon="add" onPress={() => router.push('/garage/edit')} />
+      <Button title={t('Add a vehicle')} icon="add" onPress={() => router.push('/garage/edit')} />
 
       <OptionsSheet
         visible={!!menu}
         title={menu ? `${menu.make} ${menu.model}` : undefined}
         onClose={() => setMenu(null)}
         options={menu ? [
-          ...(menu.is_primary ? [] : [{ label: 'Set as favorite', onPress: () => run(() => setPrimaryVehicle(menu.id), 'Update failed') }]),
-          { label: 'Edit details', onPress: () => router.push({ pathname: '/garage/edit', params: { id: menu.id } }) },
-          { label: 'Remove from garage', destructive: true, onPress: () => confirmRemove(menu) },
+          ...(menu.is_primary ? [] : [{ label: t('Set as favorite'), onPress: () => run(() => setPrimaryVehicle(menu.id), t('Update failed')) }]),
+          { label: t('Edit details'), onPress: () => router.push({ pathname: '/garage/edit', params: { id: menu.id } }) },
+          { label: t('Remove from garage'), destructive: true, onPress: () => confirmRemove(menu) },
         ] : []}
       />
     </Screen>

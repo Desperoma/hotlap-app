@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+import { t } from '@/i18n/core';
 /**
  * Zone privée autour du domicile (migration 0007).
  *
@@ -29,19 +30,19 @@ async function ensureForegroundPermission(reason: string) {
 /** Adresse -> coordonnées, sur le téléphone. */
 export async function geocodeHome(address: string): Promise<Coords> {
   const q = address.trim();
-  if (!q) throw new Error('Saisis ton adresse.');
+  if (!q) throw new Error(t('Saisis ton adresse.'));
   // Android n'autorise le géocodage qu'avec la permission de localisation.
   if (Platform.OS === 'android') {
-    await ensureForegroundPermission('Sur Android, retrouver une adresse demande l’accès à la localisation.');
+    await ensureForegroundPermission(t('Sur Android, retrouver une adresse demande l’accès à la localisation.'));
   }
   let results: Location.LocationGeocodedLocation[];
   try {
     results = await Location.geocodeAsync(q);
   } catch {
-    throw new Error('Recherche d’adresse impossible pour l’instant. Réessaie dans un moment.');
+    throw new Error(t('Recherche d’adresse impossible pour l’instant. Réessaie dans un moment.'));
   }
   const r = results[0];
-  if (!r) throw new Error('Adresse introuvable. Ajoute la ville ou le code postal.');
+  if (!r) throw new Error(t('Adresse introuvable. Ajoute la ville ou le code postal.'));
   return { lat: r.latitude, lng: r.longitude };
 }
 
@@ -90,7 +91,7 @@ export async function clearHomeZone() {
 /** Erreur à afficher avant d'envoyer, ou null si le formulaire est complet. */
 export function homeZoneInputError(v: HomeZoneInput, hasZone: boolean): string | null {
   if (v.enabled && !v.here && !v.address.trim() && !hasZone) {
-    return 'Indique ton adresse pour masquer tes drives autour de chez toi, ou désactive l’option.';
+    return t('Indique ton adresse pour masquer tes drives autour de chez toi, ou désactive l’option.');
   }
   return null;
 }

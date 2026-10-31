@@ -16,6 +16,7 @@ import {
 import type { DriveFeedItem } from '@/lib/database.types';
 import { colors, fonts, radius, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 type Tab = 'top' | 'drives' | 'people' | 'places';
 type Results = { drives: DriveFeedItem[]; users: UserHit[]; circuits: CircuitHit[]; places: PlaceHit[] };
 const EMPTY: Results = { drives: [], users: [], circuits: [], places: [] };
@@ -73,18 +74,18 @@ export default function SearchScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.root}>
       <View style={styles.bar}>
-        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Back">
+        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel={t('Back')}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <View style={styles.field}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             autoFocus value={q} onChangeText={setQ} style={styles.input}
-            placeholder={forMap ? 'Search a place or a circuit' : 'Drives, drivers, places, circuits'}
+            placeholder={forMap ? t('Search a place or a circuit') : t('Drives, drivers, places, circuits')}
             placeholderTextColor={colors.textFaint} autoCorrect={false} autoCapitalize="none" returnKeyType="search"
           />
           {busy ? <ActivityIndicator size="small" color={colors.accent} /> : q ? (
-            <Pressable onPress={() => setQ('')} hitSlop={10} accessibilityLabel="Clear">
+            <Pressable onPress={() => setQ('')} hitSlop={10} accessibilityLabel={t('Clear')}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </Pressable>
           ) : null}
@@ -106,7 +107,7 @@ export default function SearchScreen() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xl * 2 }}
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {error ? error : nothing ? 'No results.' : q.trim().length < 2 ? (forMap ? 'Type a city, an address or a circuit.' : 'Type at least 2 letters.') : ' '}
+            {error ? error : nothing ? t('No results.') : q.trim().length < 2 ? (forMap ? t('Type a city, an address or a circuit.') : t('Type at least 2 letters.')) : ' '}
           </Text>
         }
         renderItem={({ item }) => {
@@ -119,7 +120,7 @@ export default function SearchScreen() {
                   <Avatar url={item.user.avatar_url} name={item.user.display_name || item.user.username} size={40} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name} numberOfLines={1}>{item.user.display_name || item.user.username}</Text>
-                    <Text style={styles.sub} numberOfLines={1}>@{item.user.username}{item.user.i_follow ? ' · Following' : ''}</Text>
+                    <Text style={styles.sub} numberOfLines={1}>@{item.user.username}{item.user.i_follow ? t(' · Following') : ''}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
                 </Pressable>
@@ -142,7 +143,7 @@ export default function SearchScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name} numberOfLines={1}>{item.circuit.name}</Text>
                     <Text style={styles.sub} numberOfLines={1}>
-                      {[item.circuit.city, item.circuit.country_code, item.circuit.lap_length_m ? `${formatKm(item.circuit.lap_length_m)} km` : null].filter(Boolean).join(' · ') || 'Circuit'}
+                      {[item.circuit.city, item.circuit.country_code, item.circuit.lap_length_m ? `${formatKm(item.circuit.lap_length_m)} km` : null].filter(Boolean).join(' · ') || t('Circuit')}
                     </Text>
                   </View>
                   <Ionicons name="map-outline" size={16} color={colors.textFaint} />
@@ -157,7 +158,7 @@ export default function SearchScreen() {
   );
 }
 
-const TAB_LABEL: Record<Tab, string> = { top: 'Top', drives: 'Drives', people: 'Drivers', places: 'Places' };
+const TAB_LABEL: Record<Tab, string> = { get top() { return t('Top'); }, get drives() { return t('Drives'); }, get people() { return t('Drivers'); }, get places() { return t('Places'); } };
 
 function buildRows(r: Results, tab: Tab): Row[] {
   const out: Row[] = [];

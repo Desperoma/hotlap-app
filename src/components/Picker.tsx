@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts, radius, type } from '@/theme';
 
+import { t } from '@/i18n';
 type Props = {
   label: string;
   placeholder: string;
@@ -34,7 +35,7 @@ export function Picker({ label, placeholder, value, options, onChange, disabled 
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Select {label}</Text>
+            <Text style={styles.sheetTitle}>{t('Select')}{' '}{label}</Text>
             <Pressable onPress={() => setOpen(false)} hitSlop={10}>
               <Ionicons name="close" size={22} color={colors.text} />
             </Pressable>

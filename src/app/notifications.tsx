@@ -12,6 +12,7 @@ import { respondCrewInvite } from '@/features/crews/api';
 import { answerFollowRequest, follow } from '@/features/social/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import {  t, locale  } from '@/i18n';
 /** Notifications : likes, commentaires, nouveaux abonnés, demandes reçues et acceptées, invitations de crew. */
 export default function NotificationsScreen() {
   const [items, setItems] = useState<AppNotification[] | null>(null);
@@ -44,7 +45,7 @@ export default function NotificationsScreen() {
       await fn();
       await load();
     } catch (e) {
-      Alert.alert('Oups', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Oups'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusyId(null);
     }
@@ -55,8 +56,8 @@ export default function NotificationsScreen() {
     if (n.type === 'follow_request' && n.requestPending) {
       return (
         <View style={styles.actions}>
-          <Button title="Accept" onPress={() => run(n, () => answerFollowRequest(n.actor.id, true))} loading={busy} />
-          <Button title="Decline" variant="ghost" onPress={() => run(n, () => answerFollowRequest(n.actor.id, false))} disabled={busy} />
+          <Button title={t('Accept')} onPress={() => run(n, () => answerFollowRequest(n.actor.id, true))} loading={busy} />
+          <Button title={t('Decline')} variant="ghost" onPress={() => run(n, () => answerFollowRequest(n.actor.id, false))} disabled={busy} />
         </View>
       );
     }
@@ -64,13 +65,13 @@ export default function NotificationsScreen() {
       const crewId = n.crewId;
       return (
         <View style={styles.actions}>
-          <Button title="Join crew" onPress={() => run(n, () => respondCrewInvite(crewId, true))} loading={busy} />
-          <Button title="Decline" variant="ghost" onPress={() => run(n, () => respondCrewInvite(crewId, false))} disabled={busy} />
+          <Button title={t('Join crew')} onPress={() => run(n, () => respondCrewInvite(crewId, true))} loading={busy} />
+          <Button title={t('Decline')} variant="ghost" onPress={() => run(n, () => respondCrewInvite(crewId, false))} disabled={busy} />
         </View>
       );
     }
     if (n.type === 'follow' && !n.iFollow) {
-      return <Button title="Follow back" variant="secondary" onPress={() => run(n, () => follow(n.actor.id))} loading={busy} />;
+      return <Button title={t('Follow back')} variant="secondary" onPress={() => run(n, () => follow(n.actor.id))} loading={busy} />;
     }
     return null;
   };
@@ -78,10 +79,10 @@ export default function NotificationsScreen() {
   return (
     <Screen style={{ paddingTop: spacing.lg }}>
       <View style={styles.header}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back">
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.title}>Notifications</Text>
+        <Text style={styles.title}>{t('Notifications')}</Text>
       </View>
       {items === null ? (
         <ActivityIndicator color={colors.accent} />
@@ -95,7 +96,7 @@ export default function NotificationsScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="notifications-outline" size={28} color={colors.textMuted} />
-              <Text style={styles.muted}>No notifications yet. Likes, comments and new followers show up here.</Text>
+              <Text style={styles.muted}>{t('No notifications yet. Likes, comments and new followers show up here.')}</Text>
             </View>
           }
           renderItem={({ item: n }) => {
@@ -124,11 +125,11 @@ export default function NotificationsScreen() {
 
 function ago(iso: string) {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'just now';
+  if (s < 60) return t('just now');
   if (s < 3600) return `${Math.floor(s / 60)} min`;
   if (s < 86400) return `${Math.floor(s / 3600)} h`;
   if (s < 7 * 86400) return `${Math.floor(s / 86400)} d`;
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
 const styles = StyleSheet.create({

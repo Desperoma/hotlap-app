@@ -10,6 +10,7 @@ import { carImageFor } from '@/features/garage/carImage';
 import { colors, fonts, spacing } from '@/theme';
 
 
+import { t } from '@/i18n';
 const CARD_H = 100;
 const GAP = 6;
 const VISIBLE = 3;
@@ -141,7 +142,7 @@ export function DriveShowcase({ make, model, category, stats, mode, onPressPlus,
         <View style={styles.modelRow}>
           <Text style={styles.model} numberOfLines={1} adjustsFontSizeToFit>{model}</Text>
           {onPressPlus && (
-            <Pressable onPress={onPressPlus} style={styles.plus} hitSlop={10} accessibilityLabel="Change vehicle">
+            <Pressable onPress={onPressPlus} style={styles.plus} hitSlop={10} accessibilityLabel={t('Change vehicle')}>
               <Ionicons name="add" size={18} color={colors.text} />
             </Pressable>
           )}

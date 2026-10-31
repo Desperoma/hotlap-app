@@ -2,6 +2,7 @@ import type { TrackPoint } from '@/features/recording/geo';
 
 import type { PendingDrive } from './pending';
 
+import { t } from '@/i18n/core';
 /**
  * Drives simulés pour tester l'app sans rouler (émulateur, bureau, démo).
  * Visibles seulement si TEST_TOOLS : versions de développement (__DEV__) et builds EAS « preview »
@@ -17,11 +18,11 @@ export const TEST_TOOLS = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
 export type SimStyle = 'mountain' | 'coast' | 'country' | 'forest' | 'city';
 
 export const SIM_STYLES: { value: SimStyle; label: string }[] = [
-  { value: 'mountain', label: 'Mountain pass' },
-  { value: 'coast', label: 'Coastal road' },
-  { value: 'country', label: 'Country road' },
-  { value: 'forest', label: 'Forest twisties' },
-  { value: 'city', label: 'City loop' },
+  { value: 'mountain', get label() { return t('Mountain pass'); } },
+  { value: 'coast', get label() { return t('Coastal road'); } },
+  { value: 'country', get label() { return t('Country road'); } },
+  { value: 'forest', get label() { return t('Forest twisties'); } },
+  { value: 'city', get label() { return t('City loop'); } },
 ];
 
 /** Tronçon : longueur (m), virage total (°, + = gauche), dénivelé (m), arrêt à la fin (s). */

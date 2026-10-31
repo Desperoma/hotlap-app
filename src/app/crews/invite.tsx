@@ -11,6 +11,7 @@ import { searchUsers } from '@/features/search/api';
 import { listPeople } from '@/features/social/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 type Person = { id: string; username: string; displayName: string | null; avatarUrl: string | null };
 type State = 'none' | 'invited' | 'member' | 'requested';
 
@@ -66,7 +67,7 @@ export default function CrewInviteScreen() {
       const r = await inviteToCrew(id, p.id);
       setState((s) => ({ ...s, [p.id]: r === 'invited' ? 'invited' : 'member' }));
     } catch (e) {
-      Alert.alert('Invitation not sent', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Invitation not sent'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -78,7 +79,7 @@ export default function CrewInviteScreen() {
       await cancelCrewInvite(id, p.id);
       setState((s) => ({ ...s, [p.id]: 'none' }));
     } catch (e) {
-      Alert.alert('Not cancelled', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Not cancelled'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -87,27 +88,27 @@ export default function CrewInviteScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={styles.overline}>INVITE DRIVERS</Text>
-        <Text style={styles.title} numberOfLines={1}>{crew?.name ?? 'Crew'}</Text>
+        <Text style={styles.overline}>{t('INVITE DRIVERS')}</Text>
+        <Text style={styles.title} numberOfLines={1}>{crew?.name ?? t('Crew')}</Text>
         <Text style={styles.muted}>
           {crew?.join_policy === 'approval'
-            ? 'Les invités entrent directement s’ils acceptent, sans passer par une demande.'
-            : 'Les invités reçoivent une notification et rejoignent le crew en un geste.'}
+            ? t('Les invités entrent directement s’ils acceptent, sans passer par une demande.')
+            : t('Les invités reçoivent une notification et rejoignent le crew en un geste.')}
         </Text>
       </View>
 
-      <TextField label="Search a driver" icon="search" placeholder="@pseudo or name" autoCapitalize="none" autoCorrect={false}
+      <TextField label={t('Search a driver')} icon="search" placeholder={t('@pseudo or name')} autoCapitalize="none" autoCorrect={false}
         value={query} onChangeText={setQuery} />
 
-      <Text style={styles.section}>{hits ? 'RESULTS' : 'YOUR FOLLOWERS & FOLLOWING'}</Text>
+      <Text style={styles.section}>{hits ? t('RESULTS') : t('YOUR FOLLOWERS & FOLLOWING')}</Text>
       {people === null && !hits ? <ActivityIndicator color={colors.accent} /> : null}
       {list.length === 0 && (people !== null || hits) ? (
-        <Text style={styles.muted}>{hits ? 'No driver found.' : 'Search a driver by username to invite them.'}</Text>
+        <Text style={styles.muted}>{hits ? t('No driver found.') : t('Search a driver by username to invite them.')}</Text>
       ) : null}
       {list.map((p) => {
         const st = state[p.id] ?? 'none';
@@ -124,14 +125,14 @@ export default function CrewInviteScreen() {
             {busy === p.id ? (
               <ActivityIndicator color={colors.accent} style={{ width: 92 }} />
             ) : st === 'member' ? (
-              <Text style={[styles.tag, styles.tagMuted]}>MEMBER</Text>
+              <Text style={[styles.tag, styles.tagMuted]}>{t('MEMBER')}</Text>
             ) : st === 'invited' ? (
-              <Pressable onPress={() => cancel(p)} style={[styles.btn, styles.btnGhost]} accessibilityLabel={`Cancel invitation for ${name}`}>
-                <Text style={styles.btnGhostText}>Invited ✕</Text>
+              <Pressable onPress={() => cancel(p)} style={[styles.btn, styles.btnGhost]} accessibilityLabel={t('Cancel invitation for {0}', name)}>
+                <Text style={styles.btnGhostText}>{t('Invited ✕')}</Text>
               </Pressable>
             ) : (
-              <Pressable onPress={() => invite(p)} style={styles.btn} accessibilityLabel={`Invite ${name}`}>
-                <Text style={styles.btnText}>{st === 'requested' ? 'Accept' : 'Invite'}</Text>
+              <Pressable onPress={() => invite(p)} style={styles.btn} accessibilityLabel={t('Invite {0}', name)}>
+                <Text style={styles.btnText}>{st === 'requested' ? t('Accept') : t('Invite')}</Text>
               </Pressable>
             )}
           </View>

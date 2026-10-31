@@ -26,6 +26,7 @@ import { MAPS_AVAILABLE } from '@/lib/maps';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
+import {  t, locale  } from '@/i18n';
 /**
  * Onglet Map : carte libre, avec un repère par drive (les miens, mon crew, mes amis, et les
  * drives publics de la zone affichée, chargés au fil des déplacements) et les circuits.
@@ -36,10 +37,10 @@ import { darkMapStyle } from '@/theme/mapStyle';
  * L'enregistrement d'un drive se fait depuis l'onglet « + » (Live drive).
  */
 const SOURCE: Record<MapSource, { label: string; color: string }> = {
-  me: { label: 'Me', color: colors.accent },
-  crew: { label: 'Crew', color: colors.routePurple },
-  friend: { label: 'Friends', color: colors.routeBlue },
-  public: { label: 'Public', color: colors.routeAmber },
+  me: { get label() { return t('Me'); }, color: colors.accent },
+  crew: { get label() { return t('Crew'); }, color: colors.routePurple },
+  friend: { get label() { return t('Friends'); }, color: colors.routeBlue },
+  public: { get label() { return t('Public'); }, color: colors.routeAmber },
 };
 type Filter = 'all' | MapSource;
 /** Largeur de carte (degrés de latitude, ~3 000 km) au-delà de laquelle les circuits ne sont pas chargés. */
@@ -359,17 +360,17 @@ export default function MapScreen() {
         </MapView>
       ) : (
         <View style={styles.noMap}>
-          <Text style={styles.muted}>Map unavailable in this version.</Text>
+          <Text style={styles.muted}>{t('Map unavailable in this version.')}</Text>
         </View>
       )}
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
         <Pressable style={styles.searchBar} onPress={() => router.push({ pathname: '/search', params: { mode: 'map' } })}
-          accessibilityRole="search" accessibilityLabel="Search a place or a circuit">
+          accessibilityRole="search" accessibilityLabel={t('Search a place or a circuit')}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
-          <Text style={styles.searchText} numberOfLines={1}>{searched?.label || 'Search a place or a circuit'}</Text>
+          <Text style={styles.searchText} numberOfLines={1}>{searched?.label || t('Search a place or a circuit')}</Text>
           {searched && (
-            <Pressable onPress={() => setSearched(null)} hitSlop={10} accessibilityLabel="Clear search">
+            <Pressable onPress={() => setSearched(null)} hitSlop={10} accessibilityLabel={t('Clear search')}>
               <Ionicons name="close" size={18} color={colors.textMuted} />
             </Pressable>
           )}
@@ -383,7 +384,7 @@ export default function MapScreen() {
               <Pressable key={f} onPress={() => { setFilter(f); setSelected(null); }}
                 style={[styles.chip, active && styles.chipActive]} accessibilityState={{ selected: active }}>
                 {f !== 'all' && <View style={[styles.dot, { backgroundColor: color }]} />}
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f === 'all' ? 'All' : SOURCE[f].label}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f === 'all' ? t('All') : SOURCE[f].label}</Text>
                 {drives && <Text style={[styles.chipCount, active && styles.chipTextActive]}>{counts[f]}</Text>}
               </Pressable>
             );
@@ -396,12 +397,12 @@ export default function MapScreen() {
               <Pressable onPress={() => { setTracks(false); setCats(new Set()); setCircuitId(null); }} style={[styles.chip, !tracks && styles.chipActive]}
                 accessibilityState={{ selected: !tracks }}>
                 <Ionicons name="eye-off-outline" size={12} color={colors.textMuted} />
-                <Text style={[styles.chipText, !tracks && styles.chipTextActive]}>No tracks</Text>
+                <Text style={[styles.chipText, !tracks && styles.chipTextActive]}>{t('No tracks')}</Text>
               </Pressable>
               <Pressable onPress={() => { setTracks(true); setCats(new Set()); }} style={[styles.chip, tracks && cats.size === 0 && styles.chipActive]}
                 accessibilityState={{ selected: tracks && cats.size === 0 }}>
                 <Ionicons name="flag" size={12} color={colors.textMuted} />
-                <Text style={[styles.chipText, tracks && cats.size === 0 && styles.chipTextActive]}>All tracks</Text>
+                <Text style={[styles.chipText, tracks && cats.size === 0 && styles.chipTextActive]}>{t('All tracks')}</Text>
               </Pressable>
               {CATEGORIES.map((c) => {
                 const active = tracks && cats.has(c.key);
@@ -422,21 +423,21 @@ export default function MapScreen() {
         )}
 
         {tracks && (region?.latitudeDelta ?? 0) > TRACKS_MAX_DELTA && (
-          <View style={styles.zoomHint}><Text style={styles.chipText}>Zoom in to see the tracks</Text></View>
+          <View style={styles.zoomHint}><Text style={styles.chipText}>{t('Zoom in to see the tracks')}</Text></View>
         )}
-        {profile?.is_dev && tracks && <Text style={styles.devHint}>DEV · long press the map to add a track</Text>}
+        {profile?.is_dev && tracks && <Text style={styles.devHint}>{t('DEV · long press the map to add a track')}</Text>}
 
         <View style={styles.sideButtons} pointerEvents="box-none">
           {!drives && !error && <View style={styles.roundBtn}><ActivityIndicator size="small" color={colors.accent} /></View>}
           {error && (
-            <Pressable style={styles.roundBtn} onPress={load} accessibilityLabel="Retry">
+            <Pressable style={styles.roundBtn} onPress={load} accessibilityLabel={t('Retry')}>
               <Ionicons name="refresh" size={18} color={colors.danger} />
             </Pressable>
           )}
-          <Pressable style={styles.roundBtn} onPress={() => setSatellite((s) => !s)} accessibilityLabel="Map style">
+          <Pressable style={styles.roundBtn} onPress={() => setSatellite((s) => !s)} accessibilityLabel={t('Map style')}>
             <Ionicons name={satellite ? 'map-outline' : 'earth'} size={18} color={colors.text} />
           </Pressable>
-          <Pressable style={styles.roundBtn} onPress={() => recenter()} accessibilityLabel="My position">
+          <Pressable style={styles.roundBtn} onPress={() => recenter()} accessibilityLabel={t('My position')}>
             <Ionicons name="locate" size={18} color={colors.accent} />
           </Pressable>
         </View>
@@ -445,9 +446,9 @@ export default function MapScreen() {
           <Pressable style={styles.livePill} onPress={() => router.push('/drive/live')}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>
-              {status === 'paused' ? 'PAUSED' : 'RECORDING'}{stats ? ` · ${formatKm(stats.distanceM)} km` : ''}
+              {status === 'paused' ? t('PAUSED') : t('RECORDING')}{stats ? t(' · {0} km', formatKm(stats.distanceM)) : ''}
             </Text>
-            <Text style={[styles.liveText, { color: colors.accent }]}>Back to drive</Text>
+            <Text style={[styles.liveText, { color: colors.accent }]}>{t('Back to drive')}</Text>
             <Ionicons name="chevron-forward" size={14} color={colors.accent} />
           </Pressable>
         )}
@@ -485,26 +486,26 @@ export default function MapScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardName} numberOfLines={1}>{selectedCircuit.name}</Text>
                 <Text style={styles.cardMeta} numberOfLines={1}>
-                  {[selectedCircuit.city, selectedCircuit.countryCode].filter(Boolean).join(' · ') || 'Circuit'}
+                  {[selectedCircuit.city, selectedCircuit.countryCode].filter(Boolean).join(' · ') || t('Circuit')}
                 </Text>
               </View>
-              <Pressable onPress={() => setCircuitId(null)} hitSlop={10} accessibilityLabel="Close">
+              <Pressable onPress={() => setCircuitId(null)} hitSlop={10} accessibilityLabel={t('Close')}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </Pressable>
             </View>
             <View style={styles.statsRow}>
-              <Stat value={selectedCircuit.lapLengthM ? formatKm(selectedCircuit.lapLengthM) : '—'} unit={selectedCircuit.lapLengthM ? 'km' : undefined} label="LAP" />
-              <Stat value={categoryOf(selectedCircuit.category).label} label="TYPE" />
-              <Stat value={selectedCircuit.hasPath ? 'Mapped' : selectedCircuit.hasArea ? 'To learn' : '—'} label="TRACK" />
+              <Stat value={selectedCircuit.lapLengthM ? formatKm(selectedCircuit.lapLengthM) : '—'} unit={selectedCircuit.lapLengthM ? 'km' : undefined} label={t('LAP')} />
+              <Stat value={categoryOf(selectedCircuit.category).label} label={t('TYPE')} />
+              <Stat value={selectedCircuit.hasPath ? t('Mapped') : selectedCircuit.hasArea ? t('To learn') : '—'} label={t('TRACK')} />
             </View>
             <View style={styles.cardFooter}>
-              <Text style={[styles.cardHint, { flex: 1 }]} numberOfLines={2}>© OpenStreetMap contributors, Wikidata</Text>
+              <Text style={[styles.cardHint, { flex: 1 }]} numberOfLines={2}>{t('© OpenStreetMap contributors, Wikidata')}</Text>
               <Pressable style={[styles.openBtn, styles.ghostBtn]} onPress={() => router.push({ pathname: '/leaderboard', params: { circuit: selectedCircuit.id, circuitName: selectedCircuit.name } })}
-                accessibilityLabel="Leaderboard">
+                accessibilityLabel={t('Leaderboard')}>
                 <Ionicons name="podium-outline" size={14} color={colors.text} />
               </Pressable>
               <Pressable style={styles.openBtn} onPress={() => router.push(`/circuit/${selectedCircuit.id}`)}>
-                <Text style={styles.openText}>{selectedCircuit.hasPath || selectedCircuit.hasArea ? 'Drive' : 'Open'}</Text>
+                <Text style={styles.openText}>{selectedCircuit.hasPath || selectedCircuit.hasArea ? t('Drive') : t('Open')}</Text>
                 <Ionicons name="flag" size={14} color={colors.accentText} />
               </Pressable>
             </View>
@@ -515,7 +516,7 @@ export default function MapScreen() {
       {drives && allDrives.length === 0 && !selected && !selectedCircuit && (
         <View style={styles.hint} pointerEvents="none">
           <Ionicons name="map-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.hintText}>Your drives, your friends’ and public drives around will show up here.</Text>
+          <Text style={styles.hintText}>{t('Your drives, your friends’ and public drives around will show up here.')}</Text>
         </View>
       )}
       <NewTrackSheet at={newTrack} onClose={() => setNewTrack(null)} />
@@ -537,20 +538,20 @@ function NewTrackSheet({ at, onClose }: { at: LatLng | null; onClose: () => void
       onClose();
       router.push(`/circuit/${id}`);
     } catch (e) {
-      Alert.alert('Création impossible', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Création impossible'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Sheet visible={!!at} title="New track (dev)" onClose={onClose}>
+    <Sheet visible={!!at} title={t('New track (dev)')} onClose={onClose}>
       <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
-        <TextInput value={name} onChangeText={setName} placeholder="Track name" placeholderTextColor={colors.textFaint}
+        <TextInput value={name} onChangeText={setName} placeholder={t('Track name')} placeholderTextColor={colors.textFaint}
           style={styles.newTrackInput} autoFocus />
-        <Dropdown label="Category" value={cat} onChange={setCat}
+        <Dropdown label={t('Category')} value={cat} onChange={setCat}
           options={CATEGORIES.map((c) => ({ key: c.key, label: c.label, left: <TrackIcon category={c.key} size={20} /> }))} />
-        <Text style={styles.cardMeta}>A 400 m area is created around the point: draw the path next from the track page.</Text>
-        <Button title="Create track" icon="add" onPress={create} loading={busy} disabled={name.trim().length < 2} />
+        <Text style={styles.cardMeta}>{t('A 400 m area is created around the point: draw the path next from the track page.')}</Text>
+        <Button title={t('Create track')} icon="add" onPress={create} loading={busy} disabled={name.trim().length < 2} />
       </View>
     </Sheet>
   );
@@ -603,7 +604,7 @@ function DriveMapCard({ drive, width, position, pathState, onClose }: {
         <View style={[styles.tag, { borderColor: src.color }]}>
           <Text style={[styles.tagText, { color: src.color }]}>{src.label.toUpperCase()}</Text>
         </View>
-        <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close">
+        <Pressable onPress={onClose} hitSlop={10} accessibilityLabel={t('Close')}>
           <Ionicons name="close" size={20} color={colors.textMuted} />
         </Pressable>
       </View>
@@ -611,17 +612,17 @@ function DriveMapCard({ drive, width, position, pathState, onClose }: {
       <Text style={styles.cardTitle} numberOfLines={1}>{drive.title}</Text>
 
       <View style={styles.statsRow}>
-        <Stat value={formatKm(drive.distanceM)} unit="km" label="DISTANCE" />
-        <Stat value={formatDur(drive.durationS)} label="TIME" />
-        <Stat value={drive.score != null ? String(drive.score) : '—'} unit={drive.score != null ? 'pts' : undefined} label="SCORE" />
+        <Stat value={formatKm(drive.distanceM)} unit="km" label={t('DISTANCE')} />
+        <Stat value={formatDur(drive.durationS)} label={t('TIME')} />
+        <Stat value={drive.score != null ? String(drive.score) : '—'} unit={drive.score != null ? 'pts' : undefined} label={t('SCORE')} />
       </View>
 
       <View style={styles.cardFooter}>
         <Text style={styles.cardHint}>
-          {pathState === 'loading' ? 'Loading route…' : pathState === 'none' ? 'Route hidden (private zone)' : position ? `${position} · swipe for more` : ' '}
+          {pathState === 'loading' ? t('Loading route…') : pathState === 'none' ? t('Route hidden (private zone)') : position ? t('{0} · swipe for more', position) : ' '}
         </Text>
         <Pressable style={styles.openBtn} onPress={() => router.push(`/drive/${drive.id}`)}>
-          <Text style={styles.openText}>Open drive</Text>
+          <Text style={styles.openText}>{t('Open drive')}</Text>
           <Ionicons name="arrow-forward" size={14} color={colors.accentText} />
         </Pressable>
       </View>
@@ -671,11 +672,11 @@ function formatDur(s: number) {
 
 function timeAgo(iso: string) {
   const h = Math.round((Date.now() - new Date(iso).getTime()) / 3600_000);
-  if (h < 1) return 'Just now';
-  if (h < 24) return `${h} h ago`;
+  if (h < 1) return t('Just now');
+  if (h < 24) return t('{0} h ago', h);
   const d = Math.round(h / 24);
-  if (d < 30) return d === 1 ? 'Yesterday' : `${d} days ago`;
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  if (d < 30) return d === 1 ? t('Yesterday') : t('{0} days ago', d);
+  return new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 const glass = { backgroundColor: 'rgba(22,25,22,0.92)', borderWidth: 1, borderColor: colors.border };

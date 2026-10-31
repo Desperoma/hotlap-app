@@ -10,6 +10,7 @@ import { colors, fonts, radius, spacing, type } from '@/theme';
 
 import { GForceBars, GForceCircle } from './GForce';
 
+import { t } from '@/i18n';
 /** Durée h:mm:ss */
 export const clock = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -37,11 +38,11 @@ export function LiveDashboard({ overline, name, elapsedMs, view, onView, map, pa
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.root}>
       <View style={styles.head}>
-        <Pressable onPress={onBack} hitSlop={10} style={styles.iconBtn} accessibilityLabel="Back">
+        <Pressable onPress={onBack} hitSlop={10} style={styles.iconBtn} accessibilityLabel={t('Back')}>
           <Ionicons name="arrow-back" size={20} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.overline}>{paused ? 'PAUSED' : overline}</Text>
+          <Text style={styles.overline}>{paused ? t('PAUSED') : overline}</Text>
           <Text style={styles.name} numberOfLines={1}>{name}</Text>
         </View>
         <Text style={styles.elapsed}>{clock(elapsedMs)}</Text>
@@ -51,18 +52,18 @@ export function LiveDashboard({ overline, name, elapsedMs, view, onView, map, pa
       {view === 'both' ? (
         <View style={[styles.row, { height: tall ? 330 : 280 }]}>
           <View style={[styles.card, { width: half }]}>
-            <Text style={styles.cardTitle}>TRACK MAP</Text>
+            <Text style={styles.cardTitle}>{t('TRACK MAP')}</Text>
             {map({ flex: 1, borderRadius: radius.md, marginTop: 6 })}
           </View>
           <View style={[styles.card, { width: half, alignItems: 'center' }]}>
-            <Text style={[styles.cardTitle, { alignSelf: 'flex-start' }]}>LIVE G-FORCE</Text>
+            <Text style={[styles.cardTitle, { alignSelf: 'flex-start' }]}>{t('LIVE G-FORCE')}</Text>
             <GForceCircle g={g} size={Math.min(half - 24, tall ? 170 : 140)} />
             <GForceBars g={g} compact />
           </View>
         </View>
       ) : view === 'map' ? (
         <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.cardTitle}>TRACK MAP</Text>
+          <Text style={styles.cardTitle}>{t('TRACK MAP')}</Text>
           {map({ flex: 1, borderRadius: radius.md, marginTop: 6 })}
         </View>
       ) : (
@@ -75,8 +76,8 @@ export function LiveDashboard({ overline, name, elapsedMs, view, onView, map, pa
       <View style={{ gap: spacing.sm, flexShrink: 0 }}>{children}</View>
 
       <View style={styles.buttons}>
-        <Button title={paused ? 'Resume' : 'Pause'} variant="secondary" style={{ flex: 1, height: 56 }} onPress={onPause} />
-        <Button title="Finish" icon="flag" style={{ flex: 1, height: 56 }} onPress={onFinish} />
+        <Button title={paused ? t('Resume') : t('Pause')} variant="secondary" style={{ flex: 1, height: 56 }} onPress={onPause} />
+        <Button title={t('Finish')} icon="flag" style={{ flex: 1, height: 56 }} onPress={onFinish} />
       </View>
     </SafeAreaView>
   );
@@ -85,9 +86,9 @@ export function LiveDashboard({ overline, name, elapsedMs, view, onView, map, pa
 /** Choix de la vue pendant le drive : carte, les deux, G-force (vue par défaut : Settings > Interface). */
 function ViewSwitch({ value, onChange }: { value: LiveView; onChange: (v: LiveView) => void }) {
   const items: { v: LiveView; icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }[] = [
-    { v: 'map', icon: 'map-outline', label: 'Map' },
-    { v: 'both', icon: 'view-split-vertical', label: 'Both' },
-    { v: 'gforce', icon: 'target', label: 'G-force' },
+    { v: 'map', icon: 'map-outline', label: t('Map') },
+    { v: 'both', icon: 'view-split-vertical', label: t('Both') },
+    { v: 'gforce', icon: 'target', label: t('G-force') },
   ];
   return (
     <View style={styles.switch}>
@@ -125,9 +126,9 @@ export function SpeedCard({ kmh }: { kmh: number }) {
   return (
     <View style={[styles.card, styles.speedCard]}>
       <View>
-        <Text style={styles.tileLabel}>SPEED</Text>
+        <Text style={styles.tileLabel}>{t('SPEED')}</Text>
         <Text style={styles.speed}>{Math.round(kmh)}</Text>
-        <Text style={styles.tileLabel}>KM/H</Text>
+        <Text style={styles.tileLabel}>{t('KM/H')}</Text>
       </View>
       <View style={{ flex: 1, gap: 6 }}>
         <View style={styles.speedSegs}>
@@ -159,7 +160,7 @@ export function LapCard({ label, time, deltaMs, progress }: { label: string; tim
                 {ahead ? '−' : '+'}{(Math.abs(deltaMs) / 1000).toFixed(3)}
               </Text>
             </View>
-            <Text style={styles.tileLabel}>VS. BEST</Text>
+            <Text style={styles.tileLabel}>{t('VS. BEST')}</Text>
           </View>
         )}
       </View>

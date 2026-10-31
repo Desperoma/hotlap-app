@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { vehicleLabel } from '@/features/garage/VehicleForm';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Choix du véhicule d'un drive parmi le garage (avant le départ, au récap, sur le détail).
  * compact : une pastille qui tient dans le panneau de la carte.
@@ -32,7 +33,7 @@ export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = fa
   };
   const insets = useSafeAreaInsets();
   const selected = vehicles?.find((v) => v.id === value) ?? null;
-  const text = selected ? vehicleLabel(selected) : vehicles?.length ? 'No vehicle' : 'Add a vehicle';
+  const text = selected ? vehicleLabel(selected) : vehicles?.length ? t('No vehicle') : t('Add a vehicle');
 
   const openSheet = () => {
     if (!vehicles?.length) return router.push('/garage/edit');
@@ -47,7 +48,7 @@ export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = fa
         onPress={openSheet}
         disabled={disabled}
         style={({ pressed }) => [compact ? styles.pill : styles.field, (pressed || disabled) && { opacity: 0.7 }]}
-        accessibilityLabel={`${label}: ${text}. Change`}
+        accessibilityLabel={t('{0}: {1}. Change', label, text)}
       >
         <Ionicons name="car-sport" size={compact ? 14 : 18} color={colors.accent} />
         <Text style={[compact ? styles.pillText : styles.value]} numberOfLines={1}>{text}</Text>
@@ -56,10 +57,10 @@ export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = fa
       )}
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close" />
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel={t('Close')} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Which car?</Text>
+            <Text style={styles.sheetTitle}>{t('Which car?')}</Text>
             <Pressable onPress={() => setOpen(false)} hitSlop={10}>
               <Ionicons name="close" size={22} color={colors.text} />
             </Pressable>
@@ -88,7 +89,7 @@ export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = fa
                 setOpen(false);
               }}
             >
-              <Text style={[styles.optionText, value === null && { color: colors.accent }]}>No vehicle</Text>
+              <Text style={[styles.optionText, value === null && { color: colors.accent }]}>{t('No vehicle')}</Text>
             </Pressable>
             <Pressable
               style={styles.option}
@@ -97,7 +98,7 @@ export function VehicleSelect({ value, onChange, label = 'Vehicle', compact = fa
                 router.push('/garage/edit');
               }}
             >
-              <Text style={[styles.optionText, { color: colors.textMuted }]}>+ Add a vehicle to my garage</Text>
+              <Text style={[styles.optionText, { color: colors.textMuted }]}>{t('+ Add a vehicle to my garage')}</Text>
             </Pressable>
           </ScrollView>
         </View>

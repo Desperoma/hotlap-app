@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fonts, radius, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 /** keepOpen : l'action change le contenu de la feuille au lieu de la fermer (ex. étape suivante). */
 export type SheetOption = { label: string; onPress: () => void; destructive?: boolean; keepOpen?: boolean };
 
@@ -18,7 +19,7 @@ export function OptionsSheet({ visible, title, options, onClose }: {
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('Close')} />
       <SafeAreaView edges={['bottom']} style={styles.sheet}>
         {title ? <Text style={styles.title}>{title}</Text> : null}
         {options.map((o) => (
@@ -35,7 +36,7 @@ export function OptionsSheet({ visible, title, options, onClose }: {
         ))}
         <View style={styles.sep} />
         <Pressable style={styles.option} onPress={onClose}>
-          <Text style={[styles.label, { color: colors.textMuted }]}>Cancel</Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>{t('Cancel')}</Text>
         </Pressable>
       </SafeAreaView>
     </Modal>

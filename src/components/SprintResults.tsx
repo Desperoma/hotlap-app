@@ -6,6 +6,7 @@ import { Card } from '@/components/ui';
 import { formatSprint, SPRINTS, type SprintKind } from '@/features/sprint/sprint';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Temps Sprint d'un drive (récap ou détail), avec un lien vers le classement de chaque mesure. */
 export function SprintResults({ results, note }: {
   results: { kind: SprintKind; timeMs: number; exitSpeedKmh: number | null }[];
@@ -15,10 +16,10 @@ export function SprintResults({ results, note }: {
   return (
     <Card style={{ gap: spacing.md }}>
       <View style={styles.head}>
-        <Text style={styles.title}>SPRINT</Text>
+        <Text style={styles.title}>{t('SPRINT')}</Text>
         <Pressable onPress={() => router.push('/leaderboard')} hitSlop={8} style={styles.link} accessibilityRole="link">
           <Ionicons name="podium-outline" size={14} color={colors.accent} />
-          <Text style={styles.linkText}>Leaderboard</Text>
+          <Text style={styles.linkText}>{t('Leaderboard')}</Text>
         </Pressable>
       </View>
       {SPRINTS.map((s) => {

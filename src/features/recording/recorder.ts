@@ -4,6 +4,7 @@ import * as TaskManager from 'expo-task-manager';
 
 import { acceptPoint, speedOf, type TrackPoint } from './geo';
 
+import { t } from '@/i18n/core';
 /**
  * Enregistrement d'un drive, y compris écran verrouillé.
  *
@@ -128,8 +129,8 @@ export const recorder = {
       showsBackgroundLocationIndicator: true,
       pausesUpdatesAutomatically: false,
       foregroundService: {
-        notificationTitle: 'HotLap enregistre votre drive',
-        notificationBody: 'Le tracé continue écran verrouillé.',
+        notificationTitle: t('HotLap enregistre votre drive'),
+        notificationBody: t('Le tracé continue écran verrouillé.'),
         notificationColor: '#C6F432',
       },
     });

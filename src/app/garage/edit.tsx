@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { VehicleForm } from '@/features/garage/VehicleForm';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Ajouter un véhicule au garage, ou modifier celui dont l'id est passé en paramètre. */
 export default function EditVehicleScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -17,19 +18,19 @@ export default function EditVehicleScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={styles.title}>{existing ? 'Edit vehicle' : 'New vehicle'}</Text>
-        <Text style={styles.muted}>{existing ? `${existing.make} ${existing.model}` : 'Add a car to your garage.'}</Text>
+        <Text style={styles.title}>{existing ? t('Edit vehicle') : t('New vehicle')}</Text>
+        <Text style={styles.muted}>{existing ? `${existing.make} ${existing.model}` : t('Add a car to your garage.')}</Text>
       </View>
       <VehicleForm
         key={existing?.id ?? 'new'}
         initial={existing}
         showNickname
-        submitLabel={existing ? 'Save' : 'Add to garage'}
+        submitLabel={existing ? t('Save') : t('Add to garage')}
         onSubmit={async (v) => {
           if (existing) await updateVehicle(existing.id, v);
           else await addVehicle(v);
