@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
@@ -36,6 +36,7 @@ export default function NotificationsScreen() {
   const open = (n: AppNotification) => {
     if ((n.type === 'like' || n.type === 'comment') && n.driveId) router.push(`/drive/${n.driveId}`);
     else if (n.type === 'crew_invite' && n.crewId) router.push(`/crews/${n.crewId}`);
+    else if (n.type === 'achievement') router.push('/achievements');
     else router.push(`/user/${n.actor.id}`);
   };
 
@@ -104,10 +105,12 @@ export default function NotificationsScreen() {
             return (
               <View style={[styles.row, !n.read && styles.unread]}>
                 <Pressable style={styles.main} onPress={() => open(n)}>
-                  <Avatar url={n.actor.avatarUrl} name={name} size={40} />
+                  {n.type === 'achievement' ? (
+                    <View style={styles.trophy}><MaterialCommunityIcons name="trophy" size={20} color={colors.accent} /></View>
+                  ) : <Avatar url={n.actor.avatarUrl} name={name} size={40} />}
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={styles.text} numberOfLines={3}>
-                      <Text style={styles.name}>{name} </Text>{notificationText(n)}
+                      {n.type === 'achievement' ? null : <Text style={styles.name}>{name} </Text>}{notificationText(n)}
                     </Text>
                     <Text style={styles.time}>{ago(n.createdAt)}</Text>
                   </View>
@@ -133,6 +136,7 @@ function ago(iso: string) {
 }
 
 const styles = StyleSheet.create({
+  trophy: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bgElevated, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
   title: { ...type.h1, color: colors.text, fontSize: 24 },
   row: { gap: spacing.sm, padding: spacing.md, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
