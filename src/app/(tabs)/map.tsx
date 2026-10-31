@@ -3,21 +3,19 @@ import * as Location from 'expo-location';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions,
+  ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions,
   type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, type MapPressEvent, type Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
-import { Button } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { TrackIcon } from '@/components/TrackIcon';
-import { CATEGORIES, categoryOf, devCreateCircuit, getCircuit, type CircuitCategory } from '@/features/circuit/api';
-import { Dropdown, Sheet } from '@/components/Dropdown';
+import { CATEGORIES, categoryOf, getCircuit } from '@/features/circuit/api';
 import type { LatLng } from '@/features/drives/api';
 import {
-  fetchDrivePath, fetchMapCircuits, fetchMapDrives, fetchPublicDrives,
+  fetchCircuitsNear, fetchDrivePath, fetchMapDrives, fetchPublicDrives,
   type BBox, type MapCircuit, type MapDrive, type MapSource,
 } from '@/features/drives/map';
 import { formatKm } from '@/features/recording/geo';
@@ -43,8 +41,15 @@ const SOURCE: Record<MapSource, { label: string; color: string }> = {
   public: { get label() { return t('Public'); }, color: colors.routeAmber },
 };
 type Filter = 'all' | MapSource;
-/** Largeur de carte (degrés de latitude, ~3 000 km) au-delà de laquelle les circuits ne sont pas chargés. */
-const TRACKS_MAX_DELTA = 27;
+/** Circuits chargés autour du centre de l'écran : au moins 100 km, au plus 2 000 km de rayon. */
+const TRACKS_MIN_RADIUS_M = 100_000;
+const TRACKS_MAX_RADIUS_M = 2_000_000;
+/** Rayon couvert par l'écran (demi-diagonale), en mètres. */
+const regionRadiusM = (r: Region) => {
+  const h = (r.latitudeDelta * 111_000) / 2;
+  const w = (r.longitudeDelta * 111_000 * Math.cos((r.latitude * Math.PI) / 180)) / 2;
+  return Math.hypot(h, w);
+};
 const FILTERS: Filter[] = ['all', 'me', 'crew', 'friend', 'public'];
 
 /** Repère : drives regroupés dans une même case (taille selon le zoom). */
@@ -86,8 +91,8 @@ export default function MapScreen() {
     setTimeout(() => mapRef.current?.animateCamera({ center: { latitude: lat, longitude: lng }, zoom: Number(params.zoom) || 12 }, { duration: 600 }), 250);
   }, [params.t]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Circuits : masqués par défaut (« No tracks »), et chargés seulement sous ~3 000 km de large
-  // (au-delà, des milliers de repères font ramer la carte).
+  // Circuits : masqués par défaut (« No tracks »). Chargés autour du centre de l'écran (100 km
+  // minimum, 2 000 km maximum), les 200 plus proches : au-delà, les repères font ramer la carte.
   const [tracks, setTracks] = useState(false);
   const tracksRef = useRef(false);
   tracksRef.current = tracks;
@@ -100,8 +105,10 @@ export default function MapScreen() {
     };
     const id = ++areaSeq.current;
     fetchPublicDrives(b).then((d) => { if (id === areaSeq.current) setPublicDrives(d); }).catch(() => {});
-    if (tracksRef.current && r.latitudeDelta <= TRACKS_MAX_DELTA) {
-      fetchMapCircuits(b).then((c) => { if (id === areaSeq.current) setCircuits(c); }).catch(() => {});
+    if (tracksRef.current) {
+      const radius = Math.min(TRACKS_MAX_RADIUS_M, Math.max(TRACKS_MIN_RADIUS_M, regionRadiusM(r)));
+      fetchCircuitsNear({ latitude: r.latitude, longitude: r.longitude }, radius)
+        .then((c) => { if (id === areaSeq.current) setCircuits(c); }).catch(() => {});
     } else {
       setCircuits([]);
     }
@@ -117,8 +124,27 @@ export default function MapScreen() {
   };
   useEffect(() => () => { if (areaTimer.current) clearTimeout(areaTimer.current); }, []);
 
+  // Arrivée sur la carte : vue très large, puis zoom continu jusqu'à ma position GPS.
+  // Sans position (GPS refusé, introuvable), on cadre sur les drives (plus bas).
+  const [located, setLocated] = useState<'pending' | 'ok' | 'failed'>('pending');
   useEffect(() => {
-    Location.requestForegroundPermissionsAsync().then(({ status: s }) => setGps(s === 'granted'));
+    let live = true;
+    (async () => {
+      const { status: s } = await Location.requestForegroundPermissionsAsync().catch(() => ({ status: 'denied' as const }));
+      if (!live) return;
+      setGps(s === 'granted');
+      if (s !== 'granted' || fitted.current) return setLocated('failed');
+      const pos = (await Location.getLastKnownPositionAsync().catch(() => null))
+        ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null));
+      if (!live) return;
+      if (!pos || fitted.current) return setLocated('failed');
+      fitted.current = true;
+      setLocated('ok');
+      const center = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      mapRef.current?.setCamera({ center, zoom: 2, altitude: 20_000_000, heading: 0, pitch: 0 });
+      setTimeout(() => mapRef.current?.animateCamera({ center, zoom: 16, altitude: 700 }, { duration: 2200 }), 350);
+    })();
+    return () => { live = false; };
   }, []);
 
   // Rafraîchit à chaque retour sur l'onglet (nouveau drive, nouvel ami…).
@@ -170,7 +196,6 @@ export default function MapScreen() {
     [allDrives, filter, cellKey],
   );
   const [cats, setCats] = useState<Set<string>>(new Set());
-  const [newTrack, setNewTrack] = useState<LatLng | null>(null);
   const shownCircuits = useMemo(() => (cats.size === 0 ? circuits : circuits.filter((c) => cats.has(c.category))), [circuits, cats]);
   const selectedCircuit = circuitId ? circuits.find((c) => c.id === circuitId) ?? null : null;
   // Circuit touché : son tracé et son emprise sur la carte, caméra cadrée dessus.
@@ -191,9 +216,9 @@ export default function MapScreen() {
   const selectedDrive = selected ? selected.drives[Math.min(selected.index, selected.drives.length - 1)] : null;
   const selectedPath = selectedDrive ? paths[selectedDrive.id] : undefined;
 
-  // Premier affichage : cadre sur les repères, sinon sur ma position.
+  // Premier affichage sans position GPS : cadre sur les repères.
   useEffect(() => {
-    if (fitted.current || !drives) return;
+    if (fitted.current || !drives || located !== 'failed') return;
     fitted.current = true;
     const coords = pins.map((p) => p.coordinate);
     if (coords.length > 1) {
@@ -204,7 +229,7 @@ export default function MapScreen() {
       recenter(11);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drives]);
+  }, [drives, located]);
 
   // Repères : Android ne redessine une vue personnalisée que pendant tracksViewChanges.
   const [tracking, setTracking] = useState(true);
@@ -286,7 +311,7 @@ export default function MapScreen() {
           toolbarEnabled={false}
           moveOnMarkerPress={false}
           onPress={onMapPress}
-          onLongPress={profile?.is_dev ? (e) => setNewTrack(e.nativeEvent.coordinate) : undefined}
+          onLongPress={profile?.is_dev ? (e) => router.push({ pathname: '/circuit/details', params: { lat: String(e.nativeEvent.coordinate.latitude), lng: String(e.nativeEvent.coordinate.longitude) } }) : undefined}
           onRegionChangeComplete={onRegionChangeComplete}
         >
           {Array.isArray(selectedPath) && (
@@ -422,9 +447,6 @@ export default function MapScreen() {
           </ScrollView>
         )}
 
-        {tracks && (region?.latitudeDelta ?? 0) > TRACKS_MAX_DELTA && (
-          <View style={styles.zoomHint}><Text style={styles.chipText}>{t('Zoom in to see the tracks')}</Text></View>
-        )}
         {profile?.is_dev && tracks && <Text style={styles.devHint}>{t('DEV · long press the map to add a track')}</Text>}
 
         <View style={styles.sideButtons} pointerEvents="box-none">
@@ -519,43 +541,10 @@ export default function MapScreen() {
           <Text style={styles.hintText}>{t('Your drives, your friends’ and public drives around will show up here.')}</Text>
         </View>
       )}
-      <NewTrackSheet at={newTrack} onClose={() => setNewTrack(null)} />
     </View>
   );
 }
 
-/** Comptes dev : nouveau circuit au point appuyé longuement (nom, catégorie), puis sa fiche. */
-function NewTrackSheet({ at, onClose }: { at: LatLng | null; onClose: () => void }) {
-  const [name, setName] = useState('');
-  const [cat, setCat] = useState<CircuitCategory>('racing');
-  const [busy, setBusy] = useState(false);
-  const create = async () => {
-    if (!at || name.trim().length < 2) return;
-    setBusy(true);
-    try {
-      const id = await devCreateCircuit(name.trim(), cat, at);
-      setName('');
-      onClose();
-      router.push(`/circuit/${id}`);
-    } catch (e) {
-      Alert.alert(t('Création impossible'), e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Sheet visible={!!at} title={t('New track (dev)')} onClose={onClose}>
-      <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
-        <TextInput value={name} onChangeText={setName} placeholder={t('Track name')} placeholderTextColor={colors.textFaint}
-          style={styles.newTrackInput} autoFocus />
-        <Dropdown label={t('Category')} value={cat} onChange={setCat}
-          options={CATEGORIES.map((c) => ({ key: c.key, label: c.label, left: <TrackIcon category={c.key} size={20} /> }))} />
-        <Text style={styles.cardMeta}>{t('A 400 m area is created around the point: draw the path next from the track page.')}</Text>
-        <Button title={t('Create track')} icon="add" onPress={create} loading={busy} disabled={name.trim().length < 2} />
-      </View>
-    </Sheet>
-  );
-}
 
 function DrivePin({ pin, selected, dimmed }: { pin: Pin; selected: boolean; dimmed: boolean }) {
   const first = pin.drives[0];
@@ -700,10 +689,6 @@ const styles = StyleSheet.create({
   filterBar: { ...glass, flexDirection: 'row', alignSelf: 'flex-start', borderRadius: radius.pill, padding: 4, gap: 2 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
   chipActive: { backgroundColor: colors.accentSoft },
-  newTrackInput: {
-    backgroundColor: colors.input, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 12, height: 46, color: colors.text, fontFamily: fonts.regular, fontSize: 15,
-  },
   zoomHint: { ...glass, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill },
   devHint: { color: '#F59E0B', fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 0.5 },
   dot: { width: 8, height: 8, borderRadius: 4 },

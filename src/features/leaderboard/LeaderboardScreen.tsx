@@ -145,7 +145,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
           </Pressable>
         )}
         <View style={{ flex: 1, gap: 2, paddingRight: asTab ? 52 : 0 }}>
-          <Text style={styles.overline}>{t('PERFORMANCE')}</Text>
+          <Text style={styles.overline}>{t('PERF')}</Text>
           <Text style={styles.title}>{t('Leaderboard')}</Text>
         </View>
       </View>

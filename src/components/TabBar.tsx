@@ -10,7 +10,7 @@ import { t } from '@/i18n';
 type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 const TABS: Record<string, { icon: Icon; label: string }> = {
   index: { icon: 'account-group', get label() { return t('COMMUNITY'); } },
-  performance: { icon: 'speedometer', get label() { return t('PERFORMANCE'); } },
+  performance: { icon: 'speedometer', get label() { return t('PERF'); } },
   record: { icon: 'power', get label() { return t('START DRIVE'); } },
   map: { icon: 'map-marker-radius', get label() { return t('MAP'); } },
   profile: { icon: 'garage', get label() { return t('GARAGE'); } },

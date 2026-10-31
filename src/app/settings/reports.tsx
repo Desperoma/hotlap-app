@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ReportCard } from '@/components/ReportCard';
-import { Screen } from '@/components/ui';
-import { myReports, type ReportItem } from '@/features/moderation/reports';
+import { Button, Screen } from '@/components/ui';
+import { deleteReport, myReports, type ReportItem } from '@/features/moderation/reports';
 import { colors, fonts, spacing, type } from '@/theme';
 
 import { t } from '@/i18n';
@@ -13,6 +13,13 @@ import { t } from '@/i18n';
 export default function MyReportsScreen() {
   const [list, setList] = useState<ReportItem[] | null>(null);
   useEffect(() => { myReports().then(setList); }, []);
+  const withdraw = (r: ReportItem) => Alert.alert(t('Withdraw this report?'), t('The team will no longer review it. You can report the content again later.'), [
+    { text: t('Cancel'), style: 'cancel' },
+    { text: t('Withdraw'), style: 'destructive', onPress: async () => {
+      try { await deleteReport(r.id); setList((l) => l?.filter((x) => x.id !== r.id) ?? null); }
+      catch (e) { Alert.alert(t('Erreur'), e instanceof Error ? e.message : String(e)); }
+    } },
+  ]);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/settings'));
 
   return (
@@ -23,7 +30,11 @@ export default function MyReportsScreen() {
       </View>
       {list === null ? <ActivityIndicator color={colors.accent} /> : list.length === 0 ? (
         <Text style={styles.hint}>{t('You haven’t reported anything.')}</Text>
-      ) : list.map((r) => <ReportCard key={r.id} r={r} />)}
+      ) : list.map((r) => (
+        <ReportCard key={r.id} r={r} footer={
+          <Button title={t('Withdraw report')} variant="ghost" icon="trash-outline" onPress={() => withdraw(r)} style={{ marginTop: 4 }} />
+        } />
+      ))}
     </Screen>
   );
 }

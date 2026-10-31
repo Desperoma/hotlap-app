@@ -97,6 +97,7 @@ function RootNavigator({ fontsLoaded, lang }: { fontsLoaded: boolean; lang: Lang
         <Stack.Screen name="settings/dev" />
         <Stack.Screen name="ranks" />
         <Stack.Screen name="circuit/edit" />
+        <Stack.Screen name="circuit/details" />
         <Stack.Screen name="people/[kind]" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="leaderboard" />

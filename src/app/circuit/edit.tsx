@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { devSetCircuitPath, getCircuit, type CircuitDetail } from '@/features/circuit/api';
+import { devSetCircuitArea, devSetCircuitPath, getCircuit, type CircuitDetail } from '@/features/circuit/api';
 import type { LL } from '@/features/circuit/laps';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
@@ -18,12 +18,13 @@ const MAX_POINTS = 150;
 const thin = (pts: LL[], max: number) => (pts.length <= max ? pts : pts.filter((_, i) => i % Math.ceil(pts.length / max) === 0));
 
 /**
- * Correction du tracé d'un circuit (comptes dev) : vue satellite, toucher la carte ajoute un point
+ * Correction du tracé (?mode=path) ou de l'emprise (?mode=area) d'un circuit (comptes dev) : vue satellite, toucher la carte ajoute un point
  * en fin de tracé, glisser un point le déplace, toucher un point le sélectionne (Supprimer).
  * Le tracé enregistré passe en « manual » : ni l'import OSM ni l'apprentissage ne l'écrasent.
  */
 export default function CircuitEditScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, mode: modeParam } = useLocalSearchParams<{ id: string; mode?: string }>();
+  const area = modeParam === 'area';
   const { profile } = useAuth();
   const mapRef = useRef<MapView>(null);
   const [circuit, setCircuit] = useState<CircuitDetail | null | undefined>(undefined);
@@ -36,9 +37,17 @@ export default function CircuitEditScreen() {
     if (!id) return;
     getCircuit(id).then((c) => {
       setCircuit(c);
-      if (c) setPts(thin(c.path.flat(), MAX_POINTS));
+      if (!c) return;
+      if (area) {
+        // Anneau extérieur, sans le point de fermeture (refermé à l'enregistrement).
+        const ring = c.area[0] ?? [];
+        const open = ring.length > 1 && ring[0].latitude === ring.at(-1)!.latitude && ring[0].longitude === ring.at(-1)!.longitude ? ring.slice(0, -1) : ring;
+        setPts(thin(open, MAX_POINTS));
+      } else {
+        setPts(thin(c.path.flat(), MAX_POINTS));
+      }
     }).catch(() => setCircuit(null));
-  }, [id]);
+  }, [id, area]);
 
   const frame = useMemo(() => [...(circuit?.path.flat() ?? []), ...(circuit?.area.flat() ?? [])], [circuit]);
   const fit = () => frame.length > 1 && mapRef.current?.fitToCoordinates(frame, { edgePadding: { top: 120, bottom: 220, left: 40, right: 40 }, animated: false });
@@ -51,10 +60,11 @@ export default function CircuitEditScreen() {
   const closeLoop = () => pts.length > 2 && change([...pts, pts[0]]);
 
   const save = async () => {
-    if (!id || pts.length < 3) return Alert.alert(t('Tracé trop court'), t('Il faut au moins 3 points.'));
+    if (!id || pts.length < 3) return Alert.alert(area ? t('Zone trop petite') : t('Tracé trop court'), t('Il faut au moins 3 points.'));
     setSaving(true);
     try {
-      await devSetCircuitPath(id, pts);
+      if (area) await devSetCircuitArea(id, pts);
+      else await devSetCircuitPath(id, pts);
       router.back();
     } catch (e) {
       Alert.alert(t('Enregistrement impossible'), e instanceof Error ? e.message : String(e));
@@ -77,10 +87,22 @@ export default function CircuitEditScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <MapView ref={mapRef} style={StyleSheet.absoluteFill} provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         mapType="satellite" onMapReady={fit} onPress={add} rotateEnabled={false} pitchEnabled={false}>
-        {circuit.area.map((ring, i) => (
-          <Polygon key={`a${i}`} coordinates={ring} strokeColor="rgba(198,244,50,0.5)" fillColor="rgba(198,244,50,0.06)" strokeWidth={1} />
-        ))}
-        {pts.length > 1 && <Polyline coordinates={pts} strokeColor={colors.accent} strokeWidth={4} lineJoin="round" />}
+        {area ? (
+          <>
+            {circuit.path.map((seg, i) => (
+              <Polyline key={`p${i}`} coordinates={seg} strokeColor="rgba(255,255,255,0.45)" strokeWidth={2} />
+            ))}
+            {pts.length > 2 && <Polygon coordinates={pts} strokeColor={colors.accent} fillColor="rgba(198,244,50,0.15)" strokeWidth={3} />}
+            {pts.length === 2 && <Polyline coordinates={pts} strokeColor={colors.accent} strokeWidth={3} />}
+          </>
+        ) : (
+          <>
+            {circuit.area.map((ring, i) => (
+              <Polygon key={`a${i}`} coordinates={ring} strokeColor="rgba(198,244,50,0.5)" fillColor="rgba(198,244,50,0.06)" strokeWidth={1} />
+            ))}
+            {pts.length > 1 && <Polyline coordinates={pts} strokeColor={colors.accent} strokeWidth={4} lineJoin="round" />}
+          </>
+        )}
         {pts.map((p, i) => (
           <Marker key={`${i}-${p.latitude}-${p.longitude}`} coordinate={p} draggable anchor={{ x: 0.5, y: 0.5 }}
             onPress={(e) => { e.stopPropagation(); setSel(i); }} onDragEnd={(e) => move(i, e.nativeEvent.coordinate)}
@@ -96,24 +118,25 @@ export default function CircuitEditScreen() {
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.overline}>{t('DEV · EDIT TRACK PATH')}</Text>
+            <Text style={styles.overline}>{area ? t('DEV · EDIT TRACK AREA') : t('DEV · EDIT TRACK PATH')}</Text>
             <Text style={styles.name} numberOfLines={1}>{circuit.name}</Text>
           </View>
           <Text style={styles.count}>{pts.length} pts</Text>
         </View>
-        <Text style={styles.help}>{t('Toucher la carte : ajouter un point · glisser : déplacer · toucher un point : le sélectionner')}</Text>
+        <Text style={styles.help}>{t('Toucher la carte : ajouter un point · glisser : déplacer · toucher un point : le sélectionner')}
+          {area ? `\n${t('La zone se referme toute seule : fais le tour du site, piste et paddock compris.')}` : ''}</Text>
       </SafeAreaView>
 
       <View style={styles.panel}>
         <View style={styles.row}>
           <Tool icon="arrow-undo" label={t('Undo')} onPress={undo} disabled={!history.length} />
           <Tool icon="trash-outline" label={t('Delete pt')} onPress={remove} disabled={sel == null} />
-          <Tool icon="git-commit-outline" label={t('Close loop')} onPress={closeLoop} disabled={pts.length < 3} />
+          {!area && <Tool icon="git-commit-outline" label={t('Close loop')} onPress={closeLoop} disabled={pts.length < 3} />}
           <Tool icon="refresh" label={t('Restart')} onPress={() => { change([]); setSel(null); }} disabled={!pts.length} />
         </View>
         <View style={styles.row}>
-          <Button title={t('Remove path')} variant="ghost" style={{ flex: 1 }} onPress={clear} />
-          <Button title={t('Save path')} icon="checkmark" style={{ flex: 1 }} onPress={save} loading={saving} disabled={pts.length < 3} />
+          {!area && <Button title={t('Remove path')} variant="ghost" style={{ flex: 1 }} onPress={clear} />}
+          <Button title={area ? t('Save area') : t('Save path')} icon="checkmark" style={{ flex: 1 }} onPress={save} loading={saving} disabled={pts.length < 3} />
         </View>
       </View>
     </View>
