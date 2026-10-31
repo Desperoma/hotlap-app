@@ -6,13 +6,14 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 
 import { colors, fonts } from '@/theme';
 
+import { t } from '@/i18n';
 type Icon = keyof typeof MaterialCommunityIcons.glyphMap;
 const TABS: Record<string, { icon: Icon; label: string }> = {
-  index: { icon: 'account-group', label: 'COMMUNITY' },
-  performance: { icon: 'speedometer', label: 'PERFORMANCE' },
-  record: { icon: 'power', label: 'START DRIVE' },
-  map: { icon: 'map-marker-radius', label: 'MAP' },
-  profile: { icon: 'garage', label: 'GARAGE' },
+  index: { icon: 'account-group', get label() { return t('COMMUNITY'); } },
+  performance: { icon: 'speedometer', get label() { return t('PERFORMANCE'); } },
+  record: { icon: 'power', get label() { return t('START DRIVE'); } },
+  map: { icon: 'map-marker-radius', get label() { return t('MAP'); } },
+  profile: { icon: 'garage', get label() { return t('GARAGE'); } },
 };
 
 /** Durée de l'allumage d'un voyant : progressif, comme un tableau de bord au contact. */
@@ -98,15 +99,15 @@ function StartButton({ onPress }: { onPress: () => void }) {
   const haloScale = breathe.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
   return (
-    <Pressable onPress={onPress} style={styles.centerSlot} accessibilityRole="button" accessibilityLabel="Start a drive">
+    <Pressable onPress={onPress} style={styles.centerSlot} accessibilityRole="button" accessibilityLabel={t('Start a drive')}>
       {({ pressed }) => (
         <View style={styles.centerLift}>
           <Animated.View style={[styles.halo, { opacity: haloOpacity, transform: [{ scale: haloScale }] }]} />
           <View style={[styles.ring, pressed && { transform: [{ scale: 0.95 }] }]}>
             <LinearGradient colors={['#262B26', '#0E100E']} style={styles.knob}>
               <MaterialCommunityIcons name="power" size={22} color={colors.accent} />
-              <Text style={styles.startText}>START</Text>
-              <Text style={styles.startSub}>DRIVE</Text>
+              <Text style={styles.startText}>{t('START')}</Text>
+              <Text style={styles.startSub}>{t('DRIVE')}</Text>
             </LinearGradient>
           </View>
         </View>

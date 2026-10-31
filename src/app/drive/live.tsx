@@ -22,6 +22,7 @@ import { usePrefs, type LiveView } from '@/features/settings/prefs';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
+import { t } from '@/i18n';
 /**
  * Live drive (ouvert par l'onglet « + ») : carte, démarrage, stats live, arrêt et sauvegarde du drive.
  * L'enregistrement continue si on quitte l'écran : l'onglet Map affiche alors un rappel pour revenir.
@@ -72,7 +73,7 @@ export default function LiveDriveScreen() {
 
   const start = async () => {
     const perm = await recorder.requestPermissions();
-    if (perm === 'denied') return Alert.alert('Localisation refusée', 'Active la localisation dans les réglages.');
+    if (perm === 'denied') return Alert.alert(t('Localisation refusée'), t('Active la localisation dans les réglages.'));
 
     // Âge + pays + lieu (route ouverte ou circuit) : vérifié à chaque départ.
     setChecking(true);
@@ -80,27 +81,27 @@ export default function LiveDriveScreen() {
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const ctx = await checkRecording(pos.coords, profile);
       setWhere(ctx);
-      if (!ctx.allowed) return Alert.alert('Enregistrement indisponible ici', refusalMessage(ctx));
+      if (!ctx.allowed) return Alert.alert(t('Enregistrement indisponible ici'), refusalMessage(ctx));
       // Chrono : circuit (ou route chronométrée validée par l'équipe) uniquement, comme lap_time_ms.
       if (nextMode === 'sprint' && ctx.context !== 'circuit') {
-        return Alert.alert('Sprint indisponible ici',
-          'Le mode Sprint n’est disponible que sur un circuit ou une route chronométrée validée. Lance un drive libre, ou rends-toi sur un circuit.');
+        return Alert.alert(t('Sprint indisponible ici'),
+          t('Le mode Sprint n’est disponible que sur un circuit ou une route chronométrée validée. Lance un drive libre, ou rends-toi sur un circuit.'));
       }
     } catch (e) {
-      return Alert.alert('Vérification impossible', e instanceof Error ? e.message : String(e));
+      return Alert.alert(t('Vérification impossible'), e instanceof Error ? e.message : String(e));
     } finally {
       setChecking(false);
     }
 
     if (perm === 'foreground') {
-      Alert.alert('Arrière-plan', 'Sans « Toujours », le tracé s’arrête quand l’écran se verrouille.');
+      Alert.alert(t('Arrière-plan'), t('Sans « Toujours », le tracé s’arrête quand l’écran se verrouille.'));
     }
     try {
       await recorder.start(nextMode);
     } catch {
       Alert.alert(
-        'Enregistrement impossible',
-        'La localisation en arrière-plan n’est pas disponible ici (Expo Go). Utilise l’app de test HotLap compilée par EAS.',
+        t('Enregistrement impossible'),
+        t('La localisation en arrière-plan n’est pas disponible ici (Expo Go). Utilise l’app de test HotLap compilée par EAS.'),
       );
     }
   };
@@ -148,11 +149,11 @@ export default function LiveDriveScreen() {
   if (recording && stats) {
     const speedKmh = Math.max(0, (last?.speed ?? 0) * 3.6);
     const maxKmh = points.reduce((m, p) => Math.max(m, (p.speed ?? 0) * 3.6), 0);
-    const ctx = where ? (where.context === 'circuit' ? `CIRCUIT${where.countryCode ? ` · ${where.countryCode}` : ''}` : `OPEN ROAD${where.countryCode ? ` · ${where.countryCode}` : ''}`) : 'OPEN ROAD';
+    const ctx = where ? (where.context === 'circuit' ? t('CIRCUIT{0}', where.countryCode ? ` · ${where.countryCode}` : '') : t('OPEN ROAD{0}', where.countryCode ? ` · ${where.countryCode}` : '')) : t('OPEN ROAD');
     return (
       <LiveDashboard
-        overline={activeMode === 'sprint' ? `SPRINT · ${ctx}` : ctx}
-        name={where?.circuitName ?? (activeMode === 'sprint' ? 'Sprint' : 'Free drive')}
+        overline={activeMode === 'sprint' ? t('SPRINT · {0}', ctx) : ctx}
+        name={where?.circuitName ?? (activeMode === 'sprint' ? t('Sprint') : t('Free drive'))}
         elapsedMs={startedAt ? now - startedAt : stats.durationS * 1000}
         view={view} onView={setView}
         paused={status === 'paused'}
@@ -176,14 +177,14 @@ export default function LiveDriveScreen() {
             )}
           </MapView>
         ) : (
-          <View style={[style, styles.noMapSmall]}><Text style={styles.panelText}>Map unavailable</Text></View>
+          <View style={[style, styles.noMapSmall]}><Text style={styles.panelText}>{t('Map unavailable')}</Text></View>
         )}
       >
         {activeMode === 'sprint' ? <SprintPanel points={points} /> : <SpeedCard kmh={speedKmh} />}
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Tile label="DISTANCE" value={`${formatKm(stats.distanceM)} km`} />
-          <Tile label="AVG" value={`${Math.round(stats.avgSpeedKmh)}`} sub="KM/H" />
-          <Tile label="MAX" value={`${Math.round(maxKmh)}`} sub="KM/H" />
+          <Tile label={t('DISTANCE')} value={`${formatKm(stats.distanceM)} km`} />
+          <Tile label={t('AVG')} value={`${Math.round(stats.avgSpeedKmh)}`} sub={t('KM/H')} />
+          <Tile label={t('MAX')} value={`${Math.round(maxKmh)}`} sub={t('KM/H')} />
         </View>
       </LiveDashboard>
     );
@@ -215,35 +216,35 @@ export default function LiveDriveScreen() {
       </MapView>
       ) : (
         <View style={styles.noMap}>
-          <Text style={styles.panelText}>Map unavailable in this version. Recording still works.</Text>
+          <Text style={styles.panelText}>{t('Map unavailable in this version. Recording still works.')}</Text>
         </View>
       )}
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
         <View style={styles.brand}>
           <Pressable onPress={() => (router.canGoBack() ? router.back() : router.navigate('/'))} hitSlop={10}
-            style={styles.back} accessibilityLabel="Back">
+            style={styles.back} accessibilityLabel={t('Back')}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
           <View style={styles.brandIcon}><Ionicons name="navigate" size={18} color={colors.accentText} /></View>
           <View>
-            <Text style={styles.brandName}>LIVE DRIVE</Text>
-            <Text style={styles.brandTag}>{recording ? 'RECORDING CONTINUES IF YOU LEAVE' : 'THE ROAD IS YOURS'}</Text>
+            <Text style={styles.brandName}>{t('LIVE DRIVE')}</Text>
+            <Text style={styles.brandTag}>{recording ? t('RECORDING CONTINUES IF YOU LEAVE') : t('THE ROAD IS YOURS')}</Text>
           </View>
         </View>
 
         <View style={styles.controls}>
           <View style={styles.toggle}>
-            <MapToggle label="DARK" icon="map-outline" active={mapType === 'standard'} onPress={() => setMapType('standard')} />
-            <MapToggle label="SATELLITE" icon="globe-outline" active={mapType === 'satellite'} onPress={() => setMapType('satellite')} />
+            <MapToggle label={t('DARK')} icon="map-outline" active={mapType === 'standard'} onPress={() => setMapType('standard')} />
+            <MapToggle label={t('SATELLITE')} icon="globe-outline" active={mapType === 'satellite'} onPress={() => setMapType('satellite')} />
           </View>
-          <MapToggle label="TRAFFIC" icon="car-outline" active={traffic} onPress={() => setTraffic((t) => !t)} />
+          <MapToggle label={t('TRAFFIC')} icon="car-outline" active={traffic} onPress={() => setTraffic((t) => !t)} />
         </View>
 
         <View style={styles.gpsRow}>
           <View style={styles.gpsPill}>
             <Ionicons name="locate" size={12} color={gps === 'ok' ? colors.accent : colors.textMuted} />
-            <Text style={styles.gpsText}>{gps === 'ok' ? 'GPS READY' : gps === 'denied' ? 'GPS OFF' : 'GPS SEARCHING'}</Text>
+            <Text style={styles.gpsText}>{gps === 'ok' ? t('GPS READY') : gps === 'denied' ? t('GPS OFF') : t('GPS SEARCHING')}</Text>
           </View>
           <Pressable style={styles.recenter} onPress={recenter}>
             <Ionicons name="locate-outline" size={20} color={colors.accent} />
@@ -255,51 +256,46 @@ export default function LiveDriveScreen() {
         {recording && stats ? (
           <>
             <Text style={styles.overline}>
-              {status === 'paused' ? 'PAUSED' : activeMode === 'sprint' ? 'SPRINT' : 'RECORDING'}
-              {where ? ` · ${where.context === 'circuit' ? `CIRCUIT${where.circuitName ? ` ${where.circuitName.toUpperCase()}` : ''}` : 'OPEN ROAD'}${where.countryCode ? ` · ${where.countryCode}` : ''}` : ''}
+              {status === 'paused' ? t('PAUSED') : activeMode === 'sprint' ? t('SPRINT') : t('RECORDING')}
+              {where ? ` · ${where.context === 'circuit' ? `${t('CIRCUIT')}${where.circuitName ? ` ${where.circuitName.toUpperCase()}` : ''}` : t('OPEN ROAD')}${where.countryCode ? ` · ${where.countryCode}` : ''}` : ''}
             </Text>
             {activeMode === 'sprint' ? (
               <SprintPanel points={points} />
             ) : (
               <View style={styles.statsRow}>
-                <Stat label="DISTANCE" value={`${formatKm(stats.distanceM)} km`} />
-                <Stat label="TIME" value={formatDuration(stats.durationS)} />
-                <Stat label="AVG" value={`${Math.round(stats.avgSpeedKmh)} km/h`} />
+                <Stat label={t('DISTANCE')} value={`${formatKm(stats.distanceM)} km`} />
+                <Stat label={t('TIME')} value={formatDuration(stats.durationS)} />
+                <Stat label={t('AVG')} value={`${Math.round(stats.avgSpeedKmh)} km/h`} />
               </View>
             )}
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <Button
-                title={status === 'paused' ? 'Resume' : 'Pause'}
+                title={status === 'paused' ? t('Resume') : t('Pause')}
                 variant="secondary"
                 style={{ flex: 1 }}
                 onPress={() => (status === 'paused' ? recorder.resume() : recorder.pause())}
               />
-              <Button title="Finish" icon="flag" style={{ flex: 1 }} onPress={stop} />
+              <Button title={t('Finish')} icon="flag" style={{ flex: 1 }} onPress={stop} />
             </View>
           </>
         ) : (
           <>
-            <Text style={styles.overline}>YOUR NEXT DRIVE</Text>
-            <Text style={styles.panelTitle}>Find your line.</Text>
-            <Text style={styles.panelText}>
-              Start a drive to draw your route live. HotLap ignores weak GPS fixes for a cleaner track.
-            </Text>
+            <Text style={styles.overline}>{t('YOUR NEXT DRIVE')}</Text>
+            <Text style={styles.panelTitle}>{t('Find your line.')}</Text>
+            <Text style={styles.panelText}>{t('Start a drive to draw your route live. HotLap ignores weak GPS fixes for a cleaner track.')}</Text>
             <SegmentedControl value={nextMode} onChange={setNextMode}
-              options={[{ value: 'free', label: 'Free drive' }, { value: 'sprint', label: 'Sprint' }]} />
+              options={[{ value: 'free', label: t('Free drive') }, { value: 'sprint', label: t('Sprint') }]} />
             {nextMode === 'sprint' && (
-              <Text style={styles.panelText}>
-                0-100, 0-200 km/h, 500 m, 1 000 m, 2 000 m en départ arrêté. Circuit ou route chronométrée validée uniquement.
-                Arrête-toi : le chrono part seul au démarrage.
-              </Text>
+              <Text style={styles.panelText}>{t('0-100, 0-200 km/h, 500 m, 1 000 m, 2 000 m en départ arrêté. Circuit ou route chronométrée validée uniquement. Arrête-toi : le chrono part seul au démarrage.')}</Text>
             )}
-            <VehicleSelect compact label="Car for this drive" value={chosenVehicle} onChange={setVehicleId} />
-            <Button title={nextMode === 'sprint' ? 'START SPRINT' : 'START DRIVE'} icon={nextMode === 'sprint' ? 'flag' : 'radio-button-on'}
+            <VehicleSelect compact label={t('Car for this drive')} value={chosenVehicle} onChange={setVehicleId} />
+            <Button title={nextMode === 'sprint' ? t('START SPRINT') : t('START DRIVE')} icon={nextMode === 'sprint' ? 'flag' : 'radio-button-on'}
               trailingIcon="arrow-forward" onPress={start} disabled={gps === 'denied'} loading={checking} />
-            <Text style={styles.footnote}>Precise GPS · Live route · Private by default</Text>
+            <Text style={styles.footnote}>{t('Precise GPS · Live route · Private by default')}</Text>
             {/* Tests sans rouler : versions de développement et builds « preview » uniquement,
                 jamais dans l'app publiée (voir TEST_TOOLS). */}
             {TEST_TOOLS && (
-              <Button title="Simulate a drive (test)" variant="ghost" icon="flask-outline" onPress={() => setSimMenu(true)} />
+              <Button title={t('Simulate a drive (test)')} variant="ghost" icon="flask-outline" onPress={() => setSimMenu(true)} />
             )}
           </>
         )}
@@ -307,11 +303,11 @@ export default function LiveDriveScreen() {
       {TEST_TOOLS && (
         <OptionsSheet
           visible={simMenu}
-          title="Simulated route (near you)"
+          title={t('Simulated route (near you)')}
           onClose={() => setSimMenu(false)}
           options={[
-            { label: 'Random', onPress: () => simulate() },
-            { label: 'Sprint run (0-100, 500 m…)', onPress: () => simulate('sprint') },
+            { label: t('Random'), onPress: () => simulate() },
+            { label: t('Sprint run (0-100, 500 m…)'), onPress: () => simulate('sprint') },
             ...SIM_STYLES.map((s) => ({ label: s.label, onPress: () => simulate(s.value) })),
           ]}
         />

@@ -18,6 +18,7 @@ import { getCounters, listDrives, type DriveLogItem, type ProfileCounters } from
 import { listPeople } from '@/features/social/api';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Driver Profile : identité, compteurs, raccourcis, My Garage / Drive Log. */
 export default function ProfileScreen() {
   const { session, profile, vehicles, primaryVehicle } = useAuth();
@@ -51,10 +52,10 @@ export default function ProfileScreen() {
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topRow}>
         <View>
-          <Text style={styles.overline}>DRIVER PROFILE</Text>
+          <Text style={styles.overline}>{t('DRIVER PROFILE')}</Text>
           <Text style={styles.handle}>@{profile?.username ?? 'driver'}</Text>
         </View>
-        <Pressable style={styles.iconBtn} onPress={() => router.push('/settings')} accessibilityLabel="Settings">
+        <Pressable style={styles.iconBtn} onPress={() => router.push('/settings')} accessibilityLabel={t('Settings')}>
           <Ionicons name="settings-outline" size={18} color={colors.text} />
         </Pressable>
       </View>
@@ -68,16 +69,16 @@ export default function ProfileScreen() {
             <Pressable style={styles.badge} onPress={() => router.push(crews.length === 1 ? `/crews/${crews[0].id}` : '/crews')}>
               <Ionicons name="people-outline" size={12} color={colors.accent} />
               <Text style={styles.badgeText} numberOfLines={1}>
-                {crews.length === 0 ? 'NO CREW YET' : crews.length === 1 ? crews[0].name.toUpperCase() : `${crews.length} CREWS`}
+                {crews.length === 0 ? t('NO CREW YET') : crews.length === 1 ? crews[0].name.toUpperCase() : t('{0} CREWS', crews.length)}
               </Text>
             </Pressable>
           </View>
         </View>
         <Text style={styles.bio}>
-          {profile?.bio ?? 'Your road story starts here. Add a bio and let the crew know what you drive.'}
+          {profile?.bio ?? t('Your road story starts here. Add a bio and let the crew know what you drive.')}
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Button title="Edit profile" icon="create-outline" style={{ flex: 1 }} onPress={() => router.push('/edit-profile')} />
+          <Button title={t('Edit profile')} icon="create-outline" style={{ flex: 1 }} onPress={() => router.push('/edit-profile')} />
         </View>
         <CheckInBar userId={userId} completion={completion} />
       </Card>
@@ -85,27 +86,27 @@ export default function ProfileScreen() {
       {xp && <LevelCard data={xp} />}
 
       <Card style={styles.counters}>
-        <Counter value={counters?.drives ?? 0} label="DRIVES" onPress={() => setTab('log')} />
-        <Counter value={counters?.followers ?? 0} label="FOLLOWERS" onPress={() => router.push('/people/followers')} />
-        <Counter value={counters?.following ?? 0} label="FOLLOWING" onPress={() => router.push('/people/following')} />
+        <Counter value={counters?.drives ?? 0} label={t('DRIVES')} onPress={() => setTab('log')} />
+        <Counter value={counters?.followers ?? 0} label={t('FOLLOWERS')} onPress={() => router.push('/people/followers')} />
+        <Counter value={counters?.following ?? 0} label={t('FOLLOWING')} onPress={() => router.push('/people/following')} />
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
-        <Shortcut icon="people-outline" title="Crews" text="Create, join or manage your crews" onPress={() => router.push('/crews')} />
+        <Shortcut icon="people-outline" title={t('Crews')} text={t('Create, join or manage your crews')} onPress={() => router.push('/crews')} />
         {requests > 0 && (
-          <Shortcut icon="person-add-outline" title={`Follow requests (${requests})`} text="Accept or decline"
+          <Shortcut icon="person-add-outline" title={t('Follow requests ({0})', requests)} text={t('Accept or decline')}
             onPress={() => router.push('/people/requests')} />
         )}
       </Card>
 
       <View style={styles.tabs}>
-        <TabLink icon="car-sport-outline" label="MY GARAGE" active={tab === 'garage'} onPress={() => setTab('garage')} />
-        <TabLink icon="time-outline" label="DRIVE LOG" active={tab === 'log'} onPress={() => setTab('log')} />
+        <TabLink icon="car-sport-outline" label={t('MY GARAGE')} active={tab === 'garage'} onPress={() => setTab('garage')} />
+        <TabLink icon="time-outline" label={t('DRIVE LOG')} active={tab === 'log'} onPress={() => setTab('log')} />
       </View>
 
       {tab === 'garage' ? (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.section}>MY MACHINES</Text>
+          <Text style={styles.section}>{t('MY MACHINES')}</Text>
           {vehicles && vehicles.length > 0 ? (
             vehicles.map((v, i) => (
               <GarageCarCard key={v.id} car={v} stats={carStats.get(v.id)} flip={i % 2 === 1} index={i}
@@ -113,27 +114,27 @@ export default function ProfileScreen() {
             ))
           ) : (
             <Card style={{ alignItems: 'center', gap: spacing.md }}>
-              <Text style={styles.bio}>No car in your garage yet.</Text>
-              <Button title="Add a vehicle" icon="add" onPress={() => router.push('/garage/edit')} />
+              <Text style={styles.bio}>{t('No car in your garage yet.')}</Text>
+              <Button title={t('Add a vehicle')} icon="add" onPress={() => router.push('/garage/edit')} />
             </Card>
           )}
-          <Button title={`Open my garage (${vehicles?.length ?? 0})`} variant="secondary" icon="construct-outline"
+          <Button title={t('Open my garage ({0})', vehicles?.length ?? 0)} variant="secondary" icon="construct-outline"
             onPress={() => router.push('/garage')} />
         </View>
       ) : (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.section}>RECENT DRIVES</Text>
+          <Text style={styles.section}>{t('RECENT DRIVES')}</Text>
           {counters?.bestScore != null && (
-            <Text style={styles.bio}>Best score: <Text style={{ color: colors.accent }}>{counters.bestScore}</Text></Text>
+            <Text style={styles.bio}>{t('Best score:')}{' '}<Text style={{ color: colors.accent }}>{counters.bestScore}</Text></Text>
           )}
           {drives === null ? (
             <ActivityIndicator color={colors.accent} />
           ) : drives.length === 0 ? (
             <Card style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl }}>
               <Ionicons name="flag-outline" size={28} color={colors.textMuted} />
-              <Text style={styles.name}>No drives logged yet</Text>
-              <Text style={[styles.bio, { textAlign: 'center' }]}>Start recording to build your personal road history.</Text>
-              <Button title="Record your first drive" trailingIcon="arrow-forward" onPress={() => router.push('/record')} />
+              <Text style={styles.name}>{t('No drives logged yet')}</Text>
+              <Text style={[styles.bio, { textAlign: 'center' }]}>{t('Start recording to build your personal road history.')}</Text>
+              <Button title={t('Record your first drive')} trailingIcon="arrow-forward" onPress={() => router.push('/record')} />
             </Card>
           ) : (
             drives.map((d) => <DriveLogRow key={d.id} drive={d} />)

@@ -9,14 +9,15 @@ import { VISIBILITY_HINT, VISIBILITY_OPTIONS } from '@/features/drives/visibilit
 import type { DetailsVisibility, FollowPolicy, Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 const FOLLOW: { value: FollowPolicy; label: string }[] = [
-  { value: 'open', label: 'Anyone can follow' },
-  { value: 'approval', label: 'I approve' },
+  { value: 'open', get label() { return t('Anyone can follow'); } },
+  { value: 'approval', get label() { return t('I approve'); } },
 ];
 const DETAILS: { value: DetailsVisibility; label: string }[] = [
-  { value: 'public', label: 'Everyone' },
-  { value: 'followers', label: 'Followers' },
-  { value: 'private', label: 'Only me' },
+  { value: 'public', get label() { return t('Everyone'); } },
+  { value: 'followers', get label() { return t('Followers'); } },
+  { value: 'private', get label() { return t('Only me'); } },
 ];
 
 /**
@@ -33,7 +34,7 @@ export default function PrivacySettingsScreen() {
     try {
       await updateProfile(patch);
     } catch (e) {
-      Alert.alert('Oups', e instanceof Error ? e.message : 'Enregistrement impossible');
+      Alert.alert(t('Oups'), e instanceof Error ? e.message : t('Enregistrement impossible'));
     } finally {
       setSaving(false);
     }
@@ -46,48 +47,44 @@ export default function PrivacySettingsScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.header}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back">
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.title}>Privacy</Text>
+        <Text style={styles.title}>{t('Privacy')}</Text>
       </View>
 
       <Card style={{ gap: spacing.md }}>
-        <Text style={styles.label}>Who can follow you</Text>
+        <Text style={styles.label}>{t('Who can follow you')}</Text>
         <SegmentedControl options={FOLLOW} value={policy} onChange={(v) => !saving && save({ follow_policy: v })} />
         <Text style={styles.hint}>
           {policy === 'open'
-            ? 'Anyone can follow you right away.'
-            : 'Each follow is a request you accept or decline. Switching back to “Anyone” accepts the pending requests.'}
+            ? t('Anyone can follow you right away.')
+            : t('Each follow is a request you accept or decline. Switching back to “Anyone” accepts the pending requests.')}
         </Text>
       </Card>
 
       <Card style={{ gap: spacing.md }}>
-        <Text style={styles.label}>Who sees your garage and city</Text>
+        <Text style={styles.label}>{t('Who sees your garage and city')}</Text>
         <SegmentedControl options={DETAILS} value={details} onChange={(v) => !saving && save({ details_visibility: v })} />
-        <Text style={styles.hint}>
-          Your username, name, bio and photo are always public. A car used on a drive stays visible on that drive.
-        </Text>
+        <Text style={styles.hint}>{t('Your username, name, bio and photo are always public. A car used on a drive stays visible on that drive.')}</Text>
       </Card>
 
       <Card style={{ gap: spacing.md }}>
-        <Text style={styles.label}>Default visibility of new drives</Text>
+        <Text style={styles.label}>{t('Default visibility of new drives')}</Text>
         <SegmentedControl options={VISIBILITY_OPTIONS} value={defaultVis} onChange={(v) => !saving && save({ default_drive_visibility: v })} />
-        <Text style={styles.hint}>{VISIBILITY_HINT[defaultVis]} You can still change it on each drive before publishing.</Text>
+        <Text style={styles.hint}>{VISIBILITY_HINT[defaultVis]}{' '}{t('You can still change it on each drive before publishing.')}</Text>
       </Card>
 
       <Card onPress={() => router.push('/settings/privacy-zone')} style={styles.link}>
         <Ionicons name="home-outline" size={20} color={colors.accent} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>Private zone</Text>
-          <Text style={styles.hint}>Hide your drives within 1 km of home.</Text>
+          <Text style={styles.label}>{t('Private zone')}</Text>
+          <Text style={styles.hint}>{t('Hide your drives within 1 km of home.')}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Card>
 
-      <Text style={styles.hint}>
-        Each drive has its own visibility: Only me, Friends (you follow each other), Followers, or Everyone.
-      </Text>
+      <Text style={styles.hint}>{t('Each drive has its own visibility: Only me, Friends (you follow each other), Followers, or Everyone.')}</Text>
     </Screen>
   );
 }

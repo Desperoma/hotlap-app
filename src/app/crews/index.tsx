@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { listMyCrewInvites, listMyCrews, searchCrews, type Crew, type CrewInvite, type MyCrew } from '@/features/crews/api';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Mes crews, recherche d'un crew à rejoindre, création. */
 export default function CrewsScreen() {
   const { session } = useAuth();
@@ -36,28 +37,28 @@ export default function CrewsScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={styles.overline}>CREWS</Text>
-        <Text style={styles.title}>Ride together.</Text>
-        <Text style={styles.muted}>Join a crew to see its members’ drives in the Crews feed.</Text>
+        <Text style={styles.overline}>{t('CREWS')}</Text>
+        <Text style={styles.title}>{t('Ride together.')}</Text>
+        <Text style={styles.muted}>{t('Join a crew to see its members’ drives in the Crews feed.')}</Text>
       </View>
 
-      <Button title="Create a crew" icon="add" onPress={() => router.push('/crews/form')} />
+      <Button title={t('Create a crew')} icon="add" onPress={() => router.push('/crews/form')} />
 
       {invites.length > 0 && (
         <>
-          <Text style={styles.section}>INVITATIONS ({invites.length})</Text>
+          <Text style={styles.section}>{t('INVITATIONS (')}{invites.length})</Text>
           {invites.map((i) => (
             <Pressable key={i.crewId} style={styles.invite} onPress={() => router.push(`/crews/${i.crewId}`)}
-              accessibilityRole="button" accessibilityLabel={`Invitation to ${i.crewName}`}>
+              accessibilityRole="button" accessibilityLabel={t('Invitation to {0}', i.crewName)}>
               <Ionicons name="mail-unread-outline" size={20} color={colors.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.inviteName} numberOfLines={1}>{i.crewName}</Text>
-                <Text style={styles.muted} numberOfLines={1}>{i.inviterName} invited you · {i.memberCount} {i.memberCount === 1 ? 'member' : 'members'}</Text>
+                <Text style={styles.muted} numberOfLines={1}>{i.inviterName}{' '}{t('invited you ·')}{' '}{i.memberCount === 1 ? t('1 member') : t('{0} members', i.memberCount)}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
@@ -65,21 +66,21 @@ export default function CrewsScreen() {
         </>
       )}
 
-      <Text style={styles.section}>MY CREWS</Text>
+      <Text style={styles.section}>{t('MY CREWS')}</Text>
       {mine === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : mine.length === 0 ? (
-        <Text style={styles.muted}>You’re not in a crew yet.</Text>
+        <Text style={styles.muted}>{t('You’re not in a crew yet.')}</Text>
       ) : (
         mine.map((c) => <CrewRow key={c.id} crew={c} role={c.myRole} pending={c.myStatus === 'pending'} />)
       )}
 
-      <Text style={styles.section}>FIND A CREW</Text>
-      <TextField label="Search" icon="search" placeholder="Crew name" value={query} onChangeText={setQuery} autoCorrect={false} />
+      <Text style={styles.section}>{t('FIND A CREW')}</Text>
+      <TextField label={t('Search')} icon="search" placeholder={t('Crew name')} value={query} onChangeText={setQuery} autoCorrect={false} />
       {results === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : results.filter((c) => !mineIds.has(c.id)).length === 0 ? (
-        <Text style={styles.muted}>{query.trim() ? 'No crew with that name. Create it!' : 'No crews yet. Be the first.'}</Text>
+        <Text style={styles.muted}>{query.trim() ? t('No crew with that name. Create it!') : t('No crews yet. Be the first.')}</Text>
       ) : (
         results.filter((c) => !mineIds.has(c.id)).map((c) => <CrewRow key={c.id} crew={c} />)
       )}
@@ -97,8 +98,8 @@ export function CrewRow({ crew, role, pending }: { crew: Crew; role?: string | n
           {[
             `${crew.member_count} ${crew.member_count === 1 ? 'member' : 'members'}`,
             crew.home_city,
-            pending ? 'Request sent' : role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : null,
-            !role && crew.join_policy === 'approval' ? 'On request' : null,
+            pending ? t('Request sent') : role === 'owner' ? t('Owner') : role === 'admin' ? t('Admin') : null,
+            !role && crew.join_policy === 'approval' ? t('On request') : null,
           ].filter(Boolean).join(' · ')}
         </Text>
       </View>

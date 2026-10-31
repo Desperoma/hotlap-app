@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts, type } from '@/theme';
 
+import { t } from '@/i18n';
 const MAX_G = 1.5; // bord du cercle
 const RINGS = [0.5, 1, 1.5];
 const TRAIL = 18;
@@ -29,8 +30,8 @@ export function GForceCircle({ g, size }: { g: G; size: number }) {
   trail.current = [...trail.current.slice(-(TRAIL - 1)), { x, y }];
 
   return (
-    <View style={{ width: size, height: size + 32, alignItems: 'center' }} accessibilityLabel={`G-force ${total.toFixed(1)} G`}>
-      <Text style={styles.axis}>ACCEL</Text>
+    <View style={{ width: size, height: size + 32, alignItems: 'center' }} accessibilityLabel={t('G-force {0} G', total.toFixed(1))}>
+      <Text style={styles.axis}>{t('ACCEL')}</Text>
       <View style={{ width: size, height: size }}>
         {RINGS.map((ring) => {
           const d = 2 * px(ring);
@@ -55,7 +56,7 @@ export function GForceCircle({ g, size }: { g: G; size: number }) {
           width: dot, height: dot, borderRadius: dot / 2, left: r - dot / 2, top: r - dot / 2, transform: pos.getTranslateTransform(),
         }]} />
       </View>
-      <Text style={styles.axis}>BRAKE</Text>
+      <Text style={styles.axis}>{t('BRAKE')}</Text>
     </View>
   );
 }
@@ -65,9 +66,9 @@ export function GForceBars({ g, compact }: { g: G; compact?: boolean }) {
   const total = Math.hypot(g.lateral, g.longitudinal);
   return (
     <View style={styles.bars}>
-      <Bar label={compact ? 'LATERAL' : 'LATERAL G'} v={Math.abs(g.lateral)} compact={compact} />
-      <Bar label={compact ? 'LONGITUDINAL' : 'LONGITUDINAL G'} v={Math.abs(g.longitudinal)} compact={compact} />
-      <Bar label={compact ? 'TOTAL' : 'TOTAL G'} v={total} compact={compact} />
+      <Bar label={compact ? t('LATERAL') : t('LATERAL G')} v={Math.abs(g.lateral)} compact={compact} />
+      <Bar label={compact ? t('LONGITUDINAL') : t('LONGITUDINAL G')} v={Math.abs(g.longitudinal)} compact={compact} />
+      <Bar label={compact ? t('TOTAL') : t('TOTAL G')} v={total} compact={compact} />
     </View>
   );
 }

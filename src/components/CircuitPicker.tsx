@@ -7,6 +7,7 @@ import { searchCircuits, type CircuitHit } from '@/features/search/api';
 import type { LapCircuit } from '@/features/sprint/api';
 import { colors, fonts, radius, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 export type PickedCircuit = { id: string; name: string; city: string | null; countryCode: string | null };
 
 /**
@@ -31,25 +32,25 @@ export function CircuitPicker({ value, withLaps, onChange }: {
 
   return (
     <>
-      <DropdownField label="Circuit" value={value ? value.name : 'Choose a circuit'} onPress={() => setOpen(true)}
+      <DropdownField label={t('Circuit')} value={value ? value.name : 'Choose a circuit'} onPress={() => setOpen(true)}
         left={<Ionicons name="flag" size={14} color={colors.accent} />} />
-      <Sheet visible={open} title="Circuit" onClose={() => setOpen(false)}>
+      <Sheet visible={open} title={t('Circuit')} onClose={() => setOpen(false)}>
         <View style={styles.search}>
           <Ionicons name="search" size={16} color={colors.textMuted} />
-          <TextInput value={q} onChangeText={setQ} placeholder="Search a circuit or a city" placeholderTextColor={colors.textFaint}
+          <TextInput value={q} onChangeText={setQ} placeholder={t('Search a circuit or a city')} placeholderTextColor={colors.textFaint}
             style={styles.input} autoCorrect={false} returnKeyType="search" />
         </View>
         {hits === null ? (
           <>
-            <Text style={styles.section}>WITH LAP TIMES</Text>
-            {withLaps.length === 0 && <Text style={styles.hint}>Aucun tour chronométré pour l’instant : cherche un circuit.</Text>}
+            <Text style={styles.section}>{t('WITH LAP TIMES')}</Text>
+            {withLaps.length === 0 && <Text style={styles.hint}>{t('Aucun tour chronométré pour l’instant : cherche un circuit.')}</Text>}
             {withLaps.map((c) => (
               <Row key={c.id} name={c.name} sub={`${where(c.city, c.countryCode)}${c.laps ? `${c.city || c.countryCode ? ' · ' : ''}${c.laps} lap${c.laps > 1 ? 's' : ''}` : ''}`}
                 selected={value?.id === c.id} onPress={() => pick(c)} />
             ))}
           </>
         ) : hits.length === 0 ? (
-          <Text style={styles.hint}>Aucun circuit trouvé.</Text>
+          <Text style={styles.hint}>{t('Aucun circuit trouvé.')}</Text>
         ) : hits.map((h) => (
           <Row key={h.id} name={h.name} sub={where(h.city, h.country_code)} selected={value?.id === h.id}
             onPress={() => pick({ id: h.id, name: h.name, city: h.city, countryCode: h.country_code })} />

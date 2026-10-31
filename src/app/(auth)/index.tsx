@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LanguageChip } from '@/components/LanguagePicker';
 import { Button, SegmentedControl, TextField } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 type Mode = 'login' | 'register';
 
 /** Écrans Login + Register de la maquette (un seul écran, deux modes). */
@@ -30,7 +32,7 @@ export default function AuthScreen() {
         if (codeSent) router.push({ pathname: '/verify-email', params: { email: email.trim() } });
       }
     } catch (e) {
-      Alert.alert('Oups', e instanceof Error ? e.message : 'Une erreur est survenue');
+      Alert.alert(t('Oups'), e instanceof Error ? e.message : t('Une erreur est survenue'));
     } finally {
       setLoading(false);
     }
@@ -39,47 +41,48 @@ export default function AuthScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={styles.hero}>
-        <Image source={require('../../../assets/logo/logo-full.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="HotLap" />
-        <Text style={styles.tagline}>All your routes in one place</Text>
+        <View style={styles.langChip}><LanguageChip /></View>
+        <Image source={require('../../../assets/logo/logo-full.png')} style={styles.logo} resizeMode="contain" accessibilityLabel={t('HotLap')} />
+        <Text style={styles.tagline}>{t('All your routes in one place')}</Text>
       </SafeAreaView>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>{mode === 'login' ? 'Welcome back.' : 'Create Account'}</Text>
+          <Text style={styles.title}>{mode === 'login' ? t('Welcome back.') : t('Create Account')}</Text>
 
           <SegmentedControl
             value={mode}
             onChange={setMode}
-            options={[{ value: 'login', label: 'Log in' }, { value: 'register', label: 'Register' }]}
+            options={[{ value: 'login', label: t('Log in') }, { value: 'register', label: t('Register') }]}
           />
 
           {mode === 'login' ? (
             <>
-              <TextField label="Email or username" icon="person-outline" placeholder="you@mail.com or your username"
+              <TextField label={t('Email or username')} icon="person-outline" placeholder={t('you@mail.com or your username')}
                 keyboardType="email-address" autoComplete="username" autoCorrect={false}
                 value={identifier} onChangeText={setIdentifier} />
-              <TextField label="Password" icon="lock-closed-outline" placeholder="Enter your password" secure
+              <TextField label={t('Password')} icon="lock-closed-outline" placeholder={t('Enter your password')} secure
                 value={password} onChangeText={setPassword} />
               <Pressable style={{ alignSelf: 'flex-end' }}>
-                <Text style={styles.link}>Forgot password?</Text>
+                <Text style={styles.link}>{t('Forgot password?')}</Text>
               </Pressable>
             </>
           ) : (
             <>
-              <TextField label="Username" icon="person-outline" placeholder="e.g. romain_rx7 (letters, numbers, _ .)"
+              <TextField label={t('Username')} icon="person-outline" placeholder={t('e.g. romain_rx7 (letters, numbers, _ .)')}
                 autoCapitalize="none" autoCorrect={false}
                 value={username} onChangeText={setUsername} />
-              <TextField label="Email" icon="mail-outline" placeholder="Enter your email" keyboardType="email-address"
+              <TextField label={t('Email')} icon="mail-outline" placeholder={t('Enter your email')} keyboardType="email-address"
                 value={email} onChangeText={setEmail} />
-              <TextField label="Phone (optional)" icon="call-outline" placeholder="+33 6 12 34 56 78"
+              <TextField label={t('Phone (optional)')} icon="call-outline" placeholder="+33 6 12 34 56 78"
                 keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-              <Text style={styles.hint}>Facultatif, jamais affiché aux autres utilisateurs.</Text>
-              <TextField label="Password" icon="lock-closed-outline" placeholder="Create a secure password" secure
+              <Text style={styles.hint}>{t('Facultatif, jamais affiché aux autres utilisateurs.')}</Text>
+              <TextField label={t('Password')} icon="lock-closed-outline" placeholder={t('Create a secure password')} secure
                 value={password} onChangeText={setPassword} />
             </>
           )}
 
-          <Button title={mode === 'login' ? 'Log in' : 'Register'} onPress={submit} loading={loading} />
+          <Button title={mode === 'login' ? t('Log in') : t('Register')} onPress={submit} loading={loading} />
 
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
@@ -94,7 +97,7 @@ export default function AuthScreen() {
           </View>
 
           {isDemo && (
-            <Text style={styles.demo}>Mode démo : Supabase n'est pas configuré, n'importe quel identifiant fonctionne.</Text>
+            <Text style={styles.demo}>{t('Mode démo : Supabase n\'est pas configuré, n\'importe quel identifiant fonctionne.')}</Text>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -106,7 +109,7 @@ function SocialButton({ icon }: { icon: keyof typeof Ionicons.glyphMap }) {
   return (
     <Pressable
       style={styles.social}
-      onPress={() => Alert.alert('Bientôt', 'La connexion Google et Apple arrive en V1.')}
+      onPress={() => Alert.alert(t('Bientôt'), t('La connexion Google et Apple arrive en V1.'))}
     >
       <Ionicons name={icon} size={20} color={colors.text} />
     </Pressable>
@@ -115,6 +118,7 @@ function SocialButton({ icon }: { icon: keyof typeof Ionicons.glyphMap }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  langChip: { alignSelf: 'stretch', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   hero: {
     alignItems: 'center', paddingTop: spacing.xxl, paddingBottom: 48, backgroundColor: '#090A09',
     borderBottomLeftRadius: 0, borderBottomRightRadius: 120,

@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { colors, fonts, radius, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 /** Bandeau de photos ; avec onAdd / onRemove, sert aussi à composer les photos d'un drive. */
 export function PhotoStrip({ uris, onAdd, onRemove, size = 96 }: {
   uris: string[];
@@ -17,16 +18,16 @@ export function PhotoStrip({ uris, onAdd, onRemove, size = 96 }: {
         <View key={uri} style={{ width: size, height: size }}>
           <Image source={{ uri }} style={[styles.photo, { width: size, height: size }]} accessibilityIgnoresInvertColors />
           {onRemove && (
-            <Pressable style={styles.remove} onPress={() => onRemove(i)} hitSlop={8} accessibilityLabel="Remove photo">
+            <Pressable style={styles.remove} onPress={() => onRemove(i)} hitSlop={8} accessibilityLabel={t('Remove photo')}>
               <Ionicons name="close" size={14} color={colors.text} />
             </Pressable>
           )}
         </View>
       ))}
       {onAdd && (
-        <Pressable style={[styles.add, { width: size, height: size }]} onPress={onAdd} accessibilityLabel="Add photos">
+        <Pressable style={[styles.add, { width: size, height: size }]} onPress={onAdd} accessibilityLabel={t('Add photos')}>
           <Ionicons name="camera-outline" size={22} color={colors.accent} />
-          <Text style={styles.addText}>Add photos</Text>
+          <Text style={styles.addText}>{t('Add photos')}</Text>
         </Pressable>
       )}
     </ScrollView>

@@ -17,19 +17,20 @@ import {
 import { formatSprint } from '@/features/sprint/sprint';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Une publicité tous les AD_EVERY posts. */
 const AD_EVERY = 5;
 type Item = { type: 'post'; post: CommunityPost } | { type: 'ad'; key: string };
 
 const SORTS: { key: FeedSort; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'latest', label: 'Latest', icon: 'time-outline' },
-  { key: 'top', label: 'Top', icon: 'flame-outline' },
-  { key: 'nearby', label: 'Nearby', icon: 'navigate-outline' },
+  { key: 'latest', get label() { return t('Latest'); }, icon: 'time-outline' },
+  { key: 'top', get label() { return t('Top'); }, icon: 'flame-outline' },
+  { key: 'nearby', get label() { return t('Nearby'); }, icon: 'navigate-outline' },
 ];
 const SOURCES: { key: FeedSource; label: string; text: string }[] = [
-  { key: 'world', label: 'Everyone', text: 'Public drives from all drivers' },
-  { key: 'following', label: 'Following', text: 'You and the drivers you follow' },
-  { key: 'crews', label: 'Crews', text: 'Members of your crews' },
+  { key: 'world', get label() { return t('Everyone'); }, get text() { return t('Public drives from all drivers'); } },
+  { key: 'following', get label() { return t('Following'); }, get text() { return t('You and the drivers you follow'); } },
+  { key: 'crews', get label() { return t('Crews'); }, get text() { return t('Members of your crews'); } },
 ];
 
 /**
@@ -58,7 +59,7 @@ export default function CommunityScreen() {
     if (sort === 'nearby') {
       if (!pos.current) {
         const perm = await Location.getForegroundPermissionsAsync();
-        if (perm.status !== 'granted') throw new Error('Location is off: enable it to see drives near you.');
+        if (perm.status !== 'granted') throw new Error(t('Location is off: enable it to see drives near you.'));
         const p = (await Location.getLastKnownPositionAsync()) ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }));
         pos.current = { lat: p.coords.latitude, lng: p.coords.longitude };
       }
@@ -128,10 +129,10 @@ export default function CommunityScreen() {
   }, [posts]);
 
   const empty = error ?? (
-    sort === 'nearby' ? 'No public drives within 50 km yet.'
-      : source === 'following' ? 'Nothing here yet. Follow drivers to see their drives here.'
-      : source === 'crews' ? 'No drives from your crews yet. Join a crew from your garage.'
-      : category === 'all' ? 'No public drives yet. Be the first to share one.' : 'No drives in this category yet.'
+    sort === 'nearby' ? t('No public drives within 50 km yet.')
+      : source === 'following' ? t('Nothing here yet. Follow drivers to see their drives here.')
+      : source === 'crews' ? t('No drives from your crews yet. Join a crew from your garage.')
+      : category === 'all' ? t('No public drives yet. Be the first to share one.') : t('No drives in this category yet.')
   );
 
   return (
@@ -151,9 +152,9 @@ export default function CommunityScreen() {
             <View style={styles.header}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
                 <Image source={require('../../../assets/logo/logo-mark.png')} style={{ width: 52, height: 19 }} resizeMode="contain" accessibilityIgnoresInvertColors />
-                <Text style={styles.title}>Community</Text>
+                <Text style={styles.title}>{t('Community')}</Text>
               </View>
-              <Pressable onPress={() => router.push('/search')} hitSlop={12} accessibilityLabel="Search">
+              <Pressable onPress={() => router.push('/search')} hitSlop={12} accessibilityLabel={t('Search')}>
                 <Ionicons name="search" size={22} color={colors.text} />
               </Pressable>
             </View>
@@ -186,12 +187,12 @@ export default function CommunityScreen() {
                 })}
               </View>
               <Pressable onPress={() => setSheet(true)} style={[styles.filter, source !== 'world' && styles.filterOn]}
-                accessibilityLabel="Filter by source" hitSlop={6}>
+                accessibilityLabel={t('Filter by source')} hitSlop={6}>
                 <Ionicons name="options-outline" size={18} color={source !== 'world' ? colors.accentText : colors.text} />
               </Pressable>
             </View>
             {source !== 'world' && (
-              <Text style={styles.sourceNote}>Showing: {SOURCES.find((s) => s.key === source)?.label}</Text>
+              <Text style={styles.sourceNote}>{t('Showing:')}{' '}{SOURCES.find((s) => s.key === source)?.label}</Text>
             )}
           </View>
         }
@@ -210,7 +211,7 @@ export default function CommunityScreen() {
       <Modal visible={sheet} transparent animationType="fade" onRequestClose={() => setSheet(false)}>
         <Pressable style={styles.backdrop} onPress={() => setSheet(false)}>
           <Pressable style={styles.sheet} onPress={() => {}}>
-            <Text style={styles.sheetTitle}>Show drives from</Text>
+            <Text style={styles.sheetTitle}>{t('Show drives from')}</Text>
             {SOURCES.map((s) => (
               <Pressable key={s.key} style={styles.sheetRow} onPress={() => { pick(setSource, source)(s.key); setSheet(false); }}>
                 <View style={{ flex: 1 }}>
@@ -232,16 +233,16 @@ export default function CommunityScreen() {
 function TrendingRow({ items }: { items: Trending[] }) {
   const by = (k: Trending['key']) => items.find((t) => t.key === k);
   const cards = [
-    { key: 'sprint_0_100', title: '0-100 TOP RUNS', icon: 'speedometer' as const, t: by('sprint_0_100'),
+    { key: 'sprint_0_100', title: t('0-100 TOP RUNS'), icon: 'speedometer' as const, t: by('sprint_0_100'),
       value: (t: Trending) => formatSprint(t.timeMs ?? 0), go: () => router.push({ pathname: '/leaderboard', params: { kind: '0_100' } }) },
-    { key: 'sprint_500m', title: '500 M FASTEST', icon: 'flash' as const, t: by('sprint_500m'),
+    { key: 'sprint_500m', title: t('500 M FASTEST'), icon: 'flash' as const, t: by('sprint_500m'),
       value: (t: Trending) => formatSprint(t.timeMs ?? 0), go: () => router.push({ pathname: '/leaderboard', params: { kind: '500m' } }) },
-    { key: 'route_week', title: 'BEST ROUTE THIS WEEK', icon: 'map' as const, t: by('route_week'),
+    { key: 'route_week', title: t('BEST ROUTE THIS WEEK'), icon: 'map' as const, t: by('route_week'),
       value: (t: Trending) => `${formatKm(t.distanceM ?? 0)} km`, go: (t?: Trending) => t && router.push(`/drive/${t.driveId}`) },
   ];
   return (
     <View style={{ gap: spacing.sm }}>
-      <Text style={styles.overline}>TRENDING</Text>
+      <Text style={styles.overline}>{t('TRENDING')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -spacing.lg }}
         contentContainerStyle={{ gap: spacing.md, paddingHorizontal: spacing.lg }}>
         {cards.map((c) => (
@@ -257,20 +258,20 @@ function TrendingRow({ items }: { items: Trending[] }) {
                   <Avatar url={c.t.avatarUrl} name={c.t.name} size={20} />
                   <Text style={styles.trendName} numberOfLines={1}>{c.t.name}{c.t.car ? ` · ${c.t.car}` : ''}</Text>
                 </View>
-                {!c.t.thisWeek && <Text style={styles.trendNote}>All-time</Text>}
+                {!c.t.thisWeek && <Text style={styles.trendNote}>{t('All-time')}</Text>}
               </>
             ) : (
-              <Text style={styles.trendEmpty}>Nobody yet. Be the first.</Text>
+              <Text style={styles.trendEmpty}>{t('Nobody yet. Be the first.')}</Text>
             )}
           </Pressable>
         ))}
         <Pressable style={styles.trend} onPress={() => router.push('/crews')}>
           <View style={styles.trendHead}>
             <Ionicons name="people" size={14} color={colors.accent} />
-            <Text style={styles.trendTitle}>CREWS</Text>
+            <Text style={styles.trendTitle}>{t('CREWS')}</Text>
           </View>
-          <Text style={[styles.trendValue, { fontSize: 18 }]}>Drive together</Text>
-          <Text style={styles.trendEmpty}>Find or start a crew</Text>
+          <Text style={[styles.trendValue, { fontSize: 18 }]}>{t('Drive together')}</Text>
+          <Text style={styles.trendEmpty}>{t('Find or start a crew')}</Text>
         </Pressable>
       </ScrollView>
     </View>

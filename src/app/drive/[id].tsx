@@ -28,6 +28,7 @@ import { VISIBILITY_OPTIONS } from '@/features/drives/visibility';
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import {  t, locale  } from '@/i18n';
 /** Détail d'un drive : tracé, stats, score détaillé ; visibilité et suppression pour le propriétaire. */
 export default function DriveDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -67,8 +68,8 @@ export default function DriveDetailScreen() {
   if (error) {
     return (
       <Screen style={styles.center}>
-        <Text style={styles.muted}>Couldn’t load this drive.</Text>
-        <Button title="Retry" variant="secondary" onPress={load} />
+        <Text style={styles.muted}>{t('Couldn’t load this drive.')}</Text>
+        <Button title={t('Retry')} variant="secondary" onPress={load} />
       </Screen>
     );
   }
@@ -78,8 +79,8 @@ export default function DriveDetailScreen() {
   if (drive === null) {
     return (
       <Screen style={styles.center}>
-        <Text style={styles.muted}>This drive doesn’t exist or isn’t shared with you.</Text>
-        <Button title="Back" variant="secondary" onPress={back} />
+        <Text style={styles.muted}>{t('This drive doesn’t exist or isn’t shared with you.')}</Text>
+        <Button title={t('Back')} variant="secondary" onPress={back} />
       </Screen>
     );
   }
@@ -91,7 +92,7 @@ export default function DriveDetailScreen() {
       await updateDrive(drive.id, { visibility: v });
     } catch (e) {
       setDrive({ ...drive, visibility: previous });
-      Alert.alert('Update failed', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Update failed'), e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -103,22 +104,22 @@ export default function DriveDetailScreen() {
       await updateDrive(drive.id, { vehicle_id: vehicleId });
     } catch (e) {
       setDrive(previous);
-      Alert.alert('Update failed', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Update failed'), e instanceof Error ? e.message : String(e));
     }
   };
 
   const remove = () =>
-    Alert.alert('Delete this drive?', 'It will be removed for everyone. This can’t be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('Delete this drive?'), t('It will be removed for everyone. This can’t be undone.'), [
+      { text: t('Cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteDrive(drive.id);
             back();
           } catch (e) {
-            Alert.alert('Delete failed', e instanceof Error ? e.message : String(e));
+            Alert.alert(t('Delete failed'), e instanceof Error ? e.message : String(e));
           }
         },
       },
@@ -144,9 +145,9 @@ export default function DriveDetailScreen() {
           })}
           mode={driveMode(drive.circuitName, drive.mode)}
           onPressPlus={drive.isMine ? () => setCarSheet(true) : undefined}
-          topLeft={<ShowcaseButton icon="arrow-back" label="Back" onPress={back} />}
+          topLeft={<ShowcaseButton icon="arrow-back" label={t('Back')} onPress={back} />}
           topRight={drive.isMine ? undefined : (
-            <ShowcaseButton icon="ellipsis-horizontal" label="More options"
+            <ShowcaseButton icon="ellipsis-horizontal" label={t('More options')}
               onPress={() => setMenu({ type: 'drive', id: drive.id, userId: drive.ownerId, userName: author })} />
           )}
         />
@@ -158,7 +159,7 @@ export default function DriveDetailScreen() {
 
       <View style={{ gap: 4 }}>
         <Text style={styles.overline}>
-          {formatDate(drive.startedAt)}{drive.circuitName ? ` · ${drive.circuitName.toUpperCase()}` : ' · OPEN ROAD'}
+          {formatDate(drive.startedAt)}{drive.circuitName ? ` · ${drive.circuitName.toUpperCase()}` : t(' · OPEN ROAD')}
         </Text>
         <Text style={styles.title}>{drive.title}</Text>
         <Text style={styles.muted}>
@@ -174,7 +175,7 @@ export default function DriveDetailScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
             <RankBadge info={authorLevel} size="md" showName />
             {drive.vehicleClass && <ClassBadge cls={drive.vehicleClass.cls} hpi={drive.vehicleClass.hpi} />}
-            {drive.asAuthor && !drive.isMine && <Text style={styles.devTag}>DEV VIEW · AS AUTHOR</Text>}
+            {drive.asAuthor && !drive.isMine && <Text style={styles.devTag}>{t('DEV VIEW · AS AUTHOR')}</Text>}
           </View>
         )}
       </View>
@@ -184,7 +185,7 @@ export default function DriveDetailScreen() {
       ) : (
         <DriveMap
           path={drive.path}
-          emptyLabel={drive.asAuthor ? (samples === null ? 'Loading route…' : 'No route recorded') : 'Route hidden (inside the driver’s private zone)'}
+          emptyLabel={drive.asAuthor ? (samples === null ? t('Loading route…') : t('No route recorded')) : t('Route hidden (inside the driver’s private zone)')}
         />
       )}
 
@@ -195,7 +196,7 @@ export default function DriveDetailScreen() {
       )}
       {(drive.mode === 'sprint' || sprints.length > 0) && (
         <SprintResults results={sprints}
-          note={drive.isSimulated ? 'Drive simulé : visible par toi seul dans les classements.' : undefined} />
+          note={drive.isSimulated ? t('Drive simulé : visible par toi seul dans les classements.') : undefined} />
       )}
 
       <ScoreCard score={drive.score} breakdown={drive.scoreBreakdown} />
@@ -208,11 +209,11 @@ export default function DriveDetailScreen() {
 
       {drive.isMine && (
         <View style={{ gap: spacing.md }}>
-          <Text style={styles.muted}>Top speed is public. Avg. speed and telemetry are only shown to you.</Text>
-          <VehicleSelect label="Car" value={drive.vehicleId} onChange={changeVehicle} />
-          <Text style={styles.label}>Who can see it</Text>
+          <Text style={styles.muted}>{t('Top speed is public. Avg. speed and telemetry are only shown to you.')}</Text>
+          <VehicleSelect label={t('Car')} value={drive.vehicleId} onChange={changeVehicle} />
+          <Text style={styles.label}>{t('Who can see it')}</Text>
           <SegmentedControl options={VISIBILITY_OPTIONS} value={drive.visibility} onChange={changeVisibility} />
-          <Button title="Delete drive" variant="ghost" icon="trash-outline" onPress={remove} />
+          <Button title={t('Delete drive')} variant="ghost" icon="trash-outline" onPress={remove} />
         </View>
       )}
     </Screen>
@@ -222,7 +223,7 @@ export default function DriveDetailScreen() {
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d
-    .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    .toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' })
     .toUpperCase();
 }
 

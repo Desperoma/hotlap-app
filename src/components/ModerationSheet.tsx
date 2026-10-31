@@ -5,6 +5,7 @@ import { OptionsSheet, type SheetOption } from '@/components/OptionsSheet';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { block, report, REPORT_REASONS, type ReportTarget } from '@/features/moderation/api';
 
+import { t } from '@/i18n';
 export type ModerationTarget = {
   type: ReportTarget;
   id: string;
@@ -32,21 +33,21 @@ export function ModerationSheet({ target, onClose, onBlocked }: {
   // Une alerte ouverte pendant la fermeture de la feuille peut être ignorée sur iOS : on attend la fin de l'animation.
   const later = (fn: () => void) => setTimeout(fn, 400);
 
-  const noun = { drive: 'drive', comment: 'comment', user: 'driver', crew: 'crew' }[target.type];
+  const noun = { drive: t('drive'), comment: t('comment'), user: t('driver'), crew: t('crew') }[target.type];
 
   const confirmBlock = () => later(() =>
-    Alert.alert(`Block ${target.userName}?`, 'You won’t see each other’s drives or comments, and follows between you are removed.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('Block {0}?', target.userName), t('You won’t see each other’s drives or comments, and follows between you are removed.'), [
+      { text: t('Cancel'), style: 'cancel' },
       {
-        text: 'Block',
+        text: t('Block'),
         style: 'destructive',
         onPress: async () => {
           try {
             await block(me, target.userId);
             onBlocked?.(target.userId);
-            Alert.alert('Blocked', `${target.userName} is blocked. You can unblock from their profile.`);
+            Alert.alert(t('Blocked'), t('{0} is blocked. You can unblock from their profile.', target.userName));
           } catch (e) {
-            Alert.alert('Block failed', e instanceof Error ? e.message : String(e));
+            Alert.alert(t('Block failed'), e instanceof Error ? e.message : String(e));
           }
         },
       },
@@ -55,17 +56,17 @@ export function ModerationSheet({ target, onClose, onBlocked }: {
   const options: SheetOption[] =
     step === 'menu'
       ? [
-          { label: `Report this ${noun}`, onPress: () => setStep('reasons'), keepOpen: true },
-          ...(target.type === 'user' || target.type === 'crew' ? [] : [{ label: `Block ${target.userName}`, onPress: confirmBlock, destructive: true }]),
+          { label: t('Report this {0}', noun), onPress: () => setStep('reasons'), keepOpen: true },
+          ...(target.type === 'user' || target.type === 'crew' ? [] : [{ label: t('Block {0}', target.userName), onPress: confirmBlock, destructive: true }]),
         ]
       : REPORT_REASONS.map((r) => ({
           label: r.label,
           onPress: async () => {
             try {
               await report(me, target.type, target.id, r.value);
-              later(() => Alert.alert('Thanks for reporting', 'Our team will review it. The author isn’t told who reported it.'));
+              later(() => Alert.alert(t('Thanks for reporting'), t('Our team will review it. The author isn’t told who reported it.')));
             } catch (e) {
-              later(() => Alert.alert('Report failed', e instanceof Error ? e.message : String(e)));
+              later(() => Alert.alert(t('Report failed'), e instanceof Error ? e.message : String(e)));
             }
           },
         }));
@@ -73,7 +74,7 @@ export function ModerationSheet({ target, onClose, onBlocked }: {
   return (
     <OptionsSheet
       visible={!!target}
-      title={step === 'reasons' ? `Why are you reporting this ${noun}?` : undefined}
+      title={step === 'reasons' ? t('Why are you reporting this {0}?', noun) : undefined}
       options={options}
       onClose={onClose}
     />

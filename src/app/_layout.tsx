@@ -3,12 +3,13 @@ import '@/features/recording/recorder'; // enregistre la tâche GPS d'arrière-p
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Michroma_400Regular } from '@expo-google-fonts/michroma';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
+import { LanguageProvider, type Lang } from '@/i18n';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -23,10 +24,14 @@ export default function RootLayout() {
   });
 
   return (
-    <AuthProvider>
-      <StatusBar style="light" />
-      <RootNavigator fontsLoaded={fontsLoaded} />
-    </AuthProvider>
+    <LanguageProvider>
+      {(langReady, lang) => (
+        <AuthProvider>
+          <StatusBar style="light" />
+          <RootNavigator fontsLoaded={fontsLoaded && langReady} lang={lang} />
+        </AuthProvider>
+      )}
+    </LanguageProvider>
   );
 }
 
@@ -36,21 +41,31 @@ export default function RootLayout() {
  *   connecté, onboarding ouvert -> onboarding   identité, localisation, véhicule, GPS
  *   onboarding terminé          -> (tabs)       l'app
  */
-function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
+function RootNavigator({ fontsLoaded, lang }: { fontsLoaded: boolean; lang: Lang }) {
   const { session, profile } = useAuth();
   const ready = fontsLoaded && session !== undefined && !(session && profile === undefined);
+  const signedIn = !!session;
+  const onboarded = !!profile?.onboarded_at;
 
   useEffect(() => {
     if (ready) SplashScreen.hide();
   }, [ready]);
 
+  // Changer de langue remonte la pile (key={lang}) pour que tous les écrans se redessinent ;
+  // depuis Settings, on y revient au lieu de rester sur l'accueil.
+  const prevLang = useRef(lang);
+  useEffect(() => {
+    if (prevLang.current === lang) return;
+    prevLang.current = lang;
+    if (!signedIn || !onboarded) return;
+    const id = setTimeout(() => { router.push('/settings'); router.push('/settings/language'); }, 0);
+    return () => clearTimeout(id);
+  }, [lang, signedIn, onboarded]);
+
   if (!ready) return null;
 
-  const signedIn = !!session;
-  const onboarded = !!profile?.onboarded_at;
-
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+    <Stack key={lang} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>

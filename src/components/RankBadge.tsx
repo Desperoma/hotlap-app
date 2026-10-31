@@ -4,6 +4,7 @@ import { RANK_IMAGES } from '@/features/levels/images';
 import type { LevelInfo } from '@/features/levels/levels';
 import { fonts } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Badge de rang : roue du rang, niveau, et en option le nom du rang. `sm` pour les lignes de liste,
  * `md` pour les en-têtes de post et de drive.
@@ -12,7 +13,7 @@ export function RankBadge({ info, size = 'sm', showName }: { info: LevelInfo | u
   if (!info) return null;
   const s = size === 'sm' ? 16 : 22;
   return (
-    <View style={[styles.row, { borderColor: `${info.rank.color}66` }]} accessibilityLabel={`${info.rank.name}, level ${info.level}`}>
+    <View style={[styles.row, { borderColor: `${info.rank.color}66` }]} accessibilityLabel={t('{0}, level {1}', info.rank.name, info.level)}>
       <Image source={RANK_IMAGES[info.rank.key]} style={{ width: s, height: s }} />
       <Text style={[styles.lvl, { color: info.rank.color, fontSize: size === 'sm' ? 10 : 12 }]}>
         {showName ? `${info.rank.name.toUpperCase()} · ` : ''}LVL {info.level}

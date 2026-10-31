@@ -4,6 +4,7 @@ import { ageOn } from '@/features/onboarding/validation';
 import type { Profile } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+import { t } from '@/i18n/core';
 /**
  * Peut-on enregistrer un drive ICI ? (voir « Autorisation d'enregistrer » dans le doc de cadrage)
  *
@@ -41,7 +42,7 @@ export async function checkRecording(
   const { data, error } = await supabase
     .rpc('recording_context', { p_lat: coords.latitude, p_lng: coords.longitude, p_country_code: countryCode })
     .single();
-  if (error || !data) throw error ?? new Error('Vérification impossible');
+  if (error || !data) throw error ?? new Error(t('Vérification impossible'));
   const r = data as {
     allowed: boolean; context: 'road' | 'circuit'; country_code: string | null; circuit_id: string | null; circuit_name: string | null;
     min_age: number; user_age: number | null; rule_verified: boolean; reason: RecordingContext['reason'];
@@ -54,9 +55,11 @@ export async function checkRecording(
 
 /** Message affiché quand l'enregistrement est refusé. */
 export function refusalMessage(c: RecordingContext) {
-  if (c.reason === 'birth_date_missing') return 'Ajoute ta date de naissance dans ton profil pour enregistrer un drive.';
-  const where = c.context === 'circuit' ? `sur circuit${c.circuitName ? ` (${c.circuitName})` : ''}` : 'sur route ouverte';
-  return `L'enregistrement ${where} est réservé aux ${c.minAge} ans et plus${c.countryCode ? ` dans ce pays (${c.countryCode})` : ''}.`;
+  if (c.reason === 'birth_date_missing') return t('Ajoute ta date de naissance dans ton profil pour enregistrer un drive.');
+  const where = c.context === 'circuit' ? t('sur circuit{0}', c.circuitName ? ` (${c.circuitName})` : '') : t('sur route ouverte');
+  return c.countryCode
+    ? t('L’enregistrement {0} est réservé aux {1} ans et plus dans ce pays ({2}).', where, c.minAge, c.countryCode)
+    : t('L’enregistrement {0} est réservé aux {1} ans et plus.', where, c.minAge);
 }
 
 // Mode démo : règle par défaut de la base (18 ans route et circuit), pas de circuits connus.

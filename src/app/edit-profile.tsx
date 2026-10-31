@@ -12,6 +12,7 @@ import { PlaceFields, type PlaceValue } from '@/features/places/PlaceFields';
 import { pickAvatar, removeOldAvatars, uploadAvatar } from '@/features/profile/avatar';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 const BIO_MAX = 280;
 
 /**
@@ -57,7 +58,7 @@ export default function EditProfileScreen() {
       const url = await uploadAvatar(userId, uri);
       await updateProfile({ avatar_url: url });
     } catch (e) {
-      Alert.alert('Photo not updated', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Photo not updated'), e instanceof Error ? e.message : String(e));
     } finally {
       setPhotoBusy(false);
     }
@@ -69,15 +70,15 @@ export default function EditProfileScreen() {
       await updateProfile({ avatar_url: null });
       await removeOldAvatars(userId);
     } catch (e) {
-      Alert.alert('Photo not removed', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Photo not removed'), e instanceof Error ? e.message : String(e));
     } finally {
       setPhotoBusy(false);
     }
   };
 
   const save = async () => {
-    if (!first.trim() || !last.trim()) return Alert.alert('Presque', 'Prénom et nom sont obligatoires.');
-    if (!place.countryCode || !place.city.trim()) return Alert.alert('Presque', 'Le pays et la ville sont obligatoires.');
+    if (!first.trim() || !last.trim()) return Alert.alert(t('Presque'), t('Prénom et nom sont obligatoires.'));
+    if (!place.countryCode || !place.city.trim()) return Alert.alert(t('Presque'), t('Le pays et la ville sont obligatoires.'));
     setSaving(true);
     try {
       await updateProfile({
@@ -92,7 +93,7 @@ export default function EditProfileScreen() {
       });
       back();
     } catch (e) {
-      Alert.alert('Not saved', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Not saved'), e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -103,52 +104,50 @@ export default function EditProfileScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Edit profile</Text>
+        <Text style={styles.headerTitle}>{t('Edit profile')}</Text>
       </View>
 
       <Pressable style={styles.photo} onPress={() => (profile.avatar_url ? setPhotoMenu(true) : changePhoto())}
-        disabled={photoBusy} accessibilityLabel="Change profile photo">
+        disabled={photoBusy} accessibilityLabel={t('Change profile photo')}>
         <Avatar url={profile.avatar_url} name={name} size={96} ring />
-        {photoBusy ? <ActivityIndicator color={colors.accent} /> : <Text style={styles.link}>Change photo</Text>}
+        {photoBusy ? <ActivityIndicator color={colors.accent} /> : <Text style={styles.link}>{t('Change photo')}</Text>}
       </Pressable>
       <OptionsSheet
         visible={photoMenu}
         onClose={() => setPhotoMenu(false)}
         options={[
-          { label: 'Choose a new photo', onPress: () => setTimeout(changePhoto, 400) },
-          { label: 'Remove photo', destructive: true, onPress: removePhoto },
+          { label: t('Choose a new photo'), onPress: () => setTimeout(changePhoto, 400) },
+          { label: t('Remove photo'), destructive: true, onPress: removePhoto },
         ]}
       />
 
-      <Text style={styles.section}>PUBLIC</Text>
-      <Text style={styles.hint}>@{profile.username} · ton pseudo ne change pas.</Text>
-      <TextField label="Display name" icon="person-outline" placeholder={profile.username} autoCapitalize="words"
+      <Text style={styles.section}>{t('PUBLIC')}</Text>
+      <Text style={styles.hint}>@{profile.username}{' '}{t('· ton pseudo ne change pas.')}</Text>
+      <TextField label={t('Display name')} icon="person-outline" placeholder={profile.username} autoCapitalize="words"
         value={displayName} onChangeText={touch(setDisplayName)} maxLength={40} />
       <View style={{ gap: 6 }}>
-        <TextField label="Bio" icon="create-outline" placeholder="What do you drive, where, why?" autoCapitalize="sentences"
+        <TextField label={t('Bio')} icon="create-outline" placeholder={t('What do you drive, where, why?')} autoCapitalize="sentences"
           value={bio} onChangeText={touch(setBio)} maxLength={BIO_MAX} multiline />
         <Text style={[styles.hint, { textAlign: 'right' }]}>{bio.length}/{BIO_MAX}</Text>
       </View>
       <PlaceFields value={place} onChange={touch(setPlace)} />
 
-      <Text style={styles.section}>PRIVATE</Text>
-      <Text style={styles.hint}>Visible par toi seul.</Text>
-      <TextField label="First name" icon="person-outline" autoCapitalize="words" value={first} onChangeText={touch(setFirst)} />
-      <TextField label="Last name" icon="person-outline" autoCapitalize="words" value={last} onChangeText={touch(setLast)} />
-      <TextField label="Phone (optional)" icon="call-outline" placeholder="+33 6 12 34 56 78" keyboardType="phone-pad"
+      <Text style={styles.section}>{t('PRIVATE')}</Text>
+      <Text style={styles.hint}>{t('Visible par toi seul.')}</Text>
+      <TextField label={t('First name')} icon="person-outline" autoCapitalize="words" value={first} onChangeText={touch(setFirst)} />
+      <TextField label={t('Last name')} icon="person-outline" autoCapitalize="words" value={last} onChangeText={touch(setLast)} />
+      <TextField label={t('Phone (optional)')} icon="call-outline" placeholder="+33 6 12 34 56 78" keyboardType="phone-pad"
         value={phone} onChangeText={touch(setPhone)} maxLength={20} />
       <Card style={{ gap: 4 }}>
-        <Text style={styles.label}>Date of birth</Text>
+        <Text style={styles.label}>{t('Date of birth')}</Text>
         <Text style={styles.hint}>
-          {profile.birth_date ? isoToDisplay(profile.birth_date) : '—'} · verrouillée : elle conditionne l'enregistrement
-          des drives. Pour la corriger, contacte le support.
-        </Text>
+          {profile.birth_date ? isoToDisplay(profile.birth_date) : '—'}{' '}{t('· verrouillée : elle conditionne l\'enregistrement des drives. Pour la corriger, contacte le support.')}</Text>
       </Card>
 
-      <Button title="Save" icon="checkmark" onPress={save} loading={saving} />
+      <Button title={t('Save')} icon="checkmark" onPress={save} loading={saving} />
     </Screen>
   );
 }

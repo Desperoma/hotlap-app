@@ -7,17 +7,18 @@ import type { DriveLogItem } from '@/features/profile/api';
 import { formatDuration, formatKm } from '@/features/recording/geo';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import {  t, locale  } from '@/i18n';
 /** Ligne compacte d'historique (profil, profil public). */
 export function DriveLogRow({ drive }: { drive: DriveLogItem }) {
-  const date = new Date(drive.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const date = new Date(drive.startedAt).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
   return (
     <Card onPress={() => router.push(`/drive/${drive.id}`)} style={styles.row}>
       <Ionicons name={drive.circuitId ? 'flag' : 'git-network-outline'} size={22} color={colors.accent} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={styles.title} numberOfLines={1}>{drive.title}</Text>
         <Text style={styles.meta}>
-          {date} · {formatKm(drive.distanceM)} km · {formatDuration(drive.durationS)}
-          {drive.visibility === 'private' ? ' · Only me' : drive.visibility === 'friends' ? ' · Friends' : ''}
+          {date} · {formatKm(drive.distanceM)}{' '}{t('km ·')}{' '}{formatDuration(drive.durationS)}
+          {drive.visibility === 'private' ? t(' · Only me') : drive.visibility === 'friends' ? t(' · Friends') : ''}
         </Text>
       </View>
       <Text style={styles.score}>{drive.score ?? '–'}</Text>

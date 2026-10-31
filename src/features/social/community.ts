@@ -4,21 +4,22 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 import { feedCrews, feedFollowing, feedNearby, feedWorld, hydrate, type DriveCardRow } from './api';
 
+import { t } from '@/i18n/core';
 /** Page Community (migration 0027) : source, catégorie, tri. */
 export type FeedSource = 'world' | 'following' | 'crews';
 export type FeedCategory = 'all' | 'performance' | 'road_trip' | 'laps' | '0_100' | '0_200' | '500m' | '1000m' | '2000m';
 export type FeedSort = 'latest' | 'top' | 'nearby';
 
 export const FEED_CATEGORIES: { key: FeedCategory; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'performance', label: 'Performance' },
-  { key: 'road_trip', label: 'Road trips' },
+  { key: 'all', get label() { return t('All'); } },
+  { key: 'performance', get label() { return t('Performance'); } },
+  { key: 'road_trip', get label() { return t('Road trips'); } },
   { key: '0_100', label: '0-100 km/h' },
   { key: '0_200', label: '0-200 km/h' },
   { key: '500m', label: '500 m' },
   { key: '1000m', label: '1 000 m' },
   { key: '2000m', label: '2 000 m' },
-  { key: 'laps', label: 'Laps' },
+  { key: 'laps', get label() { return t('Laps'); } },
 ];
 
 /** Temps mis en avant d'un post performance : rang mondial actuel et écart au précédent record de l'auteur. */

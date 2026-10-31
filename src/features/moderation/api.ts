@@ -1,15 +1,16 @@
 import { removeOldAvatars } from '@/features/profile/avatar';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+import { t } from '@/i18n/core';
 export type ReportTarget = 'drive' | 'comment' | 'user' | 'crew';
 export type ReportReason = 'dangerous_driving' | 'spam' | 'harassment' | 'inappropriate' | 'other';
 
 export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
-  { value: 'dangerous_driving', label: 'Dangerous or illegal driving' },
-  { value: 'harassment', label: 'Harassment or hate' },
-  { value: 'inappropriate', label: 'Inappropriate content' },
-  { value: 'spam', label: 'Spam' },
-  { value: 'other', label: 'Something else' },
+  { value: 'dangerous_driving', get label() { return t('Dangerous or illegal driving'); } },
+  { value: 'harassment', get label() { return t('Harassment or hate'); } },
+  { value: 'inappropriate', get label() { return t('Inappropriate content'); } },
+  { value: 'spam', get label() { return t('Spam'); } },
+  { value: 'other', get label() { return t('Something else'); } },
 ];
 
 /** Signale un contenu à l'équipe. Un même contenu n'est compté qu'une fois par utilisateur. */

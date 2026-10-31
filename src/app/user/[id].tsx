@@ -21,6 +21,7 @@ import { placeLine } from '@/features/places/format';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Profil d'un autre conducteur : identité, compteurs (sans les listes), suivre / demande / ne plus suivre,
  * garage et ville selon son réglage, drives visibles par moi.
@@ -71,8 +72,8 @@ export default function UserProfileScreen() {
   if (!profile || !id || !me) {
     return (
       <Screen style={styles.center}>
-        <Text style={styles.muted}>This driver doesn’t exist.</Text>
-        <Button title="Back" variant="secondary" onPress={back} />
+        <Text style={styles.muted}>{t('This driver doesn’t exist.')}</Text>
+        <Button title={t('Back')} variant="secondary" onPress={back} />
       </Screen>
     );
   }
@@ -94,7 +95,7 @@ export default function UserProfileScreen() {
       load();
     } catch (e) {
       setRel(prev);
-      Alert.alert('Follow failed', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Follow failed'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -103,18 +104,18 @@ export default function UserProfileScreen() {
   const toggleBlock = () => {
     if (blocked) {
       unblock(me, id).then(() => { setBlocked(false); load(); })
-        .catch((e) => Alert.alert('Unblock failed', e instanceof Error ? e.message : String(e)));
+        .catch((e) => Alert.alert(t('Unblock failed'), e instanceof Error ? e.message : String(e)));
       return;
     }
-    Alert.alert(`Block ${name}?`, 'You won’t see each other’s drives or comments, and follows between you are removed.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('Block {0}?', name), t('You won’t see each other’s drives or comments, and follows between you are removed.'), [
+      { text: t('Cancel'), style: 'cancel' },
       {
-        text: 'Block',
+        text: t('Block'),
         style: 'destructive',
         onPress: () =>
           block(me, id)
             .then(() => { setBlocked(true); setRel('none'); setDrives([]); setGarage([]); getCounters(id).then(setCounters).catch(() => {}); })
-            .catch((e) => Alert.alert('Block failed', e instanceof Error ? e.message : String(e))),
+            .catch((e) => Alert.alert(t('Block failed'), e instanceof Error ? e.message : String(e))),
       },
     ]);
   };
@@ -122,11 +123,11 @@ export default function UserProfileScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Pressable onPress={() => setMenu({ type: 'user', id, userId: id, userName: name })} hitSlop={12}
-          accessibilityLabel="Report this driver" style={{ padding: 4 }}>
+          accessibilityLabel={t('Report this driver')} style={{ padding: 4 }}>
           <Ionicons name="flag-outline" size={20} color={colors.text} />
         </Pressable>
       </View>
@@ -151,42 +152,42 @@ export default function UserProfileScreen() {
         )}
         {counters?.followsMe && (
           <View style={styles.crews}>
-            <Chip icon={counters.iFollow ? 'people' : 'person'} label={counters.iFollow ? 'Friends' : 'Follows you'} />
+            <Chip icon={counters.iFollow ? 'people' : 'person'} label={counters.iFollow ? t('Friends') : t('Follows you')} />
           </View>
         )}
         {!blocked && (
           <Button
-            title={rel === 'following' ? 'Following' : rel === 'requested' ? 'Requested' : profile.follow_policy === 'approval' ? 'Ask to follow' : 'Follow'}
+            title={rel === 'following' ? t('Following') : rel === 'requested' ? t('Requested') : profile.follow_policy === 'approval' ? t('Ask to follow') : t('Follow')}
             icon={rel === 'following' ? 'checkmark' : rel === 'requested' ? 'time-outline' : 'person-add-outline'}
             variant={rel === 'none' ? 'primary' : 'secondary'}
             onPress={toggleFollow}
             loading={busy}
           />
         )}
-        <Button title={blocked ? `Unblock ${name}` : `Block ${name}`} variant="ghost"
+        <Button title={blocked ? t('Unblock {0}', name) : t('Block {0}', name)} variant="ghost"
           icon={blocked ? 'lock-open-outline' : 'ban-outline'} onPress={toggleBlock} />
       </Card>
 
       {xp && !blocked && <LevelCard data={xp} userId={id} />}
 
       <Card style={styles.counters}>
-        <Counter value={counters?.drives ?? 0} label="DRIVES" />
-        <Counter value={counters?.followers ?? 0} label="FOLLOWERS" />
-        <Counter value={counters?.following ?? 0} label="FOLLOWING" />
+        <Counter value={counters?.drives ?? 0} label={t('DRIVES')} />
+        <Counter value={counters?.followers ?? 0} label={t('FOLLOWERS')} />
+        <Counter value={counters?.following ?? 0} label={t('FOLLOWING')} />
       </Card>
 
       {garage.length > 0 && (
         <>
-          <Text style={styles.section}>GARAGE</Text>
+          <Text style={styles.section}>{t('GARAGE')}</Text>
           {garage.map((v, i) => <GarageCarCard key={v.id} car={v} stats={carStats.get(v.id)} flip={i % 2 === 1} index={i} />)}
         </>
       )}
 
-      <Text style={styles.section}>DRIVES</Text>
+      <Text style={styles.section}>{t('DRIVES')}</Text>
       {drives === null ? (
         <ActivityIndicator color={colors.accent} />
       ) : drives.length === 0 ? (
-        <Text style={styles.muted}>No drives shared with you yet.</Text>
+        <Text style={styles.muted}>{t('No drives shared with you yet.')}</Text>
       ) : (
         drives.map((d) => <DriveLogRow key={d.id} drive={d} />)
       )}

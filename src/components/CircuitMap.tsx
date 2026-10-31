@@ -9,6 +9,7 @@ import { MAPS_AVAILABLE } from '@/lib/maps';
 import { colors, fonts, radius } from '@/theme';
 import { darkMapStyle } from '@/theme/mapStyle';
 
+import { t } from '@/i18n';
 /**
  * Plan fixe d'un circuit, cadré sur son emprise comme une mini-carte de jeu vidéo : pas de
  * déplacement ni de zoom. Tracé du circuit, ligne de départ en rouge, et en option le tracé roulé
@@ -35,7 +36,7 @@ export function CircuitMap({ circuit, startLine, driven, car, satellite = false,
   if (!MAPS_AVAILABLE || frame.length === 0) {
     return (
       <View style={[styles.box, styles.empty, style]}>
-        <Text style={styles.emptyText}>{MAPS_AVAILABLE ? 'No map data for this circuit' : 'Map unavailable in this version'}</Text>
+        <Text style={styles.emptyText}>{MAPS_AVAILABLE ? t('No map data for this circuit') : t('Map unavailable in this version')}</Text>
       </View>
     );
   }

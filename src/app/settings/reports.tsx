@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui';
 import { myReports, type ReportItem } from '@/features/moderation/reports';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Mes signalements : contenu, motif, date et suite donnée par l'équipe. */
 export default function MyReportsScreen() {
   const [list, setList] = useState<ReportItem[] | null>(null);
@@ -17,11 +18,11 @@ export default function MyReportsScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.header}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back"><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
-        <Text style={styles.title}>My reports</Text>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')}><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable>
+        <Text style={styles.title}>{t('My reports')}</Text>
       </View>
       {list === null ? <ActivityIndicator color={colors.accent} /> : list.length === 0 ? (
-        <Text style={styles.hint}>You haven’t reported anything.</Text>
+        <Text style={styles.hint}>{t('You haven’t reported anything.')}</Text>
       ) : list.map((r) => <ReportCard key={r.id} r={r} />)}
     </Screen>
   );

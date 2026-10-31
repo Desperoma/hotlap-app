@@ -17,6 +17,7 @@ import { displayName, setLike } from '@/features/social/api';
 import type { DriveFeedItem } from '@/lib/database.types';
 import { colors, fonts, radius, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Post du fil (accueil, profil) : carte du tracé et stats. */
 export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocked?: (userId: string) => void }) {
   return (
@@ -26,11 +27,11 @@ export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocke
       <Text style={styles.title}>{drive.title}</Text>
       {drive.description ? <Text style={styles.desc}>{drive.description}</Text> : null}
 
-      <DriveMap path={drive.path_preview} lite style={styles.preview} emptyLabel="Route hidden">
+      <DriveMap path={drive.path_preview} lite style={styles.preview} emptyLabel={t('Route hidden')}>
         <View style={styles.stats} pointerEvents="none">
-          <Stat value={`${formatKm(drive.distance_m)} km`} label="DISTANCE" />
-          <Stat value={`${Math.round(drive.duration_s / 60)}m`} label="TIME" />
-          {drive.score != null && <Stat value={String(drive.score)} label="SCORE" />}
+          <Stat value={`${formatKm(drive.distance_m)} km`} label={t('DISTANCE')} />
+          <Stat value={`${Math.round(drive.duration_s / 60)}m`} label={t('TIME')} />
+          {drive.score != null && <Stat value={String(drive.score)} label={t('SCORE')} />}
         </View>
       </DriveMap>
 
@@ -49,7 +50,7 @@ export function PostHeader({ drive, onBlocked, right, level }: {
   const isMine = session?.user.id === drive.owner_id;
   return (
     <View style={styles.header}>
-      <Pressable onPress={() => router.push(`/user/${drive.owner_id}`)} style={styles.authorLink} accessibilityLabel={`Open ${name}'s profile`}>
+      <Pressable onPress={() => router.push(`/user/${drive.owner_id}`)} style={styles.authorLink} accessibilityLabel={t('Open {0}\'s profile', name)}>
         <Avatar url={drive.author.avatar_url} name={name} size={40} />
         <View style={{ flex: 1 }}>
           <View style={styles.metaRow}>
@@ -67,7 +68,7 @@ export function PostHeader({ drive, onBlocked, right, level }: {
         <Pressable
           onPress={() => setMenu({ type: 'drive', id: drive.id, userId: drive.owner_id, userName: name })}
           hitSlop={12}
-          accessibilityLabel="More options"
+          accessibilityLabel={t('More options')}
         >
           <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
         </Pressable>
@@ -91,16 +92,16 @@ export function PostActions({ drive }: { drive: DriveFeedItem }) {
       await setLike(drive.id, session.user.id, next);
     } catch (e) {
       setLiked(!next);
-      Alert.alert('Like failed', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Like failed'), e instanceof Error ? e.message : String(e));
     }
   };
   return (
     <View style={styles.actions}>
-      <Pressable style={styles.action} onPress={toggleLike} hitSlop={8} accessibilityLabel={liked ? 'Unlike' : 'Like'}>
+      <Pressable style={styles.action} onPress={toggleLike} hitSlop={8} accessibilityLabel={liked ? t('Unlike') : t('Like')}>
         <Ionicons name={liked ? 'heart' : 'heart-outline'} size={20} color={liked ? colors.like : colors.textMuted} />
         <Text style={[styles.actionText, liked && { color: colors.like }]}>{likes}</Text>
       </Pressable>
-      <Pressable style={styles.action} onPress={() => router.push(`/drive/${drive.id}`)} hitSlop={8} accessibilityLabel="Comments">
+      <Pressable style={styles.action} onPress={() => router.push(`/drive/${drive.id}`)} hitSlop={8} accessibilityLabel={t('Comments')}>
         <Ionicons name="chatbubble-outline" size={18} color={colors.textMuted} />
         <Text style={styles.actionText}>{drive.comment_count}</Text>
       </Pressable>
@@ -120,9 +121,9 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 export function timeAgo(iso: string) {
   const h = Math.round((Date.now() - new Date(iso).getTime()) / 3600_000);
-  if (h < 1) return 'just now';
-  if (h < 24) return h === 1 ? '1 hour ago' : `${h} hours ago`;
-  return `${Math.round(h / 24)} days ago`;
+  if (h < 1) return t('just now');
+  if (h < 24) return h === 1 ? t('1 hour ago') : t('{0} hours ago', h);
+  return t('{0} days ago', Math.round(h / 24));
 }
 
 const styles = StyleSheet.create({

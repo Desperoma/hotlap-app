@@ -22,12 +22,13 @@ import {
 import { formatSprint, sprintLabel, type SprintKind } from '@/features/sprint/sprint';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 type Group = 'score' | 'accel' | 'distance' | 'laps';
 const GROUPS: { key: Group; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'score', label: 'Score', icon: 'star-outline' },
-  { key: 'accel', label: 'Acceleration', icon: 'speedometer-outline' },
-  { key: 'distance', label: 'Distance', icon: 'flag-outline' },
-  { key: 'laps', label: 'Laps', icon: 'refresh' },
+  { key: 'score', get label() { return t('Score'); }, icon: 'star-outline' },
+  { key: 'accel', get label() { return t('Acceleration'); }, icon: 'speedometer-outline' },
+  { key: 'distance', get label() { return t('Distance'); }, icon: 'flag-outline' },
+  { key: 'laps', get label() { return t('Laps'); }, icon: 'refresh' },
 ];
 /** Nom du pays dans la langue du téléphone (FR → France), à défaut le code. */
 const countryName = (code: string) => {
@@ -87,12 +88,12 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
 
   const country = profile?.country_code?.trim() || null;
   const scopes: { key: LeaderScope; label: string; hint?: string }[] = [
-    { key: 'world', label: 'World' },
+    { key: 'world', label: t('World') },
     ...(country ? [{ key: 'country' as const, label: countryName(country) }] : []),
-    { key: 'friends', label: 'Friends', hint: 'You and the drivers you follow' },
-    { key: 'crews', label: 'Crews', hint: 'You and the members of your crews' },
+    { key: 'friends', label: t('Friends'), hint: t('You and the drivers you follow') },
+    { key: 'crews', label: t('Crews'), hint: t('You and the members of your crews') },
     // Score : toutes voitures confondues, donc pas de classement par modèle.
-    ...(vehicles?.length && group !== 'score' ? [{ key: 'model' as const, label: 'My model', hint: 'Same make and model as my car' }] : []),
+    ...(vehicles?.length && group !== 'score' ? [{ key: 'model' as const, label: t('My model'), hint: t('Same make and model as my car') }] : []),
   ];
   useEffect(() => { if (group === 'score' && scope === 'model') setScope('world'); }, [group, scope]);
 
@@ -126,26 +127,26 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   const circuit = circuits.find((c) => c.id === circuitId) ?? (pickedCircuit?.id === circuitId ? pickedCircuit : undefined);
   const metric: Metric = group === 'score' ? 'score' : group === 'laps' ? 'lap' : 'sprint';
 
-  const scopeLabel = scope === 'world' ? 'World rankings' : scope === 'country' ? `${country} rankings`
-    : scope === 'friends' ? 'You and the drivers you follow' : scope === 'crews' ? 'You and your crews'
-    : myCar ? `All ${myCar.make} ${myCar.model}` : 'Same model';
-  const selected = group === 'score' ? 'Score · Open road'
-    : group === 'laps' ? `Laps · ${circuit?.name ?? 'Circuit'}`
+  const scopeLabel = scope === 'world' ? t('World rankings') : scope === 'country' ? `${country} rankings`
+    : scope === 'friends' ? t('You and the drivers you follow') : scope === 'crews' ? t('You and your crews')
+    : myCar ? t('All {0} {1}', myCar.make, myCar.model) : t('Same model');
+  const selected = group === 'score' ? t('Score · Open road')
+    : group === 'laps' ? t('Laps · {0}', circuit?.name ?? 'Circuit')
     : `${group === 'accel' ? 'Acceleration' : 'Distance'} · ${sprintLabel(sprint)}`;
-  const classLabel = cls === 'all' ? '' : ` · Class ${cls}`;
-  const what = group === 'score' ? 'Highest score' : group === 'laps' ? 'Fastest lap time' : 'Fastest recorded time';
+  const classLabel = cls === 'all' ? '' : t(' · Class {0}', cls);
+  const what = group === 'score' ? t('Highest score') : group === 'laps' ? t('Fastest lap time') : t('Fastest recorded time');
 
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg, paddingBottom: asTab ? 140 : spacing.xl }}>
       <View style={styles.topBar}>
         {!asTab && (
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
         )}
         <View style={{ flex: 1, gap: 2, paddingRight: asTab ? 52 : 0 }}>
-          <Text style={styles.overline}>PERFORMANCE</Text>
-          <Text style={styles.title}>Leaderboard</Text>
+          <Text style={styles.overline}>{t('PERFORMANCE')}</Text>
+          <Text style={styles.title}>{t('Leaderboard')}</Text>
         </View>
       </View>
 
@@ -164,34 +165,34 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
 
       <View style={styles.filters}>
         {(group === 'accel' || group === 'distance') && (
-          <Dropdown label={group === 'accel' ? 'Target' : 'Distance'} value={sprint} onChange={setSprint} style={styles.filter}
+          <Dropdown label={group === 'accel' ? t('Target') : t('Distance')} value={sprint} onChange={setSprint} style={styles.filter}
             options={SUBS[group].map((k) => ({ key: k, label: sprintLabel(k) }))} />
         )}
-        <Dropdown label="Ranking" value={scope} onChange={setScope} options={scopes} style={styles.filter} />
-        <Dropdown label="Class" value={cls} onChange={setCls} style={styles.filter}
-          options={[{ key: 'all' as const, label: 'All classes' },
-            ...CLASSES.map((c) => ({ key: c.key, label: `${c.min}–${c.max} HPI`, left: <ClassBadge cls={c.key} size="sm" /> }))]} />
+        <Dropdown label={t('Ranking')} value={scope} onChange={setScope} options={scopes} style={styles.filter} />
+        <Dropdown label={t('Class')} value={cls} onChange={setCls} style={styles.filter}
+          options={[{ key: 'all' as const, label: t('All classes') },
+            ...CLASSES.map((c) => ({ key: c.key, label: t('{0}–{1} HPI', c.min, c.max), left: <ClassBadge cls={c.key} size="sm" /> }))]} />
       </View>
       {group === 'laps' && (
         <CircuitPicker value={circuit ?? null} withLaps={circuits} onChange={(c) => { setPickedCircuit(c); setCircuitId(c.id); }} />
       )}
       {scope === 'model' && vehicles && vehicles.length > 1 && (
-        <Dropdown label="My model" value={vehicleId ?? ''} onChange={setVehicleId}
+        <Dropdown label={t('My model')} value={vehicleId ?? ''} onChange={setVehicleId}
           options={vehicles.map((v) => ({ key: v.id, label: `${v.make} ${v.model}` }))} />
       )}
 
       <View style={styles.selected}>
-        <Text style={styles.selectedOver}>SELECTED LEADERBOARD</Text>
+        <Text style={styles.selectedOver}>{t('SELECTED LEADERBOARD')}</Text>
         <Text style={styles.selectedTitle}>{selected}</Text>
         <Text style={styles.muted}>{scopeLabel}{classLabel} · {what}</Text>
         {group === 'laps' && circuits.length === 0 && !circuit && (
-          <Text style={styles.faint}>Aucun tour chronométré pour l’instant : choisis un circuit, ou lance un drive depuis sa fiche.</Text>
+          <Text style={styles.faint}>{t('Aucun tour chronométré pour l’instant : choisis un circuit, ou lance un drive depuis sa fiche.')}</Text>
         )}
-        {INCLUDE_TEST_DRIVES && <Text style={styles.faint}>Version de test : les drives simulés (TEST) de tout le monde sont inclus.</Text>}
+        {INCLUDE_TEST_DRIVES && <Text style={styles.faint}>{t('Version de test : les drives simulés (TEST) de tout le monde sont inclus.')}</Text>}
         {group !== 'laps' && (
           <Text style={styles.faint}>
-            {group === 'score' ? 'Best score of a drive on open roads, all cars combined.'
-              : 'Standing start in Sprint mode, on a circuit or a validated timed road.'}
+            {group === 'score' ? t('Best score of a drive on open roads, all cars combined.')
+              : t('Standing start in Sprint mode, on a circuit or a validated timed road.')}
           </Text>
         )}
       </View>
@@ -202,10 +203,10 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
         <View style={styles.empty}>
           <Ionicons name="podium-outline" size={28} color={colors.textMuted} />
           <Text style={[styles.muted, { textAlign: 'center' }]}>
-            {error ? 'Classement indisponible pour le moment.'
-              : group === 'score' ? 'Personne ici pour l’instant. Publie un drive sur route ouverte (visibilité autre que Private) pour entrer au classement.'
-              : group === 'laps' ? 'Personne ici pour l’instant. Roule sur ce circuit pour ouvrir le classement.'
-              : 'Personne ici pour l’instant. Lance un Sprint sur circuit pour ouvrir le classement.'}
+            {error ? t('Classement indisponible pour le moment.')
+              : group === 'score' ? t('Personne ici pour l’instant. Publie un drive sur route ouverte (visibilité autre que Private) pour entrer au classement.')
+              : group === 'laps' ? t('Personne ici pour l’instant. Roule sur ce circuit pour ouvrir le classement.')
+              : t('Personne ici pour l’instant. Lance un Sprint sur circuit pour ouvrir le classement.')}
           </Text>
         </View>
       ) : (
@@ -248,7 +249,7 @@ function Step({ r, place, metric, level }: { r: LeaderRow; place: 1 | 2 | 3; met
   const source = useMemo(() => carImageFor(r.make ? { make: r.make, model: r.model ?? '' } : null).source, [r.make, r.model]);
   return (
     <Pressable style={[styles.step, { marginTop: first ? 0 : 26 }]} onPress={() => router.push(`/drive/${r.driveId}`)}
-      accessibilityLabel={`Rank ${r.rank}, ${nameOf(r)}, ${value(r, metric)}`}>
+      accessibilityLabel={t('Rank {0}, {1}, {2}', r.rank, nameOf(r), value(r, metric))}>
       {/* Bord « métal » : dégradé clair → foncé sous la carte */}
       <LinearGradient colors={[m.light, m.main, m.dark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.metal}>
         <View style={[styles.stepInner, r.isMe && { backgroundColor: '#1F2614' }]}>
@@ -259,7 +260,7 @@ function Step({ r, place, metric, level }: { r: LeaderRow; place: 1 | 2 | 3; met
           <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={first ? 34 : 28} />
           <Text style={styles.stepName} numberOfLines={1}>{nameOf(r)}</Text>
           <RankBadge info={level} />
-          {r.isSimulated && <Text style={styles.testTag}>TEST</Text>}
+          {r.isSimulated && <Text style={styles.testTag}>{t('TEST')}</Text>}
           <Text style={styles.stepCar} numberOfLines={1}>{r.car ?? '—'}</Text>
           {r.cls && <ClassBadge cls={r.cls} size="sm" />}
           <Text style={[styles.stepValue, { color: first ? colors.accent : colors.text }, first && { fontSize: 18 }]} numberOfLines={1}
@@ -275,13 +276,13 @@ function Line({ r, metric, level }: { r: LeaderRow; metric: Metric; level?: Leve
   const source = useMemo(() => carImageFor(r.make ? { make: r.make, model: r.model ?? '' } : null).source, [r.make, r.model]);
   return (
     <Pressable style={[styles.row, r.isMe && styles.me]} onPress={() => router.push(`/drive/${r.driveId}`)}
-      accessibilityLabel={`Rank ${r.rank}, ${nameOf(r)}, ${value(r, metric)}`}>
+      accessibilityLabel={t('Rank {0}, {1}, {2}', r.rank, nameOf(r), value(r, metric))}>
       <Text style={styles.rank}>{r.rank}</Text>
       <Image source={source} style={styles.thumb} resizeMode="contain" />
       <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={30} />
       <View style={{ flex: 1 }}>
         <View style={styles.carRow}>
-          <Text style={[styles.name, { flexShrink: 1 }]} numberOfLines={1}>{nameOf(r)}{r.isSimulated ? ' · TEST' : ''}</Text>
+          <Text style={[styles.name, { flexShrink: 1 }]} numberOfLines={1}>{nameOf(r)}{r.isSimulated ? t(' · TEST') : ''}</Text>
           <RankBadge info={level} />
         </View>
         <View style={styles.carRow}>

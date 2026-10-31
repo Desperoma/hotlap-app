@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, fonts, radius, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 export type DropdownOption<T extends string> = { key: T; label: string; hint?: string; left?: ReactNode };
 
 /**
@@ -59,7 +60,7 @@ export function DropdownField({ label, value, left, onPress, style }: {
 export function Sheet({ visible, title, onClose, children }: { visible: boolean; title: string; onClose: () => void; children: ReactNode }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('Close')} />
       <SafeAreaView edges={['bottom']} style={styles.sheet}>
         <View style={styles.handle} />
         <Text style={styles.title}>{title}</Text>

@@ -30,6 +30,7 @@ import { VISIBILITY_HINT, VISIBILITY_OPTIONS } from '@/features/drives/visibilit
 import type { Visibility } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Fin de drive : résumé, titre, description, visibilité, puis sauvegarde.
  * Le drive reste dans pending.ts tant qu'il n'est pas sauvegardé ou abandonné.
@@ -48,7 +49,7 @@ export default function FinishDriveScreen() {
   useEffect(() => {
     getPendingDrive().then((d) => {
       setDrive(d);
-      if (d) setTitle(d.simulated ? `Test · ${d.simStyle === 'circuit' ? d.circuitName ?? 'Circuit' : simLabel(d.simStyle)}` : d.mode === 'circuit' && d.circuitName ? `${d.circuitName} · laps` : defaultTitle(d.startedAt));
+      if (d) setTitle(d.simulated ? `Test · ${d.simStyle === 'circuit' ? d.circuitName ?? t('Circuit') : simLabel(d.simStyle)}` : d.mode === 'circuit' && d.circuitName ? t('{0} · laps', d.circuitName) : defaultTitle(d.startedAt));
       if (d && d.vehicleId !== undefined) setVehicleId(d.vehicleId);
     });
   }, []);
@@ -85,8 +86,8 @@ export default function FinishDriveScreen() {
   if (!drive || !summary) {
     return (
       <Screen style={styles.center}>
-        <Text style={styles.muted}>No drive waiting to be saved.</Text>
-        <Button title="Back" variant="secondary" onPress={() => router.back()} />
+        <Text style={styles.muted}>{t('No drive waiting to be saved.')}</Text>
+        <Button title={t('Back')} variant="secondary" onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -100,15 +101,15 @@ export default function FinishDriveScreen() {
 
   const save = async () => {
     if (!session) return;
-    const t = title.trim();
-    if (!t) return Alert.alert('Title missing', 'Give your drive a name.');
+    const trimmed = title.trim();
+    if (!trimmed) return Alert.alert(t('Title missing'), t('Give your drive a name.'));
     setSaving(true);
     try {
       const { id } = await saveDrive({
         ownerId: session.user.id,
         vehicleId: chosenVehicle,
         circuitId: drive.circuitId,
-        title: t.slice(0, 80),
+        title: trimmed.slice(0, 80),
         description: description.trim() || undefined,
         visibility,
         startedAt: drive.startedAt,
@@ -121,25 +122,25 @@ export default function FinishDriveScreen() {
       if (drive.mode === 'circuit') {
         // Tours officiels : recalculés par la base depuis les points enregistrés.
         await recordDriveLaps(id).catch((e) =>
-          Alert.alert('Laps not recorded', e instanceof Error ? e.message : String(e)));
+          Alert.alert(t('Laps not recorded'), e instanceof Error ? e.message : String(e)));
       }
       if (drive.mode === 'sprint') {
         // Les temps officiels sont recalculés par la base depuis les points enregistrés.
         await recordDriveSprints(id, drive.points).catch((e) =>
-          Alert.alert('Sprint times not recorded', e instanceof Error ? e.message : String(e)));
+          Alert.alert(t('Sprint times not recorded'), e instanceof Error ? e.message : String(e)));
       }
       if (photos.length) {
         try {
           await uploadDrivePhotos(session.user.id, id, photos);
         } catch (e) {
           // Le drive est sauvegardé ; seules les photos ont échoué.
-          Alert.alert('Photos not uploaded', e instanceof Error ? e.message : String(e));
+          Alert.alert(t('Photos not uploaded'), e instanceof Error ? e.message : String(e));
         }
       }
       router.replace(`/drive/${id}`);
     } catch (e) {
       // Le drive reste en attente sur le téléphone : on peut réessayer plus tard.
-      Alert.alert('Save failed', `${e instanceof Error ? e.message : String(e)}\n\nYour drive is kept on this phone. Try again when you have network.`);
+      Alert.alert(t('Save failed'), t('{0}\n\nYour drive is kept on this phone. Try again when you have network.', e instanceof Error ? e.message : String(e)));
     } finally {
       setSaving(false);
     }
@@ -150,15 +151,15 @@ export default function FinishDriveScreen() {
       const picked = await pickPhotos(MAX_PHOTOS - photos.length);
       setPhotos((p) => [...p, ...picked].slice(0, MAX_PHOTOS));
     } catch (e) {
-      Alert.alert('Photos unavailable', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Photos unavailable'), e instanceof Error ? e.message : String(e));
     }
   };
 
   const discard = () =>
-    Alert.alert('Discard this drive?', 'The route and stats will be deleted from this phone.', [
-      { text: 'Keep', style: 'cancel' },
+    Alert.alert(t('Discard this drive?'), t('The route and stats will be deleted from this phone.'), [
+      { text: t('Keep'), style: 'cancel' },
       {
-        text: 'Discard',
+        text: t('Discard'),
         style: 'destructive',
         onPress: async () => {
           await clearPendingDrive();
@@ -185,25 +186,25 @@ export default function FinishDriveScreen() {
           })}
           mode={driveMode(drive.circuitName, drive.mode)}
           onPressPlus={() => setCarSheet(true)}
-          topLeft={<ShowcaseButton icon="close" label="Discard drive" onPress={discard} />}
+          topLeft={<ShowcaseButton icon="close" label={t('Discard drive')} onPress={discard} />}
         />
         <VehicleSelect hideTrigger open={carSheet} onOpenChange={setCarSheet} value={chosenVehicle} onChange={setVehicleId} />
       </View>
 
-      <Text style={styles.overline}>DRIVE COMPLETE · NICE DRIVE</Text>
+      <Text style={styles.overline}>{t('DRIVE COMPLETE · NICE DRIVE')}</Text>
       {/* Comme sur la page d'un drive : carte interactive avec vitesse, altitude et G à chaque point. */}
       {samples.length >= 2 ? (
         <DriveTelemetry samples={samples} />
       ) : (
-        <DriveMap path={summary.path} emptyLabel="Not enough GPS points for a route" />
+        <DriveMap path={summary.path} emptyLabel={t('Not enough GPS points for a route')} />
       )}
 
       {drive.mode === 'circuit' && (
         <LapList laps={laps} circuitId={drive.circuitId} circuitName={drive.circuitName}
-          note="Tours calculés sur ce téléphone ; la base les recalcule à l’enregistrement." />
+          note={t('Tours calculés sur ce téléphone ; la base les recalcule à l’enregistrement.')} />
       )}
       {drive.mode === 'sprint' && (
-        <SprintResults results={sprints} note="Temps calculés sur ce téléphone ; la base les recalcule à l’enregistrement (GPS 1 Hz, environ ±0,3 s)." />
+        <SprintResults results={sprints} note={t('Temps calculés sur ce téléphone ; la base les recalcule à l’enregistrement (GPS 1 Hz, environ ±0,3 s).')} />
       )}
 
       {/* Rang du conducteur et XP rapportée par ce drive (distance : 10 XP / km ; les sessions
@@ -217,15 +218,15 @@ export default function FinishDriveScreen() {
 
       <ScoreCard score={summary.score} breakdown={summary.breakdown} />
 
-      <VehicleSelect label="Car" value={chosenVehicle} onChange={setVehicleId} />
+      <VehicleSelect label={t('Car')} value={chosenVehicle} onChange={setVehicleId} />
 
-      <TextField label="Title" icon="flag-outline" value={title} onChangeText={setTitle} maxLength={80}
+      <TextField label={t('Title')} icon="flag-outline" value={title} onChangeText={setTitle} maxLength={80}
         autoCapitalize="sentences" />
-      <TextField label="Description" icon="create-outline" value={description} onChangeText={setDescription}
-        placeholder="Roads, weather, the car… (optional)" maxLength={2000} multiline autoCapitalize="sentences" />
+      <TextField label={t('Description')} icon="create-outline" value={description} onChangeText={setDescription}
+        placeholder={t('Roads, weather, the car… (optional)')} maxLength={2000} multiline autoCapitalize="sentences" />
 
       <View style={{ gap: spacing.sm }}>
-        <Text style={styles.label}>Photos ({photos.length}/{MAX_PHOTOS})</Text>
+        <Text style={styles.label}>{t('Photos (')}{photos.length}/{MAX_PHOTOS})</Text>
         <PhotoStrip
           uris={photos}
           onAdd={photos.length < MAX_PHOTOS ? addPhotos : undefined}
@@ -234,26 +235,26 @@ export default function FinishDriveScreen() {
       </View>
 
       <View style={{ gap: spacing.sm }}>
-        <Text style={styles.label}>Who can see it</Text>
+        <Text style={styles.label}>{t('Who can see it')}</Text>
         <SegmentedControl options={VISIBILITY_OPTIONS} value={visibility} onChange={setVisibility} />
         <Text style={styles.muted}>{VISIBILITY_HINT[visibility]}</Text>
-        {drive.simulated && <Text style={styles.muted}>Simulated drive: marked as a test drive.</Text>}
+        {drive.simulated && <Text style={styles.muted}>{t('Simulated drive: marked as a test drive.')}</Text>}
       </View>
 
-      <Button title={tooShort ? 'Too short to save' : 'Save drive'} icon="checkmark" onPress={save}
+      <Button title={tooShort ? t('Too short to save') : t('Save drive')} icon="checkmark" onPress={save}
         loading={saving} disabled={tooShort || saving} />
-      <Button title="Discard" variant="ghost" onPress={discard} disabled={saving} />
+      <Button title={t('Discard')} variant="ghost" onPress={discard} disabled={saving} />
     </Screen>
   );
 }
 
 function simLabel(style?: string) {
-  return SIM_STYLES.find((s) => s.value === style)?.label ?? 'Simulated drive';
+  return SIM_STYLES.find((s) => s.value === style)?.label ?? t('Simulated drive');
 }
 
 function defaultTitle(ts: number) {
   const h = new Date(ts).getHours();
-  const moment = h < 6 ? 'Night' : h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening';
+  const moment = h < 6 ? t('Night') : h < 12 ? t('Morning') : h < 18 ? t('Afternoon') : t('Evening');
   return `${moment} Drive`;
 }
 

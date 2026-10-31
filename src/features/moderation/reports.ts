@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 import { REPORT_REASONS } from './api';
 
+import { t } from '@/i18n/core';
 /** Signalement avec le contenu visé (migration 0032). */
 export type ReportItem = {
   id: string; target_type: string; target_id: string; reason: string; status: string; created_at: string;
@@ -10,7 +11,7 @@ export type ReportItem = {
 
 export const reasonLabel = (r: string) => REPORT_REASONS.find((x) => x.value === r)?.label ?? r;
 export const STATUS_LABEL: Record<string, string> = {
-  open: 'Pending review', reviewed: 'Reviewed', actioned: 'Action taken', dismissed: 'Dismissed',
+  get open() { return t('Pending review'); }, get reviewed() { return t('Reviewed'); }, get actioned() { return t('Action taken'); }, get dismissed() { return t('Dismissed'); },
 };
 
 export async function myReports(): Promise<ReportItem[]> {

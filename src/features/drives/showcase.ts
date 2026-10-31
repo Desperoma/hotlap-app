@@ -1,6 +1,7 @@
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 
+import { t } from '@/i18n/core';
 /**
  * Données de la vitrine d'un drive (récap et détail) : cartes de stats et carte de mode.
  * Règles : vitesse moyenne montrée au propriétaire seulement ; vitesse max visible par tous (23/10).
@@ -26,19 +27,19 @@ export type ShowcaseInput = {
 
 export function showcaseStats(d: ShowcaseInput): ShowcaseStat[] {
   const stats: ShowcaseStat[] = [];
-  if (d.lapTimeMs != null) stats.push({ key: 'lap', icon: 'flag-checkered', label: 'Best Lap', value: formatLap(d.lapTimeMs) });
-  stats.push({ key: 'time', icon: 'timer-outline', label: 'Time', ...formatTime(d.durationS) });
-  stats.push({ key: 'distance', icon: 'map-marker-distance', label: 'Distance', ...formatDistance(d.distanceM) });
+  if (d.lapTimeMs != null) stats.push({ key: 'lap', icon: 'flag-checkered', label: t('Best Lap'), value: formatLap(d.lapTimeMs) });
+  stats.push({ key: 'time', icon: 'timer-outline', label: t('Time'), ...formatTime(d.durationS) });
+  stats.push({ key: 'distance', icon: 'map-marker-distance', label: t('Distance'), ...formatDistance(d.distanceM) });
   if (d.avgSpeedKmh != null) {
-    stats.push({ key: 'avg', icon: 'speedometer-medium', label: 'Avg. Speed', value: d.avgSpeedKmh < 100 ? d.avgSpeedKmh.toFixed(1) : String(Math.round(d.avgSpeedKmh)), unit: 'km/h' });
+    stats.push({ key: 'avg', icon: 'speedometer-medium', label: t('Avg. Speed'), value: d.avgSpeedKmh < 100 ? d.avgSpeedKmh.toFixed(1) : String(Math.round(d.avgSpeedKmh)), unit: 'km/h' });
   }
   if (d.maxSpeedKmh != null && d.maxSpeedKmh > 0) {
-    stats.push({ key: 'vmax', icon: 'speedometer', label: 'Top Speed', value: String(Math.round(d.maxSpeedKmh)), unit: 'km/h' });
+    stats.push({ key: 'vmax', icon: 'speedometer', label: t('Top Speed'), value: String(Math.round(d.maxSpeedKmh)), unit: 'km/h' });
   }
-  if (d.score != null) stats.push({ key: 'score', icon: 'trophy-outline', label: 'Score', value: String(d.score), unit: 'pts' });
-  if (d.turns != null) stats.push({ key: 'turns', icon: 'routes', label: 'Turns', value: String(d.turns) });
-  if (d.elevationChangeM != null) stats.push({ key: 'elev', icon: 'image-filter-hdr', label: 'Elevation', value: String(Math.round(d.elevationChangeM)), unit: 'm' });
-  if (d.maxLateralG != null) stats.push({ key: 'g', icon: 'axis-arrow', label: 'Lateral G', value: d.maxLateralG.toFixed(2), unit: 'G' });
+  if (d.score != null) stats.push({ key: 'score', icon: 'trophy-outline', label: t('Score'), value: String(d.score), unit: 'pts' });
+  if (d.turns != null) stats.push({ key: 'turns', icon: 'routes', label: t('Turns'), value: String(d.turns) });
+  if (d.elevationChangeM != null) stats.push({ key: 'elev', icon: 'image-filter-hdr', label: t('Elevation'), value: String(Math.round(d.elevationChangeM)), unit: 'm' });
+  if (d.maxLateralG != null) stats.push({ key: 'g', icon: 'axis-arrow', label: t('Lateral G'), value: d.maxLateralG.toFixed(2), unit: 'G' });
   return stats;
 }
 
@@ -72,12 +73,12 @@ export function vehicleHeading(
   v: { make: string; model: string; year: number | null; nickname?: string | null; color?: string | null } | null | undefined,
   canPick: boolean,
 ) {
-  if (!v) return { make: 'Garage', model: 'No car', category: canPick ? 'Tap + to choose one' : null };
+  if (!v) return { make: 'Garage', model: t('No car'), category: canPick ? t('Tap + to choose one') : null };
   return { make: v.make, model: v.model, color: v.color ?? null, category: v.nickname || (v.year ? String(v.year) : null) };
 }
 
 /** Carte du bas : circuit ou route ouverte (les modes Sprint / chrono viendront plus tard). */
 export const driveMode = (circuitName: string | null | undefined, mode?: 'free' | 'sprint' | 'circuit' | null) =>
-  mode === 'circuit' ? { title: 'Circuit · laps', subtitle: circuitName ?? 'Circuit' }
-  : mode === 'sprint' ? { title: 'Sprint', subtitle: circuitName ?? 'Standing start' }
-  : circuitName ? { title: 'Circuit', subtitle: circuitName } : { title: 'Open road', subtitle: 'Free drive' };
+  mode === 'circuit' ? { title: t('Circuit · laps'), subtitle: circuitName ?? 'Circuit' }
+  : mode === 'sprint' ? { title: t('Sprint'), subtitle: circuitName ?? 'Standing start' }
+  : circuitName ? { title: t('Circuit'), subtitle: circuitName } : { title: t('Open road'), subtitle: t('Free drive') };

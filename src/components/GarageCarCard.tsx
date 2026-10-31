@@ -10,6 +10,7 @@ import type { VehicleStats } from '@/features/garage/stats';
 import { kwToHp } from '@/features/garage/units';
 import { colors, fonts, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 type Car = {
   make: string; model: string; year: number | null; color?: string | null; nickname?: string | null;
   power_kw?: number | null; weight_kg?: number | null; is_primary?: boolean;
@@ -50,9 +51,9 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
   const rows: { key: string; icon: Icon; label: string; value: string; unit?: string; accent?: boolean }[] = [];
   // Toujours : vitesse max (— tant que la voiture n'a pas roulé), puissance, poids.
   const vmax = stats && stats.driveCount > 0 && stats.maxSpeedKmh != null && stats.maxSpeedKmh > 0 ? stats.maxSpeedKmh : null;
-  rows.push({ key: 'vmax', icon: 'speedometer', label: 'Top speed', value: vmax != null ? String(Math.round(vmax)) : '—', unit: vmax != null ? 'km/h' : undefined, accent: vmax != null });
-  rows.push({ key: 'hp', icon: 'flash', label: 'Power', value: car.power_kw ? String(kwToHp(car.power_kw)) : '—', unit: car.power_kw ? 'hp' : undefined });
-  rows.push({ key: 'kg', icon: 'weight', label: 'Weight', value: car.weight_kg ? car.weight_kg.toLocaleString('en-US') : '—', unit: car.weight_kg ? 'kg' : undefined });
+  rows.push({ key: 'vmax', icon: 'speedometer', get label() { return t('Top speed'); }, value: vmax != null ? String(Math.round(vmax)) : '—', unit: vmax != null ? 'km/h' : undefined, accent: vmax != null });
+  rows.push({ key: 'hp', icon: 'flash', get label() { return t('Power'); }, value: car.power_kw ? String(kwToHp(car.power_kw)) : '—', unit: car.power_kw ? 'hp' : undefined });
+  rows.push({ key: 'kg', icon: 'weight', get label() { return t('Weight'); }, value: car.weight_kg ? car.weight_kg.toLocaleString('en-US') : '—', unit: car.weight_kg ? 'kg' : undefined });
   if (stats && stats.driveCount > 0) {
     rows.push({ key: 'drives', icon: 'map-marker-distance', label: `${stats.driveCount} ${stats.driveCount === 1 ? 'drive' : 'drives'}`, value: (stats.distanceM / 1000).toFixed(stats.distanceM < 10_000 ? 1 : 0), unit: 'km' });
   }
@@ -81,7 +82,7 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
         {car.is_primary && (
           <View style={styles.badge}>
             <Ionicons name="star" size={10} color={colors.accent} />
-            <Text style={styles.badgeText}>FAVORITE</Text>
+            <Text style={styles.badgeText}>{t('FAVORITE')}</Text>
           </View>
         )}
         <View style={styles.makeRow}>
@@ -103,7 +104,7 @@ export function GarageCarCard({ car, stats, flip = false, onPress, index = 0 }: 
             </View>
           ))}
           {onPress && (!car.power_kw || !car.weight_kg) && (
-            <Text style={[styles.hint, styles.shadow]}>Puissance et poids : « Edit details »</Text>
+            <Text style={[styles.hint, styles.shadow]}>{t('Puissance et poids : « Edit details »')}</Text>
           )}
         </View>
       </Animated.View>

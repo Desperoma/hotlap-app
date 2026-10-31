@@ -18,6 +18,7 @@ import { checkRecording, refusalMessage } from '@/features/recording/authorizati
 import { useRecorder } from '@/features/recording/useRecorder';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Fiche d'un circuit : plan fixe (tracé, emprise, ligne de départ), puis « Drive » pour lancer un
  * drive chronométré au tour. La ligne de départ se place là où le drive démarre, perpendiculaire
@@ -53,8 +54,8 @@ export default function CircuitScreen() {
   if (!circuit) {
     return (
       <Screen style={styles.center}>
-        <Text style={styles.muted}>Circuit introuvable.</Text>
-        <Button title="Back" variant="secondary" onPress={back} />
+        <Text style={styles.muted}>{t('Circuit introuvable.')}</Text>
+        <Button title={t('Back')} variant="secondary" onPress={back} />
       </Screen>
     );
   }
@@ -66,19 +67,19 @@ export default function CircuitScreen() {
   const drive = async () => {
     if (recording) return router.push('/circuit/live');
     const perm = await recorder.requestPermissions();
-    if (perm === 'denied') return Alert.alert('Localisation refusée', 'Active la localisation dans les réglages.');
+    if (perm === 'denied') return Alert.alert(t('Localisation refusée'), t('Active la localisation dans les réglages.'));
     setBusy(true);
     try {
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const ctx = await checkRecording(pos.coords, profile);
-      if (!ctx.allowed) return Alert.alert('Enregistrement indisponible ici', refusalMessage(ctx));
+      if (!ctx.allowed) return Alert.alert(t('Enregistrement indisponible ici'), refusalMessage(ctx));
       if (ctx.circuitId !== circuit.id) {
-        return Alert.alert('Pas sur ce circuit', `Rends-toi sur ${circuit.name} pour lancer un drive chronométré : le départ doit se faire dans l’enceinte du circuit.`);
+        return Alert.alert(t('Pas sur ce circuit'), t('Rends-toi sur {0} pour lancer un drive chronométré : le départ doit se faire dans l’enceinte du circuit.', circuit.name));
       }
       await recorder.start('circuit', { circuitId: circuit.id, circuitName: circuit.name });
       router.push({ pathname: '/circuit/live', params: { vehicle: chosenVehicle ?? '' } });
     } catch (e) {
-      Alert.alert('Drive impossible', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Drive impossible'), e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -87,7 +88,7 @@ export default function CircuitScreen() {
   // Outils de test : drive simulé en temps réel sur le tracé (x1 ou x5) ; sans tracé, le long de l'emprise.
   const simulate = (speedup: number) => {
     const simPath = path.length > 2 ? path : circuit.area[0] ?? [];
-    if (simPath.length < 3) return Alert.alert('Simulation impossible', 'Ce circuit n’a ni tracé ni emprise.');
+    if (simPath.length < 3) return Alert.alert(t('Simulation impossible'), t('Ce circuit n’a ni tracé ni emprise.'));
     const pts = simulateCircuitPoints(simPath, { laps: 3, start: simPath[0] });
     recorder.startSimulated('circuit', (push) => playSimulation(pts, push, () => {}, speedup), { circuitId: circuit.id, circuitName: circuit.name });
     router.push({ pathname: '/circuit/live', params: { vehicle: chosenVehicle ?? '' } });
@@ -96,7 +97,7 @@ export default function CircuitScreen() {
   return (
     <Screen scroll style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
       <View style={styles.topBar}>
-        <Pressable onPress={back} hitSlop={12} accessibilityLabel="Back" style={{ padding: 4 }}>
+        <Pressable onPress={back} hitSlop={12} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
       </View>
@@ -115,49 +116,49 @@ export default function CircuitScreen() {
       <CircuitMap circuit={circuit} startLine={previewLine} car={me} style={{ height: 340 }} />
       <Text style={styles.hint}>
         {path.length > 1
-          ? 'Trait rouge : ligne de départ. Elle se place là où tu démarres, perpendiculaire au tracé.'
-          : 'Pas encore de tracé : la ligne se place à ton départ, et ton meilleur tour deviendra le tracé du circuit.'}
-        {circuit.pathSource === 'drive' ? ' Tracé appris d’un drive.' : circuit.pathSource === 'manual' ? ' Tracé corrigé par l’équipe.' : ''}
+          ? t('Trait rouge : ligne de départ. Elle se place là où tu démarres, perpendiculaire au tracé.')
+          : t('Pas encore de tracé : la ligne se place à ton départ, et ton meilleur tour deviendra le tracé du circuit.')}
+        {circuit.pathSource === 'drive' ? t(' Tracé appris d’un drive.') : circuit.pathSource === 'manual' ? t(' Tracé corrigé par l’équipe.') : ''}
       </Text>
 
       {playable ? (
         <Card style={{ gap: spacing.md }}>
-          <VehicleSelect compact label="Car" value={chosenVehicle} onChange={setVehicleId} />
-          <Button title={recording ? 'BACK TO DRIVE' : 'DRIVE'} icon="flag" trailingIcon="arrow-forward" onPress={drive} loading={busy} />
-          <Text style={styles.hint}>Démarre dans l’enceinte du circuit. Tours chronométrés à chaque passage de la ligne.</Text>
+          <VehicleSelect compact label={t('Car')} value={chosenVehicle} onChange={setVehicleId} />
+          <Button title={recording ? t('BACK TO DRIVE') : t('DRIVE')} icon="flag" trailingIcon="arrow-forward" onPress={drive} loading={busy} />
+          <Text style={styles.hint}>{t('Démarre dans l’enceinte du circuit. Tours chronométrés à chaque passage de la ligne.')}</Text>
           {TEST_TOOLS && !recording && (
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <Button title="Simulate (real time)" variant="ghost" icon="flask-outline" style={{ flex: 1 }} onPress={() => simulate(1)} />
+              <Button title={t('Simulate (real time)')} variant="ghost" icon="flask-outline" style={{ flex: 1 }} onPress={() => simulate(1)} />
               <Button title="×5" variant="ghost" style={{ width: 70 }} onPress={() => simulate(5)} />
             </View>
           )}
         </Card>
       ) : (
-        <Text style={styles.muted}>Ni tracé ni emprise connus pour ce circuit : il n’est pas encore jouable.</Text>
+        <Text style={styles.muted}>{t('Ni tracé ni emprise connus pour ce circuit : il n’est pas encore jouable.')}</Text>
       )}
 
       {profile?.is_dev && (
         <Card style={{ gap: spacing.sm }}>
           <Text style={styles.devTitle}>DEV</Text>
-          <Dropdown label="Track category" value={circuit.category} style={{ flex: 0 }}
+          <Dropdown label={t('Track category')} value={circuit.category} style={{ flex: 0 }}
             options={CATEGORIES.map((c) => ({ key: c.key, label: c.label, left: <TrackIcon category={c.key} size={20} /> }))}
             onChange={async (v) => {
               try { await devSetCircuitCategory(circuit.id, v); setCircuit({ ...circuit, category: v }); }
-              catch (e) { Alert.alert('Erreur', e instanceof Error ? e.message : String(e)); }
+              catch (e) { Alert.alert(t('Erreur'), e instanceof Error ? e.message : String(e)); }
             }} />
-          <Button title="Edit track path" variant="secondary" icon="create-outline"
+          <Button title={t('Edit track path')} variant="secondary" icon="create-outline"
             onPress={() => router.push({ pathname: '/circuit/edit', params: { id: circuit.id } })} />
         </Card>
       )}
 
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <Button title="Leaderboard" variant="secondary" icon="podium-outline" style={{ flex: 1 }}
+        <Button title={t('Leaderboard')} variant="secondary" icon="podium-outline" style={{ flex: 1 }}
           onPress={() => router.push({ pathname: '/leaderboard', params: { circuit: circuit.id, circuitName: circuit.name } })} />
         {circuit.website ? (
-          <Button title="Website" variant="secondary" icon="open-outline" style={{ flex: 1 }} onPress={() => Linking.openURL(circuit.website!)} />
+          <Button title={t('Website')} variant="secondary" icon="open-outline" style={{ flex: 1 }} onPress={() => Linking.openURL(circuit.website!)} />
         ) : null}
       </View>
-      <Text style={styles.credit}>Circuit data © OpenStreetMap contributors, Wikidata</Text>
+      <Text style={styles.credit}>{t('Circuit data © OpenStreetMap contributors, Wikidata')}</Text>
     </Screen>
   );
 }

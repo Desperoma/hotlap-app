@@ -8,6 +8,7 @@ import { colors, fonts, radius, spacing } from '@/theme';
 
 import { listAdmin1, listCountries, regionLabel, searchCities, type GeoAdmin1, type GeoCity, type GeoCountry } from './api';
 
+import { t } from '@/i18n';
 export type PlaceValue = { countryCode: string | null; region: string; city: string };
 
 /**
@@ -53,21 +54,21 @@ export function PlaceFields({ value, onChange }: { value: PlaceValue; onChange: 
 
   return (
     <>
-      <Picker label="Country" placeholder="Select Country" value={country?.name ?? null}
+      <Picker label={t('Country')} placeholder={t('Select Country')} value={country?.name ?? null}
         options={countries.map((c) => c.name)}
         onChange={(name) => {
           const code = countries.find((c) => c.name === name)?.code ?? null;
           if (code !== value.countryCode) onChange({ countryCode: code, region: '', city: '' });
         }} />
       {admin1.length > 0 ? (
-        <Picker label={label} placeholder={`Select ${label}`} value={value.region || null}
+        <Picker label={label} placeholder={t('Select {0}', label)} value={value.region || null}
           options={admin1.map((a) => a.name)} onChange={(region) => onChange({ ...value, region })} />
       ) : (
-        <TextField label={label} icon="map-outline" placeholder="ex. Grand Est" autoCapitalize="words"
+        <TextField label={label} icon="map-outline" placeholder={t('ex. Grand Est')} autoCapitalize="words"
           value={value.region} onChangeText={(region) => onChange({ ...value, region })} />
       )}
       <View style={{ gap: 6 }}>
-        <TextField label="Home city" icon="home-outline" placeholder="ex. Metz" autoCapitalize="words" autoCorrect={false}
+        <TextField label={t('Home city')} icon="home-outline" placeholder={t('ex. Metz')} autoCapitalize="words" autoCorrect={false}
           value={value.city}
           onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 200)}
           onChangeText={(city) => { typed.current = true; onChange({ ...value, city }); }} />
@@ -85,7 +86,7 @@ export function PlaceFields({ value, onChange }: { value: PlaceValue; onChange: 
             ))}
           </View>
         )}
-        {admin1.length > 0 && <Text style={styles.credit}>Places: GeoNames (CC BY 4.0)</Text>}
+        {admin1.length > 0 && <Text style={styles.credit}>{t('Places: GeoNames (CC BY 4.0)')}</Text>}
       </View>
     </>
   );

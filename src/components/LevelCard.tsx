@@ -8,7 +8,8 @@ import { RANK_IMAGES } from '@/features/levels/images';
 import { levelFromXp } from '@/features/levels/levels';
 import { colors, fonts, radius, spacing } from '@/theme';
 
-const n = (v: number) => v.toLocaleString('en-US');
+import {  t, locale  } from '@/i18n';
+const n = (v: number) => v.toLocaleString(locale());
 
 /**
  * Carte niveau du profil (maquette « Driver profile ») : visuel du rang, niveau, barre d'XP,
@@ -25,7 +26,7 @@ export function LevelCard({ data, userId }: { data: DriverXp; userId?: string })
   return (
     <View style={{ gap: spacing.sm }}>
       <Pressable style={styles.card} onPress={() => router.push({ pathname: '/ranks', params: userId ? { user: userId } : {} })}
-        accessibilityRole="button" accessibilityLabel={`${info.rank.name}, level ${info.level}, ${n(info.into)} of ${n(info.span)} XP`}>
+        accessibilityRole="button" accessibilityLabel={t('{0}, level {1}, {2} of {3} XP', info.rank.name, info.level, n(info.into), n(info.span))}>
         <Image source={RANK_IMAGES[info.rank.key]} style={styles.wheel} />
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={[styles.rank, { color: info.rank.color }]}>{info.rank.name.toUpperCase()}</Text>
@@ -40,10 +41,10 @@ export function LevelCard({ data, userId }: { data: DriverXp; userId?: string })
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
       <View style={styles.tiles}>
-        <Tile icon="road-variant" value={`${n(Math.round(data.distanceM / 1000))} km`} label="Total distance" />
-        <Tile icon="map-marker-path" value={n(data.driveCount)} label="Drives" />
-        <Tile icon="flag-checkered" value={n(data.tracksVisited)} label="Tracks visited" />
-        <Tile icon="trophy-outline" value={n(data.achievements)} label="Achievements" />
+        <Tile icon="road-variant" value={`${n(Math.round(data.distanceM / 1000))} km`} label={t('Total distance')} />
+        <Tile icon="map-marker-path" value={n(data.driveCount)} label={t('Drives')} />
+        <Tile icon="flag-checkered" value={n(data.tracksVisited)} label={t('Tracks visited')} />
+        <Tile icon="trophy-outline" value={n(data.achievements)} label={t('Achievements')} />
       </View>
     </View>
   );

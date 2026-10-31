@@ -11,6 +11,7 @@ import { useRecorder } from '@/features/recording/useRecorder';
 import { usePrefs, type LiveView } from '@/features/settings/prefs';
 import { colors, spacing } from '@/theme';
 
+import { t } from '@/i18n';
 /**
  * Drive sur circuit en cours : plan fixe du circuit (pas de carte qui bouge), voiture et tracé roulé,
  * ligne de départ, tours en direct. Gros chiffres, aucune action à faire en roulant.
@@ -73,7 +74,7 @@ export default function CircuitLiveScreen() {
 
   return (
     <LiveDashboard
-      overline={simulated ? 'CIRCUIT SESSION · SIMULATION' : 'CIRCUIT SESSION'}
+      overline={simulated ? t('CIRCUIT SESSION · SIMULATION') : t('CIRCUIT SESSION')}
       name={circuitName ?? 'Circuit'}
       elapsedMs={elapsed}
       view={view}
@@ -89,16 +90,16 @@ export default function CircuitLiveScreen() {
         <View style={[style, styles.loading]}><ActivityIndicator color={colors.accent} /></View>
       )}
     >
-      <LapCard label={live.started ? `CURRENT LAP · ${live.laps.length + 1}` : 'CROSS THE LINE'}
+      <LapCard label={live.started ? t('CURRENT LAP · {0}', live.laps.length + 1) : t('CROSS THE LINE')}
         time={live.currentMs != null ? formatLap(live.currentMs) : '—:—.———'}
         deltaMs={delta?.deltaMs ?? null} progress={delta?.progress ?? null} />
       <View style={styles.tiles}>
-        <Tile label="LAST LAP" value={live.last ? formatLap(live.last.timeMs) : '—'}
-          sub={lastDelta ? `+${(lastDelta / 1000).toFixed(3)}` : live.last ? 'BEST' : undefined}
+        <Tile label={t('LAST LAP')} value={live.last ? formatLap(live.last.timeMs) : '—'}
+          sub={lastDelta ? `+${(lastDelta / 1000).toFixed(3)}` : live.last ? t('BEST') : undefined}
           subColor={lastDelta ? colors.danger : colors.accent} />
-        <Tile label="BEST LAP" value={live.best ? formatLap(live.best.timeMs) : '—'} />
-        <Tile label="LAPS" value={String(live.laps.length)} />
-        <Tile label="SPEED" value={String(speed)} sub="KM/H" />
+        <Tile label={t('BEST LAP')} value={live.best ? formatLap(live.best.timeMs) : '—'} />
+        <Tile label={t('LAPS')} value={String(live.laps.length)} />
+        <Tile label={t('SPEED')} value={String(speed)} sub={t('KM/H')} />
       </View>
     </LiveDashboard>
   );

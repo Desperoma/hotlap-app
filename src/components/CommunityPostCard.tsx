@@ -15,6 +15,7 @@ import type { CommunityPost } from '@/features/social/community';
 import { formatSprint, sprintLabel } from '@/features/sprint/sprint';
 import { colors, fonts, radius, type } from '@/theme';
 
+import { t } from '@/i18n';
 const MEDAL = ['#F5C542', '#C9CED6', '#D08A4E'];
 
 /**
@@ -41,7 +42,7 @@ function Kind({ post }: { post: CommunityPost }) {
   return (
     <View style={[styles.kind, perf && { borderColor: colors.accent }]}>
       <Ionicons name={perf ? 'speedometer-outline' : 'map-outline'} size={11} color={perf ? colors.accent : colors.textMuted} />
-      <Text style={[styles.kindText, perf && { color: colors.accent }]}>{perf ? 'PERFORMANCE' : 'ROAD TRIP'}</Text>
+      <Text style={[styles.kindText, perf && { color: colors.accent }]}>{perf ? t('PERFORMANCE') : t('ROAD TRIP')}</Text>
     </View>
   );
 }
@@ -60,12 +61,12 @@ function Performance({ post }: { post: CommunityPost }) {
       {b.rank != null && (
         <View style={[styles.rank, medal ? { backgroundColor: medal } : null]}>
           <Ionicons name="trophy" size={11} color={medal ? colors.bg : colors.accent} />
-          <Text style={[styles.rankText, medal ? { color: colors.bg } : null]}>#{b.rank} {lap ? 'CIRCUIT' : 'GLOBAL'}</Text>
+          <Text style={[styles.rankText, medal ? { color: colors.bg } : null]}>#{b.rank} {lap ? t('CIRCUIT') : t('GLOBAL')}</Text>
         </View>
       )}
       <View style={styles.heroStats} pointerEvents="none">
         <View style={{ flex: 1 }}>
-          <Text style={styles.heroLabel}>{lap ? 'BEST LAP' : sprintLabel(b.kind).toUpperCase()}</Text>
+          <Text style={styles.heroLabel}>{lap ? t('BEST LAP') : sprintLabel(b.kind).toUpperCase()}</Text>
           <Text style={styles.heroTime}>{lap ? formatLap(b.timeMs) : formatSprint(b.timeMs)}</Text>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2 }}>
@@ -74,12 +75,12 @@ function Performance({ post }: { post: CommunityPost }) {
               <Text style={[styles.delta, { color: delta <= 0 ? colors.accent : colors.danger }]}>
                 {delta <= 0 ? '−' : '+'}{(Math.abs(delta) / 1000).toFixed(2)} s
               </Text>
-              <Text style={styles.heroLabel}>VS PREVIOUS</Text>
+              <Text style={styles.heroLabel}>{t('VS PREVIOUS')}</Text>
             </>
           ) : (
-            <Text style={styles.heroLabel}>FIRST RUN</Text>
+            <Text style={styles.heroLabel}>{t('FIRST RUN')}</Text>
           )}
-          {b.exitKmh != null && !lap ? <Text style={styles.exit}>{Math.round(b.exitKmh)} km/h exit</Text> : null}
+          {b.exitKmh != null && !lap ? <Text style={styles.exit}>{Math.round(b.exitKmh)}{' '}{t('km/h exit')}</Text> : null}
         </View>
       </View>
     </View>
@@ -90,12 +91,12 @@ function RoadTrip({ post }: { post: CommunityPost }) {
   const h = Math.floor(post.duration_s / 3600), m = Math.round((post.duration_s % 3600) / 60);
   return (
     <View style={{ gap: 8 }}>
-      <DriveMap path={post.path_preview} lite style={styles.map} emptyLabel="Route hidden">
+      <DriveMap path={post.path_preview} lite style={styles.map} emptyLabel={t('Route hidden')}>
         <View style={styles.strip} pointerEvents="none">
-          <Stat value={`${formatKm(post.distance_m)} km`} label="DISTANCE" />
-          <Stat value={h ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`} label="TIME" />
-          <Stat value={post.elevationGainM != null ? `${post.elevationGainM} m` : '—'} label="ELEVATION" />
-          {post.score != null && <Stat value={String(post.score)} label="SCORE" />}
+          <Stat value={`${formatKm(post.distance_m)} km`} label={t('DISTANCE')} />
+          <Stat value={h ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`} label={t('TIME')} />
+          <Stat value={post.elevationGainM != null ? `${post.elevationGainM} m` : '—'} label={t('ELEVATION')} />
+          {post.score != null && <Stat value={String(post.score)} label={t('SCORE')} />}
         </View>
       </DriveMap>
       {post.photos.length > 0 && (
@@ -122,13 +123,13 @@ function Stat({ value, label }: { value: string; label: string }) {
  */
 export function AdSlot() {
   return (
-    <View style={styles.ad} accessibilityLabel="Sponsored">
-      <Text style={styles.adTag}>SPONSORED</Text>
+    <View style={styles.ad} accessibilityLabel={t('Sponsored')}>
+      <Text style={styles.adTag}>{t('SPONSORED')}</Text>
       <View style={styles.adBody}>
         <View style={styles.adIcon}><Ionicons name="megaphone-outline" size={20} color={colors.textMuted} /></View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.adTitle}>Your brand here</Text>
-          <Text style={styles.adText}>Ad space between posts. Coming soon.</Text>
+          <Text style={styles.adTitle}>{t('Your brand here')}</Text>
+          <Text style={styles.adText}>{t('Ad space between posts. Coming soon.')}</Text>
         </View>
       </View>
     </View>

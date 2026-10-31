@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 /**
  * Réglages produit centralisés. Chaque valeur renvoie à une question du doc de cadrage.
  */
@@ -12,20 +13,20 @@ export const MIN_ACCOUNT_AGE = 16;
 
 /** Pays proposés à l'onboarding (ISO 3166-1 alpha-2). « Autre » permet la saisie libre. */
 export const COUNTRIES: { code: string; name: string; regionLabel: string }[] = [
-  { code: 'FR', name: 'France', regionLabel: 'Département' },
-  { code: 'BE', name: 'Belgique', regionLabel: 'Province' },
-  { code: 'CH', name: 'Suisse', regionLabel: 'Canton' },
-  { code: 'LU', name: 'Luxembourg', regionLabel: 'Canton' },
-  { code: 'DE', name: 'Allemagne', regionLabel: 'Land' },
-  { code: 'NL', name: 'Pays-Bas', regionLabel: 'Province' },
-  { code: 'IT', name: 'Italie', regionLabel: 'Région' },
-  { code: 'ES', name: 'Espagne', regionLabel: 'Communauté autonome' },
-  { code: 'PT', name: 'Portugal', regionLabel: 'District' },
-  { code: 'GB', name: 'Royaume-Uni', regionLabel: 'Comté' },
-  { code: 'AT', name: 'Autriche', regionLabel: 'Land' },
-  { code: 'MA', name: 'Maroc', regionLabel: 'Région' },
-  { code: 'DZ', name: 'Algérie', regionLabel: 'Wilaya' },
-  { code: 'TN', name: 'Tunisie', regionLabel: 'Gouvernorat' },
-  { code: 'CA', name: 'Canada', regionLabel: 'Province' },
-  { code: 'US', name: 'États-Unis', regionLabel: 'État' },
+  { code: 'FR', get name() { return t('France'); }, get regionLabel() { return t('Département'); } },
+  { code: 'BE', get name() { return t('Belgique'); }, get regionLabel() { return t('Province'); } },
+  { code: 'CH', get name() { return t('Suisse'); }, get regionLabel() { return t('Canton'); } },
+  { code: 'LU', get name() { return t('Luxembourg'); }, get regionLabel() { return t('Canton'); } },
+  { code: 'DE', get name() { return t('Allemagne'); }, get regionLabel() { return t('Land'); } },
+  { code: 'NL', get name() { return t('Pays-Bas'); }, get regionLabel() { return t('Province'); } },
+  { code: 'IT', get name() { return t('Italie'); }, get regionLabel() { return t('Région'); } },
+  { code: 'ES', get name() { return t('Espagne'); }, get regionLabel() { return t('Communauté autonome'); } },
+  { code: 'PT', get name() { return t('Portugal'); }, get regionLabel() { return t('District'); } },
+  { code: 'GB', get name() { return t('Royaume-Uni'); }, get regionLabel() { return t('Comté'); } },
+  { code: 'AT', get name() { return t('Autriche'); }, get regionLabel() { return t('Land'); } },
+  { code: 'MA', get name() { return t('Maroc'); }, get regionLabel() { return t('Région'); } },
+  { code: 'DZ', get name() { return t('Algérie'); }, get regionLabel() { return t('Wilaya'); } },
+  { code: 'TN', get name() { return t('Tunisie'); }, get regionLabel() { return t('Gouvernorat'); } },
+  { code: 'CA', get name() { return t('Canada'); }, get regionLabel() { return t('Province'); } },
+  { code: 'US', get name() { return t('États-Unis'); }, get regionLabel() { return t('État'); } },
 ];

@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 
 import type { TrackPoint } from '@/features/recording/geo';
 
+import { t } from '@/i18n/core';
 /**
  * Drive terminé mais pas encore publié.
  *
@@ -56,8 +57,8 @@ export async function clearPendingDrive() {
 export async function promptPendingDrive() {
   const p = await getPendingDrive();
   if (!p) return;
-  Alert.alert('Unsaved drive', 'You have a finished drive that isn’t saved yet.', [
-    { text: 'Later', style: 'cancel' },
-    { text: 'Review', onPress: () => router.push('/drive/finish') },
+  Alert.alert(t('Unsaved drive'), t('You have a finished drive that isn’t saved yet.'), [
+    { text: t('Later'), style: 'cancel' },
+    { text: t('Review'), onPress: () => router.push('/drive/finish') },
   ]);
 }

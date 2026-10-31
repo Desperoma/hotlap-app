@@ -1,6 +1,7 @@
 import type { PublicProfile } from '@/lib/database.types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+import { t } from '@/i18n/core';
 /**
  * Crews : groupes de conducteurs (migration 0007). Ouverts (on rejoint directement) ou sur demande
  * (un admin valide). Toutes les écritures passent par des fonctions SQL qui vérifient les rôles.
@@ -197,16 +198,16 @@ export async function listInvitedIds(crewId: string): Promise<Set<string>> {
 /** Messages lisibles pour les erreurs levées par les fonctions SQL. */
 function crewError(error: { message: string }) {
   const m = error.message;
-  if (m.includes('crew_name_taken')) return new Error('Ce nom de crew est déjà pris.');
-  if (m.includes('crew_limit_owner')) return new Error('Tu as déjà créé 5 crews, le maximum.');
-  if (m.includes('crew_limit_member')) return new Error('Tu fais déjà partie de 20 crews, le maximum.');
-  if (m.includes('crew_owner_cannot_leave')) return new Error('Transmets le crew à un membre, ou supprime-le, avant de partir.');
-  if (m.includes('crew_forbidden')) return new Error('Tu n’as pas les droits pour faire ça dans ce crew.');
-  if (m.includes('crew_not_found')) return new Error('Ce crew n’existe plus.');
-  if (m.includes('crew_invite_not_found')) return new Error('Cette invitation n’est plus valable.');
-  if (m.includes('crew_invite_unavailable')) return new Error('Impossible d’inviter cette personne.');
+  if (m.includes('crew_name_taken')) return new Error(t('Ce nom de crew est déjà pris.'));
+  if (m.includes('crew_limit_owner')) return new Error(t('Tu as déjà créé 5 crews, le maximum.'));
+  if (m.includes('crew_limit_member')) return new Error(t('Tu fais déjà partie de 20 crews, le maximum.'));
+  if (m.includes('crew_owner_cannot_leave')) return new Error(t('Transmets le crew à un membre, ou supprime-le, avant de partir.'));
+  if (m.includes('crew_forbidden')) return new Error(t('Tu n’as pas les droits pour faire ça dans ce crew.'));
+  if (m.includes('crew_not_found')) return new Error(t('Ce crew n’existe plus.'));
+  if (m.includes('crew_invite_not_found')) return new Error(t('Cette invitation n’est plus valable.'));
+  if (m.includes('crew_invite_unavailable')) return new Error(t('Impossible d’inviter cette personne.'));
   if (m.includes('crews_name_check') || m.includes('crews_description_check')) {
-    return new Error('Nom : 3 à 40 caractères. Description : 280 caractères maximum.');
+    return new Error(t('Nom : 3 à 40 caractères. Description : 280 caractères maximum.'));
   }
   return error instanceof Error ? error : new Error(m);
 }

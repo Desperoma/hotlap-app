@@ -11,6 +11,7 @@ import { devSetCircuitPath, getCircuit, type CircuitDetail } from '@/features/ci
 import type { LL } from '@/features/circuit/laps';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 const MAX_POINTS = 150;
 
 /** Garde au plus `max` points, régulièrement espacés (l'éditeur reste fluide). */
@@ -50,27 +51,27 @@ export default function CircuitEditScreen() {
   const closeLoop = () => pts.length > 2 && change([...pts, pts[0]]);
 
   const save = async () => {
-    if (!id || pts.length < 3) return Alert.alert('Tracé trop court', 'Il faut au moins 3 points.');
+    if (!id || pts.length < 3) return Alert.alert(t('Tracé trop court'), t('Il faut au moins 3 points.'));
     setSaving(true);
     try {
       await devSetCircuitPath(id, pts);
       router.back();
     } catch (e) {
-      Alert.alert('Enregistrement impossible', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('Enregistrement impossible'), e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
   };
-  const clear = () => Alert.alert('Effacer le tracé ?', 'Le circuit réapprendra son tracé au prochain meilleur tour.', [
-    { text: 'Annuler', style: 'cancel' },
-    { text: 'Effacer', style: 'destructive', onPress: async () => { if (id) { await devSetCircuitPath(id, null).catch((e) => Alert.alert('Erreur', String(e))); router.back(); } } },
+  const clear = () => Alert.alert(t('Effacer le tracé ?'), t('Le circuit réapprendra son tracé au prochain meilleur tour.'), [
+    { text: t('Annuler'), style: 'cancel' },
+    { text: t('Effacer'), style: 'destructive', onPress: async () => { if (id) { await devSetCircuitPath(id, null).catch((e) => Alert.alert(t('Erreur'), String(e))); router.back(); } } },
   ]);
 
   if (!profile?.is_dev) {
-    return <SafeAreaView style={styles.center}><Text style={styles.muted}>Réservé aux comptes développeurs.</Text></SafeAreaView>;
+    return <SafeAreaView style={styles.center}><Text style={styles.muted}>{t('Réservé aux comptes développeurs.')}</Text></SafeAreaView>;
   }
   if (circuit === undefined) return <SafeAreaView style={styles.center}><ActivityIndicator color={colors.accent} /></SafeAreaView>;
-  if (!circuit) return <SafeAreaView style={styles.center}><Text style={styles.muted}>Circuit introuvable.</Text></SafeAreaView>;
+  if (!circuit) return <SafeAreaView style={styles.center}><Text style={styles.muted}>{t('Circuit introuvable.')}</Text></SafeAreaView>;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -91,28 +92,28 @@ export default function CircuitEditScreen() {
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
         <View style={styles.bar}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.iconBtn} accessibilityLabel="Back">
+          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.iconBtn} accessibilityLabel={t('Back')}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.overline}>DEV · EDIT TRACK PATH</Text>
+            <Text style={styles.overline}>{t('DEV · EDIT TRACK PATH')}</Text>
             <Text style={styles.name} numberOfLines={1}>{circuit.name}</Text>
           </View>
           <Text style={styles.count}>{pts.length} pts</Text>
         </View>
-        <Text style={styles.help}>Toucher la carte : ajouter un point · glisser : déplacer · toucher un point : le sélectionner</Text>
+        <Text style={styles.help}>{t('Toucher la carte : ajouter un point · glisser : déplacer · toucher un point : le sélectionner')}</Text>
       </SafeAreaView>
 
       <View style={styles.panel}>
         <View style={styles.row}>
-          <Tool icon="arrow-undo" label="Undo" onPress={undo} disabled={!history.length} />
-          <Tool icon="trash-outline" label="Delete pt" onPress={remove} disabled={sel == null} />
-          <Tool icon="git-commit-outline" label="Close loop" onPress={closeLoop} disabled={pts.length < 3} />
-          <Tool icon="refresh" label="Restart" onPress={() => { change([]); setSel(null); }} disabled={!pts.length} />
+          <Tool icon="arrow-undo" label={t('Undo')} onPress={undo} disabled={!history.length} />
+          <Tool icon="trash-outline" label={t('Delete pt')} onPress={remove} disabled={sel == null} />
+          <Tool icon="git-commit-outline" label={t('Close loop')} onPress={closeLoop} disabled={pts.length < 3} />
+          <Tool icon="refresh" label={t('Restart')} onPress={() => { change([]); setSel(null); }} disabled={!pts.length} />
         </View>
         <View style={styles.row}>
-          <Button title="Remove path" variant="ghost" style={{ flex: 1 }} onPress={clear} />
-          <Button title="Save path" icon="checkmark" style={{ flex: 1 }} onPress={save} loading={saving} disabled={pts.length < 3} />
+          <Button title={t('Remove path')} variant="ghost" style={{ flex: 1 }} onPress={clear} />
+          <Button title={t('Save path')} icon="checkmark" style={{ flex: 1 }} onPress={save} loading={saving} disabled={pts.length < 3} />
         </View>
       </View>
     </View>

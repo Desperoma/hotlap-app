@@ -4,11 +4,12 @@ import { Card } from '@/components/ui';
 import type { ScoreBreakdown } from '@/lib/database.types';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 const ROWS: { key: keyof ScoreBreakdown; label: string }[] = [
-  { key: 'distance', label: 'Distance' },
-  { key: 'elevation', label: 'Elevation' },
-  { key: 'sinuosity', label: 'Turns' },
-  { key: 'timing', label: 'Lap time' },
+  { key: 'distance', get label() { return t('Distance'); } },
+  { key: 'elevation', get label() { return t('Elevation'); } },
+  { key: 'sinuosity', get label() { return t('Turns'); } },
+  { key: 'timing', get label() { return t('Lap time'); } },
 ];
 
 /** Score du drive et sa décomposition par critère. */
@@ -18,7 +19,7 @@ export function ScoreCard({ score, breakdown }: { score: number | null; breakdow
   return (
     <Card style={{ gap: spacing.md }}>
       <View style={styles.head}>
-        <Text style={styles.overline}>SCORE</Text>
+        <Text style={styles.overline}>{t('SCORE')}</Text>
         <Text style={styles.score}>{score ?? '–'}</Text>
       </View>
       {rows.map((r) => {

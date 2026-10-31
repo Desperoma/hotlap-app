@@ -8,6 +8,7 @@ import { HomeZoneFields } from '@/features/privacy/HomeZoneFields';
 import { applyHomeZone, fetchHomeZone, homeZoneInputError, type HomeZone, type HomeZoneInput } from '@/features/privacy/homeZone';
 import { colors, fonts, spacing, type } from '@/theme';
 
+import { t } from '@/i18n';
 /** Réglage de la zone privée autour du domicile (depuis le profil). */
 export default function PrivacyZoneScreen() {
   const [zone, setZone] = useState<HomeZone | null | undefined>(undefined);
@@ -28,22 +29,22 @@ export default function PrivacyZoneScreen() {
   const save = async () => {
     const hasZone = !!zone;
     const e = homeZoneInputError(form, hasZone);
-    if (e) return Alert.alert('Presque', e);
+    if (e) return Alert.alert(t('Presque'), e);
     setBusy(true);
     try {
       await applyHomeZone(form, hasZone);
       back();
     } catch (err) {
-      Alert.alert('Oups', err instanceof Error ? err.message : 'Enregistrement impossible');
+      Alert.alert(t('Oups'), err instanceof Error ? err.message : t('Enregistrement impossible'));
     } finally {
       setBusy(false);
     }
   };
 
   const status = zone === undefined ? null
-    : !zone ? 'Aucune zone enregistrée : tes drives publics sont visibles en entier.'
-    : zone.enabled ? 'Zone active : tes tracés sont masqués autour de chez toi pour les autres.'
-    : 'Zone désactivée : tes tracés sont visibles en entier. Réactive-la sans ressaisir ton adresse.';
+    : !zone ? t('Aucune zone enregistrée : tes drives publics sont visibles en entier.')
+    : zone.enabled ? t('Zone active : tes tracés sont masqués autour de chez toi pour les autres.')
+    : t('Zone désactivée : tes tracés sont visibles en entier. Réactive-la sans ressaisir ton adresse.');
 
   return (
     <Screen scroll>
@@ -51,7 +52,7 @@ export default function PrivacyZoneScreen() {
         <Pressable onPress={back} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.title}>Private zone</Text>
+        <Text style={styles.title}>{t('Private zone')}</Text>
       </View>
       {zone === undefined ? (
         <ActivityIndicator color={colors.accent} />
@@ -59,10 +60,8 @@ export default function PrivacyZoneScreen() {
         <View style={{ gap: spacing.lg }}>
           {status && <Text style={styles.status}>{status}</Text>}
           <HomeZoneFields value={form} onChange={setForm} hasZone={!!zone} />
-          <Text style={styles.hint}>
-            Le changement s’applique aussi à tes drives déjà publiés.
-          </Text>
-          <Button title="Save" onPress={save} loading={busy} />
+          <Text style={styles.hint}>{t('Le changement s’applique aussi à tes drives déjà publiés.')}</Text>
+          <Button title={t('Save')} onPress={save} loading={busy} />
         </View>
       )}
     </Screen>
