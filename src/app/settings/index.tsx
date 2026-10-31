@@ -63,6 +63,10 @@ export default function SettingsScreen() {
       <Section title="PRIVACY">
         <Row icon="lock-closed-outline" title="Privacy" text="Followers, garage, default drive visibility, private zone"
           onPress={() => router.push('/settings/privacy')} />
+        <Row icon="ban-outline" title="Blocked accounts" text="See and unblock the drivers you blocked"
+          onPress={() => router.push('/settings/blocked')} />
+        <Row icon="flag-outline" title="My reports" text="Posts, comments and drivers you reported"
+          onPress={() => router.push('/settings/reports')} />
       </Section>
 
       <Section title="SECURITY">
@@ -85,15 +89,19 @@ export default function SettingsScreen() {
 
       {profile?.is_dev && (
         <Section title="DEVELOPER">
-          <Row icon="construct-outline" title="Developer tools" text="Birth date requests, what dev accounts can do"
+          <Row icon="construct-outline" title="Developer tools" text="Reports, birth date requests, what dev accounts can do"
             onPress={() => router.push('/settings/dev')} />
         </Section>
       )}
 
       <Section title="OTHER">
         <Row icon="information-circle-outline" title="About HotLap" text={`Version ${Constants.expoConfig?.version ?? '—'}`} />
-        <Row icon="log-out-outline" title="Sign out" onPress={signOut} />
-        <Row icon="trash-outline" title={deleting ? 'Deleting…' : 'Delete account'} danger onPress={deleting ? undefined : askDelete} />
+        <Row icon="log-out-outline" title="Sign out" onPress={() => { signOut(); router.replace('/'); }} />
+      </Section>
+
+      <Section title="DANGER ZONE">
+        <Row icon="trash-outline" title={deleting ? 'Deleting…' : 'Delete account'} text="Deletes your profile, drives and photos for good"
+          danger onPress={deleting ? undefined : askDelete} />
       </Section>
     </Screen>
   );

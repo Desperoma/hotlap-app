@@ -9,7 +9,8 @@ import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { TrackIcon } from '@/components/TrackIcon';
-import { categoryOf, getCircuit, type CircuitDetail } from '@/features/circuit/api';
+import { CATEGORIES, categoryOf, devSetCircuitCategory, getCircuit, type CircuitDetail } from '@/features/circuit/api';
+import { Dropdown } from '@/components/Dropdown';
 import { startLineOnPath, type LL } from '@/features/circuit/laps';
 import { simulateCircuitPoints, playSimulation } from '@/features/circuit/simulate';
 import { TEST_TOOLS } from '@/features/drives/simulate';
@@ -136,8 +137,17 @@ export default function CircuitScreen() {
       )}
 
       {profile?.is_dev && (
-        <Button title="Edit track path (dev)" variant="ghost" icon="create-outline"
-          onPress={() => router.push({ pathname: '/circuit/edit', params: { id: circuit.id } })} />
+        <Card style={{ gap: spacing.sm }}>
+          <Text style={styles.devTitle}>DEV</Text>
+          <Dropdown label="Track category" value={circuit.category} style={{ flex: 0 }}
+            options={CATEGORIES.map((c) => ({ key: c.key, label: c.label, left: <TrackIcon category={c.key} size={20} /> }))}
+            onChange={async (v) => {
+              try { await devSetCircuitCategory(circuit.id, v); setCircuit({ ...circuit, category: v }); }
+              catch (e) { Alert.alert('Erreur', e instanceof Error ? e.message : String(e)); }
+            }} />
+          <Button title="Edit track path" variant="secondary" icon="create-outline"
+            onPress={() => router.push({ pathname: '/circuit/edit', params: { id: circuit.id } })} />
+        </Card>
       )}
 
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -160,5 +170,6 @@ const styles = StyleSheet.create({
   hint: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   cat: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   catText: { color: '#0B0B0B', fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
+  devTitle: { color: '#F59E0B', fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 1 },
   credit: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 10 },
 });

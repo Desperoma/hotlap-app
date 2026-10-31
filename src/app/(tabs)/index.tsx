@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/Avatar';
 import { AdSlot, CommunityPostCard } from '@/components/CommunityPostCard';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useLevels } from '@/features/levels/useLevels';
 import { formatKm } from '@/features/recording/geo';
 import {
   communityFeed, communityTrending, FEED_CATEGORIES, PAGE,
@@ -116,6 +117,7 @@ export default function CommunityScreen() {
     }
   };
 
+  const levels = useLevels((posts ?? []).map((p) => p.owner_id));
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
     (posts ?? []).forEach((p, i) => {
@@ -199,7 +201,7 @@ export default function CommunityScreen() {
         }
         ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} /> : undefined}
         renderItem={({ item }) => item.type === 'ad' ? <AdSlot /> : (
-          <CommunityPostCard post={item.post}
+          <CommunityPostCard post={item.post} level={levels.get(item.post.owner_id)}
             onBlocked={(uid) => setPosts((list) => list?.filter((d) => d.owner_id !== uid) ?? null)} />
         )}
         ItemSeparatorComponent={() => <View style={{ height: spacing.lg }} />}

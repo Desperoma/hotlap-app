@@ -3,16 +3,18 @@ import * as Location from 'expo-location';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions,
+  ActivityIndicator, Alert, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions,
   type NativeScrollEvent, type NativeSyntheticEvent,
 } from 'react-native';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, type MapPressEvent, type Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
+import { Button } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { TrackIcon } from '@/components/TrackIcon';
-import { CATEGORIES, categoryOf, getCircuit } from '@/features/circuit/api';
+import { CATEGORIES, categoryOf, devCreateCircuit, getCircuit, type CircuitCategory } from '@/features/circuit/api';
+import { Dropdown, Sheet } from '@/components/Dropdown';
 import type { LatLng } from '@/features/drives/api';
 import {
   fetchDrivePath, fetchMapCircuits, fetchMapDrives, fetchPublicDrives,
@@ -40,13 +42,15 @@ const SOURCE: Record<MapSource, { label: string; color: string }> = {
   public: { label: 'Public', color: colors.routeAmber },
 };
 type Filter = 'all' | MapSource;
+/** Largeur de carte (degrés de latitude, ~3 000 km) au-delà de laquelle les circuits ne sont pas chargés. */
+const TRACKS_MAX_DELTA = 27;
 const FILTERS: Filter[] = ['all', 'me', 'crew', 'friend', 'public'];
 
 /** Repère : drives regroupés dans une même case (taille selon le zoom). */
 type Pin = { key: string; coordinate: LatLng; drives: MapDrive[] };
 
 export default function MapScreen() {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const { status, stats } = useRecorder();
   const mapRef = useRef<MapView>(null);
   const { width } = useWindowDimensions();
@@ -81,6 +85,12 @@ export default function MapScreen() {
     setTimeout(() => mapRef.current?.animateCamera({ center: { latitude: lat, longitude: lng }, zoom: Number(params.zoom) || 12 }, { duration: 600 }), 250);
   }, [params.t]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Circuits : masqués par défaut (« No tracks »), et chargés seulement sous ~3 000 km de large
+  // (au-delà, des milliers de repères font ramer la carte).
+  const [tracks, setTracks] = useState(false);
+  const tracksRef = useRef(false);
+  tracksRef.current = tracks;
+  const lastRegion = useRef<Region | null>(null);
   const loadArea = useCallback((r: Region) => {
     // Zone affichée, élargie de moitié pour ne pas recharger au moindre glissement.
     const b: BBox = {
@@ -89,11 +99,18 @@ export default function MapScreen() {
     };
     const id = ++areaSeq.current;
     fetchPublicDrives(b).then((d) => { if (id === areaSeq.current) setPublicDrives(d); }).catch(() => {});
-    fetchMapCircuits(b).then((c) => { if (id === areaSeq.current) setCircuits(c); }).catch(() => {});
+    if (tracksRef.current && r.latitudeDelta <= TRACKS_MAX_DELTA) {
+      fetchMapCircuits(b).then((c) => { if (id === areaSeq.current) setCircuits(c); }).catch(() => {});
+    } else {
+      setCircuits([]);
+    }
   }, []);
+  // Activer les circuits recharge la zone affichée tout de suite.
+  useEffect(() => { if (lastRegion.current) loadArea(lastRegion.current); }, [tracks, loadArea]);
 
   const onRegionChangeComplete = (r: Region) => {
     setRegion(r);
+    lastRegion.current = r;
     if (areaTimer.current) clearTimeout(areaTimer.current);
     areaTimer.current = setTimeout(() => loadArea(r), 450);
   };
@@ -152,6 +169,7 @@ export default function MapScreen() {
     [allDrives, filter, cellKey],
   );
   const [cats, setCats] = useState<Set<string>>(new Set());
+  const [newTrack, setNewTrack] = useState<LatLng | null>(null);
   const shownCircuits = useMemo(() => (cats.size === 0 ? circuits : circuits.filter((c) => cats.has(c.category))), [circuits, cats]);
   const selectedCircuit = circuitId ? circuits.find((c) => c.id === circuitId) ?? null : null;
   // Circuit touché : son tracé et son emprise sur la carte, caméra cadrée dessus.
@@ -267,6 +285,7 @@ export default function MapScreen() {
           toolbarEnabled={false}
           moveOnMarkerPress={false}
           onPress={onMapPress}
+          onLongPress={profile?.is_dev ? (e) => setNewTrack(e.nativeEvent.coordinate) : undefined}
           onRegionChangeComplete={onRegionChangeComplete}
         >
           {Array.isArray(selectedPath) && (
@@ -316,7 +335,7 @@ export default function MapScreen() {
               ))}
             </>
           )}
-          {(filter === 'all' || filter === 'public') && shownCircuits.map((c) => {
+          {tracks && (filter === 'all' || filter === 'public') && shownCircuits.map((c) => {
             const cat = categoryOf(c.category);
             return (
               <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
@@ -371,19 +390,27 @@ export default function MapScreen() {
           })}
         </View>
         </ScrollView>
-        {(filter === 'all' || filter === 'public') && circuits.length > 0 && (
+        {(filter === 'all' || filter === 'public') && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingRight: spacing.lg }}>
             <View style={styles.filterBar}>
-              <Pressable onPress={() => setCats(new Set())} style={[styles.chip, cats.size === 0 && styles.chipActive]}
-                accessibilityState={{ selected: cats.size === 0 }}>
+              <Pressable onPress={() => { setTracks(false); setCats(new Set()); setCircuitId(null); }} style={[styles.chip, !tracks && styles.chipActive]}
+                accessibilityState={{ selected: !tracks }}>
+                <Ionicons name="eye-off-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.chipText, !tracks && styles.chipTextActive]}>No tracks</Text>
+              </Pressable>
+              <Pressable onPress={() => { setTracks(true); setCats(new Set()); }} style={[styles.chip, tracks && cats.size === 0 && styles.chipActive]}
+                accessibilityState={{ selected: tracks && cats.size === 0 }}>
                 <Ionicons name="flag" size={12} color={colors.textMuted} />
-                <Text style={[styles.chipText, cats.size === 0 && styles.chipTextActive]}>All tracks</Text>
+                <Text style={[styles.chipText, tracks && cats.size === 0 && styles.chipTextActive]}>All tracks</Text>
               </Pressable>
               {CATEGORIES.map((c) => {
-                const active = cats.has(c.key);
+                const active = tracks && cats.has(c.key);
                 return (
                   <Pressable key={c.key} accessibilityState={{ selected: active }}
-                    onPress={() => setCats((s) => { const n = new Set(s); if (n.has(c.key)) n.delete(c.key); else n.add(c.key); return n; })}
+                    onPress={() => {
+                      setTracks(true);
+                      setCats((s) => { const n = new Set(tracks ? s : []); if (n.has(c.key)) n.delete(c.key); else n.add(c.key); return n; });
+                    }}
                     style={[styles.chip, active && styles.chipActive]}>
                     <TrackIcon category={c.key} size={16} />
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
@@ -393,6 +420,11 @@ export default function MapScreen() {
             </View>
           </ScrollView>
         )}
+
+        {tracks && (region?.latitudeDelta ?? 0) > TRACKS_MAX_DELTA && (
+          <View style={styles.zoomHint}><Text style={styles.chipText}>Zoom in to see the tracks</Text></View>
+        )}
+        {profile?.is_dev && tracks && <Text style={styles.devHint}>DEV · long press the map to add a track</Text>}
 
         <View style={styles.sideButtons} pointerEvents="box-none">
           {!drives && !error && <View style={styles.roundBtn}><ActivityIndicator size="small" color={colors.accent} /></View>}
@@ -486,7 +518,41 @@ export default function MapScreen() {
           <Text style={styles.hintText}>Your drives, your friends’ and public drives around will show up here.</Text>
         </View>
       )}
+      <NewTrackSheet at={newTrack} onClose={() => setNewTrack(null)} />
     </View>
+  );
+}
+
+/** Comptes dev : nouveau circuit au point appuyé longuement (nom, catégorie), puis sa fiche. */
+function NewTrackSheet({ at, onClose }: { at: LatLng | null; onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [cat, setCat] = useState<CircuitCategory>('racing');
+  const [busy, setBusy] = useState(false);
+  const create = async () => {
+    if (!at || name.trim().length < 2) return;
+    setBusy(true);
+    try {
+      const id = await devCreateCircuit(name.trim(), cat, at);
+      setName('');
+      onClose();
+      router.push(`/circuit/${id}`);
+    } catch (e) {
+      Alert.alert('Création impossible', e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Sheet visible={!!at} title="New track (dev)" onClose={onClose}>
+      <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
+        <TextInput value={name} onChangeText={setName} placeholder="Track name" placeholderTextColor={colors.textFaint}
+          style={styles.newTrackInput} autoFocus />
+        <Dropdown label="Category" value={cat} onChange={setCat}
+          options={CATEGORIES.map((c) => ({ key: c.key, label: c.label, left: <TrackIcon category={c.key} size={20} /> }))} />
+        <Text style={styles.cardMeta}>A 400 m area is created around the point: draw the path next from the track page.</Text>
+        <Button title="Create track" icon="add" onPress={create} loading={busy} disabled={name.trim().length < 2} />
+      </View>
+    </Sheet>
   );
 }
 
@@ -633,6 +699,12 @@ const styles = StyleSheet.create({
   filterBar: { ...glass, flexDirection: 'row', alignSelf: 'flex-start', borderRadius: radius.pill, padding: 4, gap: 2 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
   chipActive: { backgroundColor: colors.accentSoft },
+  newTrackInput: {
+    backgroundColor: colors.input, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 12, height: 46, color: colors.text, fontFamily: fonts.regular, fontSize: 15,
+  },
+  zoomHint: { ...glass, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill },
+  devHint: { color: '#F59E0B', fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 0.5 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   chipText: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 12 },
   chipTextActive: { color: colors.text },

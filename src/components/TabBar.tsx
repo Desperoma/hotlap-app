@@ -136,7 +136,8 @@ const styles = StyleSheet.create({
   labelLit: {
     color: colors.accent, textShadowColor: 'rgba(198,244,50,0.7)', textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 },
   },
-  centerSlot: { width: 92, alignItems: 'center', justifyContent: 'flex-end', height: 58 },
+  // Même largeur que les autres onglets : le bouton est exactement au centre de l'écran.
+  centerSlot: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: 58 },
   centerLift: { marginTop: -34, alignItems: 'center', justifyContent: 'center', width: 84, height: 84 },
   halo: {
     position: 'absolute', width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(198,244,50,0.18)',

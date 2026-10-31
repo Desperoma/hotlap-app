@@ -74,3 +74,16 @@ export async function devSetCircuitPath(id: string, points: LL[] | null) {
   });
   if (error) throw new Error(error.message.includes('dev_only') ? 'Réservé aux comptes développeurs.' : error.message);
 }
+
+/** Comptes dev (migration 0032) : catégorie d'un circuit. */
+export async function devSetCircuitCategory(id: string, category: CircuitCategory) {
+  const { error } = await supabase.rpc('dev_set_circuit_category', { p_circuit: id, p_category: category });
+  if (error) throw new Error(error.message);
+}
+
+/** Comptes dev (migration 0032) : nouveau circuit au point touché, emprise de 400 m. Renvoie son id. */
+export async function devCreateCircuit(name: string, category: CircuitCategory, at: LL): Promise<string> {
+  const { data, error } = await supabase.rpc('dev_create_circuit', { p_name: name, p_category: category, p_lat: at.latitude, p_lng: at.longitude });
+  if (error) throw new Error(error.message.includes('dev_only') ? 'Réservé aux comptes développeurs.' : error.message);
+  return data as string;
+}
