@@ -107,21 +107,32 @@ async function firstPhotos(driveIds: string[]): Promise<Map<string, string[]>> {
   return out;
 }
 
-export type Trending = {
-  key: 'sprint_0_100' | 'sprint_500m' | 'route_week'; driveId: string; userId: string; name: string; avatarUrl: string | null;
-  car: string | null; timeMs: number | null; distanceM: number | null; likes: number; thisWeek: boolean;
+/** Builds de test : les drives simulés comptent dans les tendances (comme dans les classements). */
+const WITH_TEST = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
+
+/**
+ * Tendance : un type de drive (Sprint, route ouverte, catégorie de circuit), son nombre de drives
+ * sur 30 jours, et la photo du drive le plus engageant (likes + 3 × commentaires), migration 0034.
+ */
+export type Trend = {
+  key: string; count: number; driveId: string | null; title: string | null; photoUrl: string | null;
+  userId: string | null; name: string | null; avatarUrl: string | null;
 };
 
-export async function communityTrending(): Promise<Trending[]> {
+export async function communityTrends(): Promise<Trend[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.rpc('community_trending');
+  const { data, error } = await supabase.rpc('community_trends', { p_include_sim: WITH_TEST });
   if (error) return [];
-  return ((data ?? []) as {
-    key: Trending['key']; drive_id: string; user_id: string; username: string; display_name: string | null; avatar_url: string | null;
-    make: string | null; model: string | null; time_ms: number | null; distance_m: number | null; like_count: number; this_week: boolean;
-  }[]).map((r) => ({
-    key: r.key, driveId: r.drive_id, userId: r.user_id, name: r.display_name ?? r.username, avatarUrl: r.avatar_url,
-    car: r.make ? `${r.make} ${r.model ?? ''}`.trim() : null, timeMs: r.time_ms, distanceM: r.distance_m,
-    likes: r.like_count, thisWeek: r.this_week,
+  const rows = (data ?? []) as {
+    key: string; drive_count: number; drive_id: string | null; title: string | null; photo_path: string | null;
+    user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null;
+  }[];
+  const paths = rows.map((r) => r.photo_path).filter((p): p is string => !!p);
+  const signed = paths.length ? await supabase.storage.from('drive-media').createSignedUrls(paths, 3600) : null;
+  const url = new Map((signed?.data ?? []).map((x) => [x.path, x.signedUrl]));
+  return rows.map((r) => ({
+    key: r.key, count: r.drive_count, driveId: r.drive_id, title: r.title,
+    photoUrl: r.photo_path ? url.get(r.photo_path) ?? null : null,
+    userId: r.user_id, name: r.display_name ?? r.username, avatarUrl: r.avatar_url,
   }));
 }

@@ -7,7 +7,7 @@ const WITH_TEST = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
 export type DriverXp = {
   xp: number; distanceM: number; driveCount: number; tracksVisited: number; sessions: number;
   personalBests: number; categories: number; achievements: number;
-  breakdown: { distance: number; tracks: number; sessions: number; personalBests: number; categories: number };
+  breakdown: { distance: number; tracks: number; sessions: number; personalBests: number; categories: number; achievements: number };
 };
 
 export async function driverXp(userId: string): Promise<DriverXp | null> {
@@ -19,7 +19,7 @@ export async function driverXp(userId: string): Promise<DriverXp | null> {
   const r = ((data ?? []) as {
     xp: number; distance_m: number; drive_count: number; tracks_visited: number; sessions: number;
     personal_bests: number; categories: number; achievements: number;
-    distance_xp: number; tracks_xp: number; sessions_xp: number; pb_xp: number; categories_xp: number;
+    distance_xp: number; tracks_xp: number; sessions_xp: number; pb_xp: number; categories_xp: number; achievements_xp?: number;
   }[])[0];
   if (!r) return null;
   return {
@@ -27,6 +27,7 @@ export async function driverXp(userId: string): Promise<DriverXp | null> {
     sessions: r.sessions, personalBests: r.personal_bests, categories: r.categories, achievements: r.achievements,
     breakdown: {
       distance: Number(r.distance_xp), tracks: r.tracks_xp, sessions: r.sessions_xp, personalBests: r.pb_xp, categories: r.categories_xp,
+      achievements: Number(r.achievements_xp ?? 0),
     },
   };
 }

@@ -66,6 +66,7 @@
     "laps:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/laps.test.ts",
     "levels:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/levels.test.ts",
     "i18n:check": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/i18n-check.ts",
+    "achievements:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/achievements.test.ts",
     "i18n:test": "npx -y tsx --tsconfig scripts/tsconfig.json scripts/i18n.test.ts"
   },
   "private": true,
