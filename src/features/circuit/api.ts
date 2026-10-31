@@ -88,3 +88,29 @@ export async function devCreateCircuit(name: string, category: CircuitCategory, 
   if (error) throw new Error(error.message.includes('dev_only') ? t('Réservé aux comptes développeurs.') : error.message);
   return data as string;
 }
+
+const devError = (e: { message: string }) => new Error(
+  e.message.includes('dev_only') ? t('Réservé aux comptes développeurs.')
+    : e.message.includes('area_self_intersects') ? t('La zone se croise elle-même : déplace les points pour qu’elle forme un contour simple.')
+      : e.message.includes('country_code_invalid') ? t('Code pays : 2 lettres (FR, BE, CH…).')
+        : e.message,
+);
+
+export type CircuitEdit = { name: string; category: CircuitCategory; city: string; countryCode: string; website: string; resetStartLine: boolean };
+
+/** Comptes dev (migration 0033) : nom, catégorie, ville, pays, site, remise à zéro de la ligne de départ. */
+export async function devUpdateCircuit(id: string, v: CircuitEdit) {
+  const { error } = await supabase.rpc('dev_update_circuit', {
+    p_circuit: id, p_name: v.name.trim(), p_category: v.category, p_city: v.city.trim() || null,
+    p_country_code: v.countryCode.trim() || null, p_website: v.website.trim() || null, p_reset_start_line: v.resetStartLine,
+  });
+  if (error) throw devError(error);
+}
+
+/** Comptes dev (migration 0033) : emprise du circuit, polygone fermé automatiquement. */
+export async function devSetCircuitArea(id: string, points: LL[]) {
+  const { error } = await supabase.rpc('dev_set_circuit_area', {
+    p_circuit: id, p_points: points.map((p) => [Number(p.longitude.toFixed(7)), Number(p.latitude.toFixed(7))]),
+  });
+  if (error) throw devError(error);
+}

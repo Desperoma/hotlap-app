@@ -9,8 +9,7 @@ import { VehicleSelect } from '@/components/VehicleSelect';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { TrackIcon } from '@/components/TrackIcon';
-import { CATEGORIES, categoryOf, devSetCircuitCategory, getCircuit, type CircuitDetail } from '@/features/circuit/api';
-import { Dropdown } from '@/components/Dropdown';
+import { categoryOf, getCircuit, type CircuitDetail } from '@/features/circuit/api';
 import { startLineOnPath, type LL } from '@/features/circuit/laps';
 import { simulateCircuitPoints, playSimulation } from '@/features/circuit/simulate';
 import { TEST_TOOLS } from '@/features/drives/simulate';
@@ -140,14 +139,15 @@ export default function CircuitScreen() {
       {profile?.is_dev && (
         <Card style={{ gap: spacing.sm }}>
           <Text style={styles.devTitle}>DEV</Text>
-          <Dropdown label={t('Track category')} value={circuit.category} style={{ flex: 0 }}
-            options={CATEGORIES.map((c) => ({ key: c.key, label: c.label, left: <TrackIcon category={c.key} size={20} /> }))}
-            onChange={async (v) => {
-              try { await devSetCircuitCategory(circuit.id, v); setCircuit({ ...circuit, category: v }); }
-              catch (e) { Alert.alert(t('Erreur'), e instanceof Error ? e.message : String(e)); }
-            }} />
-          <Button title={t('Edit track path')} variant="secondary" icon="create-outline"
-            onPress={() => router.push({ pathname: '/circuit/edit', params: { id: circuit.id } })} />
+          <Button title={t('Edit details')} variant="secondary" icon="create-outline"
+            onPress={() => router.push({ pathname: '/circuit/details', params: { id: circuit.id } })} />
+          <Text style={styles.hint}>{t('Name, category, city, country, website, start line')}</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <Button title={t('Edit path')} variant="secondary" icon="git-branch-outline" style={{ flex: 1 }}
+              onPress={() => router.push({ pathname: '/circuit/edit', params: { id: circuit.id, mode: 'path' } })} />
+            <Button title={t('Edit area')} variant="secondary" icon="scan-outline" style={{ flex: 1 }}
+              onPress={() => router.push({ pathname: '/circuit/edit', params: { id: circuit.id, mode: 'area' } })} />
+          </View>
         </Card>
       )}
 

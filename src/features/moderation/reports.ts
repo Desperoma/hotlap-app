@@ -30,6 +30,12 @@ export async function devSetReportStatus(id: string, status: 'reviewed' | 'actio
   if (error) throw error;
 }
 
+/** Retire un signalement : le sien, ou n'importe lequel pour un dev (migration 0033). */
+export async function deleteReport(id: string) {
+  const { error } = await supabase.rpc('delete_report', { p_report: id });
+  if (error) throw error;
+}
+
 /** Ouvre le contenu signalé quand c'est possible. */
 export const reportHref = (r: ReportItem) =>
   r.target_type === 'drive' ? `/drive/${r.target_id}` : r.target_type === 'user' ? `/user/${r.target_id}` : null;

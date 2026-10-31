@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { ReportCard } from '@/components/ReportCard';
-import { devReports, devSetReportStatus, STATUS_LABEL, type ReportItem } from '@/features/moderation/reports';
+import { deleteReport, devReports, devSetReportStatus, STATUS_LABEL, type ReportItem } from '@/features/moderation/reports';
 import { isoToDisplay } from '@/features/onboarding/validation';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -30,6 +30,13 @@ export default function DevToolsScreen() {
   const setStatus = async (r: ReportItem, st: 'reviewed' | 'actioned' | 'dismissed') => {
     try { await devSetReportStatus(r.id, st); loadReports(); } catch (e) { Alert.alert(t('Erreur'), e instanceof Error ? e.message : String(e)); }
   };
+
+  const remove = (r: ReportItem) => Alert.alert(t('Delete this report?'), t('It is removed for good, for the reporter too.'), [
+    { text: t('Cancel'), style: 'cancel' },
+    { text: t('Delete'), style: 'destructive', onPress: async () => {
+      try { await deleteReport(r.id); loadReports(); } catch (e) { Alert.alert(t('Erreur'), e instanceof Error ? e.message : String(e)); }
+    } },
+  ]);
 
   const decide = (r: Req, approve: boolean) =>
     Alert.alert(approve ? t('Accept?') : t('Reject?'), `@${r.username} : ${isoToDisplay(r.current_birth)} → ${isoToDisplay(r.requested)}`, [
@@ -68,13 +75,18 @@ export default function DevToolsScreen() {
       {reports === null ? <ActivityIndicator color={colors.accent} /> : reports.length === 0 ? (
         <Text style={styles.hint}>{t('Aucun signalement.')}</Text>
       ) : reports.map((r) => (
-        <ReportCard key={r.id} r={r} footer={repStatus === 'open' ? (
-          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 }}>
-            <Button title={t('Dismiss')} variant="ghost" style={{ flex: 1 }} onPress={() => setStatus(r, 'dismissed')} />
-            <Button title={t('Reviewed')} variant="secondary" style={{ flex: 1 }} onPress={() => setStatus(r, 'reviewed')} />
-            <Button title={t('Actioned')} style={{ flex: 1 }} onPress={() => setStatus(r, 'actioned')} />
+        <ReportCard key={r.id} r={r} footer={
+          <View style={{ gap: spacing.sm, marginTop: 4 }}>
+            {repStatus === 'open' && (
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <Button title={t('Dismiss')} variant="ghost" style={{ flex: 1 }} onPress={() => setStatus(r, 'dismissed')} />
+                <Button title={t('Reviewed')} variant="secondary" style={{ flex: 1 }} onPress={() => setStatus(r, 'reviewed')} />
+                <Button title={t('Actioned')} style={{ flex: 1 }} onPress={() => setStatus(r, 'actioned')} />
+              </View>
+            )}
+            <Button title={t('Delete report')} variant="ghost" icon="trash-outline" onPress={() => remove(r)} />
           </View>
-        ) : undefined} />
+        } />
       ))}
 
       <Text style={styles.section}>{t('BIRTH DATE REQUESTS')}</Text>

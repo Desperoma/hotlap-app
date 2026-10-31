@@ -1,5 +1,8 @@
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+/** Builds de test : les drives simulés comptent pour tout le monde (comme dans les classements). */
+const WITH_TEST = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
+
 /** XP d'un conducteur, recalculée par la base à partir de ses drives (driver_xp, migration 0028). */
 export type DriverXp = {
   xp: number; distanceM: number; driveCount: number; tracksVisited: number; sessions: number;
@@ -9,7 +12,9 @@ export type DriverXp = {
 
 export async function driverXp(userId: string): Promise<DriverXp | null> {
   if (!isSupabaseConfigured) return null;
-  const { data, error } = await supabase.rpc('driver_xp', { p_user: userId });
+  // Builds de test : les drives simulés des autres comptent aussi (migration 0033 ; repli sur 0028).
+  let { data, error } = await supabase.rpc('driver_xp', { p_user: userId, p_include_sim: WITH_TEST });
+  if (error) ({ data, error } = await supabase.rpc('driver_xp', { p_user: userId }));
   if (error) return null; // migration 0028 pas encore passée : pas de carte de niveau
   const r = ((data ?? []) as {
     xp: number; distance_m: number; drive_count: number; tracks_visited: number; sessions: number;
@@ -30,8 +35,6 @@ export async function driverXp(userId: string): Promise<DriverXp | null> {
 
 const cache = new Map<string, { xp: number; at: number }>();
 const TTL = 60_000;
-/** Builds de test : les drives simulés comptent pour tout le monde (comme dans les classements). */
-const WITH_TEST = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
 
 export async function driverLevels(userIds: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();

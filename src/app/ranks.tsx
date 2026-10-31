@@ -13,6 +13,8 @@ import { levelFromXp, RANKS, XP_RULES } from '@/features/levels/levels';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
 import {  t, locale  } from '@/i18n';
+/** Builds de test : l'XP des autres compte aussi leurs drives simulés. */
+const INCLUDES_TEST = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
 const n = (v: number) => v.toLocaleString(locale());
 
 /** Rangs et niveaux : rang actuel, les 12 rangs, barème d'XP, XP gagnée par activité, classes de véhicules. */
@@ -51,7 +53,7 @@ export default function RanksScreen() {
               </View>
             </View>
           </View>
-          <Text style={styles.faint}>{n(info.xp)}{' '}{t('XP in total')}{isMe ? '' : t(' (real drives only)')}</Text>
+          <Text style={styles.faint}>{n(info.xp)}{' '}{t('XP in total')}{isMe || INCLUDES_TEST ? '' : t(' (real drives only)')}</Text>
           <View style={{ gap: 6 }}>
             <Earned label={t('Distance')} xp={data.breakdown.distance} detail={`${n(Math.round(data.distanceM / 1000))} km`} />
             <Earned label={t('New tracks')} xp={data.breakdown.tracks} detail={`${data.tracksVisited}`} />
