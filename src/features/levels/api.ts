@@ -25,3 +25,28 @@ export async function driverXp(userId: string): Promise<DriverXp | null> {
     },
   };
 }
+
+// --- Niveaux de plusieurs conducteurs (badges de rang), migration 0032 ----------------------
+
+const cache = new Map<string, { xp: number; at: number }>();
+const TTL = 60_000;
+/** Builds de test : les drives simulés comptent pour tout le monde (comme dans les classements). */
+const WITH_TEST = __DEV__ || process.env.EXPO_PUBLIC_TEST_TOOLS === '1';
+
+export async function driverLevels(userIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const now = Date.now();
+  const missing = [...new Set(userIds)].filter((id) => {
+    const c = cache.get(id);
+    if (c && now - c.at < TTL) { out.set(id, c.xp); return false; }
+    return true;
+  });
+  if (!missing.length || !isSupabaseConfigured) return out;
+  const { data, error } = await supabase.rpc('driver_levels', { p_users: missing.slice(0, 100), p_include_sim: WITH_TEST });
+  if (error) return out; // migration 0032 absente : pas de badge
+  for (const r of (data ?? []) as { user_id: string; xp: number }[]) {
+    cache.set(r.user_id, { xp: Number(r.xp), at: now });
+    out.set(r.user_id, Number(r.xp));
+  }
+  return out;
+}

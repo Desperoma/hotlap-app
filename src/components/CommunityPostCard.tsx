@@ -10,6 +10,7 @@ import { Card } from '@/components/ui';
 import { formatLap } from '@/features/circuit/laps';
 import { carImageFor } from '@/features/garage/carImage';
 import { formatKm } from '@/features/recording/geo';
+import type { LevelInfo } from '@/features/levels/levels';
 import type { CommunityPost } from '@/features/social/community';
 import { formatSprint, sprintLabel } from '@/features/sprint/sprint';
 import { colors, fonts, radius, type } from '@/theme';
@@ -21,10 +22,10 @@ const MEDAL = ['#F5C542', '#C9CED6', '#D08A4E'];
  * - performance (sprint, tour) : la voiture en grand, le temps, le rang mondial et l'écart au record précédent ;
  * - road trip : le tracé avec distance, durée et dénivelé, puis les photos.
  */
-export function CommunityPostCard({ post, onBlocked }: { post: CommunityPost; onBlocked?: (userId: string) => void }) {
+export function CommunityPostCard({ post, onBlocked, level }: { post: CommunityPost; onBlocked?: (userId: string) => void; level?: LevelInfo }) {
   return (
     <Card onPress={() => router.push(`/drive/${post.id}`)} style={{ gap: 12 }}>
-      <PostHeader drive={post} onBlocked={onBlocked} right={<Kind post={post} />} />
+      <PostHeader drive={post} onBlocked={onBlocked} right={<Kind post={post} />} level={level} />
       {post.badge ? <Performance post={post} /> : <RoadTrip post={post} />}
       <View style={{ gap: 4 }}>
         <Text style={styles.title} numberOfLines={2}>{post.title}</Text>

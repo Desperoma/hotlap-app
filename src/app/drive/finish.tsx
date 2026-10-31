@@ -4,6 +4,8 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
 import { DriveTelemetry } from '@/components/DriveTelemetry';
+import { RankBadge } from '@/components/RankBadge';
+import { useLevels } from '@/features/levels/useLevels';
 import { buildSamples } from '@/features/drives/telemetry';
 import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { PhotoStrip } from '@/components/PhotoStrip';
@@ -64,6 +66,7 @@ export default function FinishDriveScreen() {
     }).catch(() => {});
   }, [drive]);
 
+  const myLevel = useLevels(session ? [session.user.id] : []).get(session?.user.id ?? '');
   const samples = useMemo(() => buildSamples((drive?.points ?? []).map((p) => ({
     ts: p.ts, lat: p.lat, lng: p.lng, altitude: p.altitude ?? null, speed: p.speed ?? null,
   }))), [drive]);
@@ -203,6 +206,15 @@ export default function FinishDriveScreen() {
         <SprintResults results={sprints} note="Temps calculés sur ce téléphone ; la base les recalcule à l’enregistrement (GPS 1 Hz, environ ±0,3 s)." />
       )}
 
+      {/* Rang du conducteur et XP rapportée par ce drive (distance : 10 XP / km ; les sessions
+          validées sur circuit ajoutent leurs bonus une fois enregistrées). */}
+      {myLevel && (
+        <View style={styles.xpRow}>
+          <RankBadge info={myLevel} size="md" showName />
+          <Text style={styles.xpGain}>+{Math.floor(summary.stats.distanceM / 100).toLocaleString('en-US')} XP</Text>
+        </View>
+      )}
+
       <ScoreCard score={summary.score} breakdown={summary.breakdown} />
 
       <VehicleSelect label="Car" value={chosenVehicle} onChange={setVehicleId} />
@@ -246,6 +258,8 @@ function defaultTitle(ts: number) {
 }
 
 const styles = StyleSheet.create({
+  xpRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  xpGain: { color: colors.accent, fontFamily: fonts.bold, fontSize: 16 },
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
   overline: { ...type.overline, color: colors.accent },
   label: { color: colors.text, fontFamily: fonts.semibold, fontSize: 13 },

@@ -4,6 +4,8 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 
 import { DriveMap } from '@/components/DriveMap';
 import { ClassBadge } from '@/components/ClassBadge';
+import { RankBadge } from '@/components/RankBadge';
+import { useLevels } from '@/features/levels/useLevels';
 import { DriveShowcase, ShowcaseButton } from '@/components/DriveShowcase';
 import { DriveSocial } from '@/components/DriveSocial';
 import { DriveTelemetry } from '@/components/DriveTelemetry';
@@ -38,6 +40,7 @@ export default function DriveDetailScreen() {
   const [samples, setSamples] = useState<Sample[] | null>(null);
   const [sprints, setSprints] = useState<DriveSprint[]>([]);
   const [laps, setLaps] = useState<Lap[]>([]);
+  const levels = useLevels(drive ? [drive.ownerId] : []);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -121,6 +124,7 @@ export default function DriveDetailScreen() {
       },
     ]);
 
+  const authorLevel = levels.get(drive.ownerId);
   const author = drive.isMine ? 'You' : drive.author?.display_name ?? drive.author?.username ?? 'Driver';
   const vehicle = drive.vehicle ? `${drive.vehicle.make} ${drive.vehicle.model}` : null;
 
@@ -166,8 +170,9 @@ export default function DriveDetailScreen() {
           </Text>
           {vehicle ? ` · ${vehicle}` : ''}
         </Text>
-        {(drive.vehicleClass || (drive.asAuthor && !drive.isMine)) && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+        {(drive.vehicleClass || (drive.asAuthor && !drive.isMine) || authorLevel) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+            <RankBadge info={authorLevel} size="md" showName />
             {drive.vehicleClass && <ClassBadge cls={drive.vehicleClass.cls} hpi={drive.vehicleClass.hpi} />}
             {drive.asAuthor && !drive.isMine && <Text style={styles.devTag}>DEV VIEW · AS AUTHOR</Text>}
           </View>

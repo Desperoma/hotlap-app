@@ -8,6 +8,9 @@ import { Avatar } from '@/components/Avatar';
 import { CircuitPicker, type PickedCircuit } from '@/components/CircuitPicker';
 import { Dropdown } from '@/components/Dropdown';
 import { ClassBadge } from '@/components/ClassBadge';
+import { RankBadge } from '@/components/RankBadge';
+import type { LevelInfo } from '@/features/levels/levels';
+import { useLevels } from '@/features/levels/useLevels';
 import { Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatLap } from '@/features/circuit/laps';
@@ -115,6 +118,7 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
   }, [group, sprint, scope, country, vehicleId, circuitId, cls, focusTick]);
 
   const top = useMemo(() => rows?.filter((r) => r.rank <= 50) ?? [], [rows]);
+  const levels = useLevels((rows ?? []).map((r) => r.userId));
   const podium = top.filter((r) => r.rank <= 3).slice(0, 3);
   const rest = top.filter((r) => !podium.includes(r));
   const meOutside = rows?.find((r) => r.isMe && r.rank > 50) ?? null;
@@ -206,12 +210,12 @@ export function LeaderboardScreen({ asTab }: { asTab?: boolean }) {
         </View>
       ) : (
         <View style={{ gap: spacing.sm }}>
-          <Podium rows={podium} metric={metric} />
-          {rest.map((r) => <Line key={r.userId} r={r} metric={metric} />)}
+          <Podium rows={podium} metric={metric} levels={levels} />
+          {rest.map((r) => <Line key={r.userId} r={r} metric={metric} level={levels.get(r.userId)} />)}
           {meOutside && (
             <>
               <Text style={[styles.muted, { textAlign: 'center' }]}>···</Text>
-              <Line r={meOutside} metric={metric} />
+              <Line r={meOutside} metric={metric} level={levels.get(meOutside.userId)} />
             </>
           )}
         </View>
@@ -225,20 +229,20 @@ const value = (r: LeaderRow, m: Metric) => (m === 'score' ? `${r.score} pts` : m
 const nameOf = (r: LeaderRow) => (r.isMe ? 'You' : r.displayName ?? r.username);
 
 /** Podium : 2e à gauche, 1er au centre (plus haut), 3e à droite. */
-function Podium({ rows, metric }: { rows: LeaderRow[]; metric: Metric }) {
+function Podium({ rows, metric, levels }: { rows: LeaderRow[]; metric: Metric; levels: Map<string, LevelInfo> }) {
   const order = [rows.find((r) => r.rank === 2), rows.find((r) => r.rank === 1), rows.find((r) => r.rank === 3)];
   // Ex æquo : rank() peut donner deux 1ers ; on remplit les places restantes dans l'ordre.
   const left = rows.filter((r) => !order.includes(r));
   const slots = order.map((r) => r ?? left.shift());
   return (
     <View style={styles.podium}>
-      {slots.map((r, i) => r ? <Step key={r.userId} r={r} place={([2, 1, 3] as const)[i]} metric={metric} />
+      {slots.map((r, i) => r ? <Step key={r.userId} r={r} place={([2, 1, 3] as const)[i]} metric={metric} level={levels.get(r.userId)} />
         : <View key={i} style={{ flex: 1 }} />)}
     </View>
   );
 }
 
-function Step({ r, place, metric }: { r: LeaderRow; place: 1 | 2 | 3; metric: Metric }) {
+function Step({ r, place, metric, level }: { r: LeaderRow; place: 1 | 2 | 3; metric: Metric; level?: LevelInfo }) {
   const m = METAL[place];
   const first = place === 1;
   const source = useMemo(() => carImageFor(r.make ? { make: r.make, model: r.model ?? '' } : null).source, [r.make, r.model]);
@@ -254,6 +258,7 @@ function Step({ r, place, metric }: { r: LeaderRow; place: 1 | 2 | 3; metric: Me
           <Image source={source} style={[styles.podiumCar, first && { height: 62 }]} resizeMode="contain" />
           <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={first ? 34 : 28} />
           <Text style={styles.stepName} numberOfLines={1}>{nameOf(r)}</Text>
+          <RankBadge info={level} />
           {r.isSimulated && <Text style={styles.testTag}>TEST</Text>}
           <Text style={styles.stepCar} numberOfLines={1}>{r.car ?? '—'}</Text>
           {r.cls && <ClassBadge cls={r.cls} size="sm" />}
@@ -266,7 +271,7 @@ function Step({ r, place, metric }: { r: LeaderRow; place: 1 | 2 | 3; metric: Me
   );
 }
 
-function Line({ r, metric }: { r: LeaderRow; metric: Metric }) {
+function Line({ r, metric, level }: { r: LeaderRow; metric: Metric; level?: LevelInfo }) {
   const source = useMemo(() => carImageFor(r.make ? { make: r.make, model: r.model ?? '' } : null).source, [r.make, r.model]);
   return (
     <Pressable style={[styles.row, r.isMe && styles.me]} onPress={() => router.push(`/drive/${r.driveId}`)}
@@ -275,7 +280,10 @@ function Line({ r, metric }: { r: LeaderRow; metric: Metric }) {
       <Image source={source} style={styles.thumb} resizeMode="contain" />
       <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={30} />
       <View style={{ flex: 1 }}>
-        <Text style={styles.name} numberOfLines={1}>{nameOf(r)}{r.isSimulated ? ' · TEST' : ''}</Text>
+        <View style={styles.carRow}>
+          <Text style={[styles.name, { flexShrink: 1 }]} numberOfLines={1}>{nameOf(r)}{r.isSimulated ? ' · TEST' : ''}</Text>
+          <RankBadge info={level} />
+        </View>
         <View style={styles.carRow}>
           {r.cls && <ClassBadge cls={r.cls} size="sm" />}
           <Text style={[styles.car, { flexShrink: 1 }]} numberOfLines={1}>{r.car ?? '—'}</Text>

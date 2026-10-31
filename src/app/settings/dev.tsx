@@ -5,6 +5,8 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { ReportCard } from '@/components/ReportCard';
+import { devReports, devSetReportStatus, STATUS_LABEL, type ReportItem } from '@/features/moderation/reports';
 import { isoToDisplay } from '@/features/onboarding/validation';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts, spacing, type } from '@/theme';
@@ -20,6 +22,13 @@ export default function DevToolsScreen() {
     supabase.rpc('dev_birth_date_requests').then(({ data, error }) => setReqs(error ? [] : ((data ?? []) as Req[])));
   }, []);
   useEffect(load, [load]);
+  const [repStatus, setRepStatus] = useState<'open' | 'reviewed' | 'actioned' | 'dismissed'>('open');
+  const [reports, setReports] = useState<ReportItem[] | null>(null);
+  const loadReports = useCallback(() => { setReports(null); devReports(repStatus).then(setReports); }, [repStatus]);
+  useEffect(loadReports, [loadReports]);
+  const setStatus = async (r: ReportItem, st: 'reviewed' | 'actioned' | 'dismissed') => {
+    try { await devSetReportStatus(r.id, st); loadReports(); } catch (e) { Alert.alert('Erreur', e instanceof Error ? e.message : String(e)); }
+  };
 
   const decide = (r: Req, approve: boolean) =>
     Alert.alert(approve ? 'Accept?' : 'Reject?', `@${r.username} : ${isoToDisplay(r.current_birth)} → ${isoToDisplay(r.requested)}`, [
@@ -53,6 +62,26 @@ export default function DevToolsScreen() {
         </Text>
       </Card>
 
+      <Text style={styles.section}>REPORTS</Text>
+      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        {(['open', 'reviewed', 'actioned', 'dismissed'] as const).map((st) => (
+          <Pressable key={st} onPress={() => setRepStatus(st)} style={[styles.tab, repStatus === st && styles.tabOn]}>
+            <Text style={[styles.tabText, repStatus === st && { color: colors.accentText }]}>{STATUS_LABEL[st]}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {reports === null ? <ActivityIndicator color={colors.accent} /> : reports.length === 0 ? (
+        <Text style={styles.hint}>Aucun signalement.</Text>
+      ) : reports.map((r) => (
+        <ReportCard key={r.id} r={r} footer={repStatus === 'open' ? (
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 }}>
+            <Button title="Dismiss" variant="ghost" style={{ flex: 1 }} onPress={() => setStatus(r, 'dismissed')} />
+            <Button title="Reviewed" variant="secondary" style={{ flex: 1 }} onPress={() => setStatus(r, 'reviewed')} />
+            <Button title="Actioned" style={{ flex: 1 }} onPress={() => setStatus(r, 'actioned')} />
+          </View>
+        ) : undefined} />
+      ))}
+
       <Text style={styles.section}>BIRTH DATE REQUESTS</Text>
       {reqs === null ? <ActivityIndicator color={colors.accent} /> : reqs.length === 0 ? (
         <Text style={styles.hint}>Aucune demande en attente.</Text>
@@ -76,6 +105,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   title: { ...type.h1, color: colors.text, fontSize: 24 },
   section: { ...type.overline, color: colors.textMuted, fontSize: 10 },
+  tab: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.card },
+  tabOn: { backgroundColor: colors.accent },
+  tabText: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 11 },
   label: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
   hint: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
 });

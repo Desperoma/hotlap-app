@@ -73,6 +73,15 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="crews/[id]" />
         <Stack.Screen name="settings/privacy-zone" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings/privacy" />
+        <Stack.Screen name="settings/index" />
+        <Stack.Screen name="settings/security" />
+        <Stack.Screen name="settings/birth-date" />
+        <Stack.Screen name="settings/blocked" />
+        <Stack.Screen name="settings/reports" />
+        <Stack.Screen name="settings/language" />
+        <Stack.Screen name="settings/dev" />
+        <Stack.Screen name="ranks" />
+        <Stack.Screen name="circuit/edit" />
         <Stack.Screen name="people/[kind]" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="leaderboard" />

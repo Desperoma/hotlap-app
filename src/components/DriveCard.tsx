@@ -6,6 +6,8 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { ClassBadge } from '@/components/ClassBadge';
+import { RankBadge } from '@/components/RankBadge';
+import type { LevelInfo } from '@/features/levels/levels';
 import { DriveMap } from '@/components/DriveMap';
 import { ModerationSheet, type ModerationTarget } from '@/components/ModerationSheet';
 import { Card } from '@/components/ui';
@@ -38,8 +40,8 @@ export function DriveCard({ drive, onBlocked }: { drive: DriveFeedItem; onBlocke
 }
 
 /** En-tête d'un post : auteur, date, menu de modération. */
-export function PostHeader({ drive, onBlocked, right }: {
-  drive: DriveFeedItem; onBlocked?: (userId: string) => void; right?: React.ReactNode;
+export function PostHeader({ drive, onBlocked, right, level }: {
+  drive: DriveFeedItem; onBlocked?: (userId: string) => void; right?: React.ReactNode; level?: LevelInfo;
 }) {
   const { session } = useAuth();
   const name = displayName(drive.author);
@@ -50,7 +52,10 @@ export function PostHeader({ drive, onBlocked, right }: {
       <Pressable onPress={() => router.push(`/user/${drive.owner_id}`)} style={styles.authorLink} accessibilityLabel={`Open ${name}'s profile`}>
         <Avatar url={drive.author.avatar_url} name={name} size={40} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.author} numberOfLines={1}>{name}</Text>
+          <View style={styles.metaRow}>
+            <Text style={[styles.author, { flexShrink: 1 }]} numberOfLines={1}>{name}</Text>
+            <RankBadge info={level} />
+          </View>
           <View style={styles.metaRow}>
             {drive.vehicle_class && <ClassBadge cls={drive.vehicle_class.cls} size="sm" />}
             <Text style={[styles.time, { flexShrink: 1 }]} numberOfLines={1}>{timeAgo(drive.created_at)}{drive.vehicle ? ` · ${drive.vehicle.make} ${drive.vehicle.model}` : ''}</Text>
