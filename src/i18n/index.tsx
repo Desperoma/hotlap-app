@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLocales } from 'expo-localization';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { getLang, isLang, setLangNow, type Lang } from './core';
@@ -8,9 +7,17 @@ export { LANGS, getLang, locale, t, type Lang } from './core';
 
 const SLOT = 'hotlap.lang';
 
-/** Langue du téléphone si elle est proposée, sinon l'anglais. */
+/**
+ * Langue du téléphone si elle est proposée, sinon l'anglais. Lue via Intl (Hermes) plutôt que
+ * expo-localization : un module natif n'arrive pas par EAS Update, il faudrait un nouveau build.
+ */
 export function deviceLang(): Lang {
-  const code = getLocales()[0]?.languageCode ?? 'en';
+  let code = 'en';
+  try {
+    code = Intl.DateTimeFormat().resolvedOptions().locale.split('-')[0].toLowerCase();
+  } catch {
+    // Intl absent : anglais
+  }
   return isLang(code) ? code : 'en';
 }
 
