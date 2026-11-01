@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { TRACK_PINS, TrackIcon } from '@/components/TrackIcon';
+import { TrackIcon } from '@/components/TrackIcon';
 import { CATEGORIES, categoryOf, getCircuit } from '@/features/circuit/api';
 import type { LatLng } from '@/features/drives/api';
 import {
@@ -92,7 +92,7 @@ export default function MapScreen() {
   }, [params.t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Circuits : masqués par défaut (« No tracks »). Rien n'est chargé tant que l'écran couvre plus
-  // de 2 000 km de rayon ; ensuite, autour du centre de l'écran (100 km minimum), les 200 plus proches.
+  // de 2 000 km de rayon ; ensuite, autour du centre de l'écran (100 km minimum), les 150 plus proches.
   const [tracks, setTracks] = useState(false);
   const tracksRef = useRef(false);
   tracksRef.current = tracks;
@@ -361,21 +361,19 @@ export default function MapScreen() {
               ))}
             </>
           )}
-          {/* Repères des circuits : image native (pas de vue React à photographier) ; seul le circuit
-              sélectionné garde une vue, plus grande et cerclée. */}
+          {/* Repères des circuits : vue React redessinée seulement pendant ~1 s après un changement
+              (tracksViewChanges), puis figée en image par la carte. 150 au plus. */}
           {tracks && (filter === 'all' || filter === 'public') && shownCircuits.map((c) => {
             const cat = categoryOf(c.category);
-            const onPress = () => { setSelected(null); setCircuitId(c.id === circuitId ? null : c.id); };
-            return c.id === circuitId ? (
-              <Marker key={`c-${c.id}-sel`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
-                zIndex={9} onPress={onPress}>
-                <View style={[styles.trackPin, styles.trackPinSelected]}>
-                  <TrackIcon category={cat.key} size={34} />
+            const sel = c.id === circuitId;
+            return (
+              <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
+                zIndex={sel ? 9 : 4}
+                onPress={() => { setSelected(null); setCircuitId(sel ? null : c.id); }}>
+                <View style={[styles.trackPin, sel && styles.trackPinSelected]}>
+                  <TrackIcon category={cat.key} size={sel ? 34 : 26} />
                 </View>
               </Marker>
-            ) : (
-              <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} image={TRACK_PINS[cat.key]}
-                tracksViewChanges={false} zIndex={4} onPress={onPress} />
             );
           })}
 
