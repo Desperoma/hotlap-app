@@ -7,9 +7,9 @@ import { TabBar } from '@/components/TabBar';
 import { colors } from '@/theme';
 
 export default function TabsLayout() {
-  // Cloche sur tous les onglets sauf la carte, qui a sa propre barre en haut.
+  // Cloche sur la Community et Perf : la carte a sa propre barre en haut, le garage ses réglages.
   const pathname = usePathname();
-  const showBell = pathname !== '/map';
+  const showBell = pathname !== '/map' && pathname !== '/profile';
   return (
     <View style={{ flex: 1 }}>
     <Tabs

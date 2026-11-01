@@ -64,5 +64,5 @@ export const XP_RULES: { label: string; xp: string; soon?: boolean }[] = [
   { get label() { return t('Beat your personal lap record'); }, get xp() { return t('+200 XP'); } },
   { get label() { return t('First session in a new track category'); }, get xp() { return t('+150 XP'); } },
   { get label() { return t('Participate in an organised track event'); }, get xp() { return t('+300 XP'); }, soon: true },
-  { get label() { return t('Unlock an achievement'); }, get xp() { return t('+100–500 XP'); }, soon: true },
+  { get label() { return t('Collect an achievement'); }, get xp() { return t('+25–3,000 XP'); } },
 ];

@@ -15,7 +15,7 @@ const n = (v: number) => v.toLocaleString(locale());
  * Carte niveau du profil (maquette « Driver profile ») : visuel du rang, niveau, barre d'XP,
  * puis distance totale, drives, circuits visités et succès. Ouvre l'écran des rangs.
  */
-export function LevelCard({ data, userId }: { data: DriverXp; userId?: string }) {
+export function LevelCard({ data, userId, toCollect = 0 }: { data: DriverXp; userId?: string; toCollect?: number }) {
   const info = levelFromXp(data.xp);
   const fill = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -44,19 +44,26 @@ export function LevelCard({ data, userId }: { data: DriverXp; userId?: string })
         <Tile icon="road-variant" value={`${n(Math.round(data.distanceM / 1000))} km`} label={t('Total distance')} />
         <Tile icon="map-marker-path" value={n(data.driveCount)} label={t('Drives')} />
         <Tile icon="flag-checkered" value={n(data.tracksVisited)} label={t('Tracks visited')} />
-        <Tile icon="trophy-outline" value={n(data.achievements)} label={t('Achievements')} />
+        <Tile icon="trophy-outline" value={n(data.achievements)} label={t('Achievements')} badge={toCollect}
+          onPress={userId ? undefined : () => router.push('/achievements')} />
       </View>
     </View>
   );
 }
 
-function Tile({ icon, value, label }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; value: string; label: string }) {
+function Tile({ icon, value, label, badge = 0, onPress }: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap; value: string; label: string; badge?: number; onPress?: () => void;
+}) {
   return (
-    <View style={styles.tile}>
-      <MaterialCommunityIcons name={icon} size={18} color={colors.textMuted} />
+    <Pressable style={styles.tile} onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={badge ? t('{0}, {1} to collect', label, badge) : label}>
+      <View>
+        <MaterialCommunityIcons name={icon} size={18} color={onPress ? colors.accent : colors.textMuted} />
+        {badge > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text></View>}
+      </View>
       <Text style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
       <Text style={styles.tileLabel} numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -77,5 +84,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, paddingVertical: spacing.md, paddingHorizontal: 4,
   },
   tileValue: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
+  badge: {
+    position: 'absolute', top: -6, right: -12, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3,
+    backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
+  },
+  badgeText: { color: '#fff', fontFamily: fonts.bold, fontSize: 9 },
   tileLabel: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 10 },
 });

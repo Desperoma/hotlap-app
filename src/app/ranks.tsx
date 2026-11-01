@@ -60,6 +60,7 @@ export default function RanksScreen() {
             <Earned label={t('Verified sessions')} xp={data.breakdown.sessions} detail={`${data.sessions}`} />
             <Earned label={t('Personal lap records')} xp={data.breakdown.personalBests} detail={`${data.personalBests}`} />
             <Earned label={t('Track categories')} xp={data.breakdown.categories} detail={`${data.categories}`} />
+            <Earned label={t('Achievements')} xp={data.breakdown.achievements} detail={`${data.achievements}`} />
           </View>
         </Card>
       ) : (

@@ -29,7 +29,7 @@ jobs:
       - name: Tests du catalogue
         run: npm run catalog:test
       - name: Tests des scripts (circuits, télémétrie, G-force, sprint, tours, images)
-        run: npm run circuits:test && npm run telemetry:test && npm run gforce:test && npm run sprint:test && npm run laps:test && npm run levels:test && npm run cars:test
+        run: npm run circuits:test && npm run telemetry:test && npm run gforce:test && npm run sprint:test && npm run laps:test && npm run levels:test && npm run cars:test && npm run achievements:test
       - name: Traductions (en, fr, es, de complètes)
         run: npm run i18n:test && npm run i18n:check
       - name: Audit des dépendances livrées dans l'app (bloquant si critique)

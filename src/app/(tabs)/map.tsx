@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { TrackIcon } from '@/components/TrackIcon';
+import { TRACK_PINS, TrackIcon } from '@/components/TrackIcon';
 import { CATEGORIES, categoryOf, getCircuit } from '@/features/circuit/api';
 import type { LatLng } from '@/features/drives/api';
 import {
@@ -41,7 +41,7 @@ const SOURCE: Record<MapSource, { label: string; color: string }> = {
   public: { get label() { return t('Public'); }, color: colors.routeAmber },
 };
 type Filter = 'all' | MapSource;
-/** Circuits chargés autour du centre de l'écran : au moins 100 km, au plus 2 000 km de rayon. */
+/** Circuits chargés autour du centre de l'écran : au moins 100 km ; rien au-delà de 2 000 km de rayon. */
 const TRACKS_MIN_RADIUS_M = 100_000;
 const TRACKS_MAX_RADIUS_M = 2_000_000;
 /** Rayon couvert par l'écran (demi-diagonale), en mètres. */
@@ -91,8 +91,8 @@ export default function MapScreen() {
     setTimeout(() => mapRef.current?.animateCamera({ center: { latitude: lat, longitude: lng }, zoom: Number(params.zoom) || 12 }, { duration: 600 }), 250);
   }, [params.t]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Circuits : masqués par défaut (« No tracks »). Chargés autour du centre de l'écran (100 km
-  // minimum, 2 000 km maximum), les 200 plus proches : au-delà, les repères font ramer la carte.
+  // Circuits : masqués par défaut (« No tracks »). Rien n'est chargé tant que l'écran couvre plus
+  // de 2 000 km de rayon ; ensuite, autour du centre de l'écran (100 km minimum), les 200 plus proches.
   const [tracks, setTracks] = useState(false);
   const tracksRef = useRef(false);
   tracksRef.current = tracks;
@@ -105,8 +105,8 @@ export default function MapScreen() {
     };
     const id = ++areaSeq.current;
     fetchPublicDrives(b).then((d) => { if (id === areaSeq.current) setPublicDrives(d); }).catch(() => {});
-    if (tracksRef.current) {
-      const radius = Math.min(TRACKS_MAX_RADIUS_M, Math.max(TRACKS_MIN_RADIUS_M, regionRadiusM(r)));
+    if (tracksRef.current && regionRadiusM(r) <= TRACKS_MAX_RADIUS_M) {
+      const radius = Math.max(TRACKS_MIN_RADIUS_M, regionRadiusM(r));
       fetchCircuitsNear({ latitude: r.latitude, longitude: r.longitude }, radius)
         .then((c) => { if (id === areaSeq.current) setCircuits(c); }).catch(() => {});
     } else {
@@ -361,16 +361,21 @@ export default function MapScreen() {
               ))}
             </>
           )}
+          {/* Repères des circuits : image native (pas de vue React à photographier) ; seul le circuit
+              sélectionné garde une vue, plus grande et cerclée. */}
           {tracks && (filter === 'all' || filter === 'public') && shownCircuits.map((c) => {
             const cat = categoryOf(c.category);
-            return (
-              <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
-                zIndex={c.id === circuitId ? 9 : 4}
-                onPress={() => { setSelected(null); setCircuitId(c.id === circuitId ? null : c.id); }}>
-                <View style={[styles.trackPin, c.id === circuitId && styles.trackPinSelected]}>
-                  <TrackIcon category={cat.key} size={c.id === circuitId ? 34 : 28} />
+            const onPress = () => { setSelected(null); setCircuitId(c.id === circuitId ? null : c.id); };
+            return c.id === circuitId ? (
+              <Marker key={`c-${c.id}-sel`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}
+                zIndex={9} onPress={onPress}>
+                <View style={[styles.trackPin, styles.trackPinSelected]}>
+                  <TrackIcon category={cat.key} size={34} />
                 </View>
               </Marker>
+            ) : (
+              <Marker key={`c-${c.id}`} coordinate={c.coordinate} anchor={{ x: 0.5, y: 0.5 }} image={TRACK_PINS[cat.key]}
+                tracksViewChanges={false} zIndex={4} onPress={onPress} />
             );
           })}
 
@@ -447,6 +452,9 @@ export default function MapScreen() {
           </ScrollView>
         )}
 
+        {tracks && region && regionRadiusM(region) > TRACKS_MAX_RADIUS_M && (
+          <View style={styles.zoomHint}><Text style={styles.chipText}>{t('Zoom in to see the tracks')}</Text></View>
+        )}
         {profile?.is_dev && tracks && <Text style={styles.devHint}>{t('DEV · long press the map to add a track')}</Text>}
 
         <View style={styles.sideButtons} pointerEvents="box-none">

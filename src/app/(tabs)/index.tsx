@@ -7,14 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { AdSlot, CommunityPostCard } from '@/components/CommunityPostCard';
+import { TrackIcon } from '@/components/TrackIcon';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { categoryOf } from '@/features/circuit/api';
 import { useLevels } from '@/features/levels/useLevels';
-import { formatKm } from '@/features/recording/geo';
 import {
-  communityFeed, communityTrending, FEED_CATEGORIES, PAGE,
-  type CommunityPost, type FeedCategory, type FeedSort, type FeedSource, type Trending,
+  communityFeed, communityTrends, FEED_CATEGORIES, PAGE,
+  type CommunityPost, type FeedCategory, type FeedSort, type FeedSource, type Trend,
 } from '@/features/social/community';
-import { formatSprint } from '@/features/sprint/sprint';
 import { colors, fonts, radius, spacing, type } from '@/theme';
 
 import { t } from '@/i18n';
@@ -45,7 +45,7 @@ export default function CommunityScreen() {
   const [source, setSource] = useState<FeedSource>('world');
   const [sheet, setSheet] = useState(false);
   const [posts, setPosts] = useState<CommunityPost[] | null>(null);
-  const [trending, setTrending] = useState<Trending[]>([]);
+  const [trending, setTrending] = useState<Trend[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [done, setDone] = useState(false);
@@ -86,7 +86,7 @@ export default function CommunityScreen() {
 
   useFocusEffect(useCallback(() => {
     load();
-    communityTrending().then(setTrending).catch(() => {});
+    communityTrends().then(setTrending).catch(() => {});
   }, [load]));
 
   const pick = <T,>(set: (v: T) => void, cur: T) => (v: T) => {
@@ -98,7 +98,7 @@ export default function CommunityScreen() {
   const refresh = async () => {
     setRefreshing(true);
     pos.current = null;
-    await Promise.all([load(), communityTrending().then(setTrending).catch(() => {})]);
+    await Promise.all([load(), communityTrends().then(setTrending).catch(() => {})]);
     setRefreshing(false);
   };
 
@@ -159,7 +159,7 @@ export default function CommunityScreen() {
               </Pressable>
             </View>
 
-            <TrendingRow items={trending} />
+            <TrendingRow items={trending} onPick={(c) => pick(setCategory, category)(c)} />
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}
               style={{ marginHorizontal: -spacing.lg }}>
@@ -229,40 +229,49 @@ export default function CommunityScreen() {
   );
 }
 
-/** Bandeau des tendances : meilleurs temps et route de la semaine, puis les crews. */
-function TrendingRow({ items }: { items: Trending[] }) {
-  const by = (k: Trending['key']) => items.find((t) => t.key === k);
-  const cards = [
-    { key: 'sprint_0_100', title: t('0-100 TOP RUNS'), icon: 'speedometer' as const, t: by('sprint_0_100'),
-      value: (t: Trending) => formatSprint(t.timeMs ?? 0), go: () => router.push({ pathname: '/leaderboard', params: { kind: '0_100' } }) },
-    { key: 'sprint_500m', title: t('500 M FASTEST'), icon: 'flash' as const, t: by('sprint_500m'),
-      value: (t: Trending) => formatSprint(t.timeMs ?? 0), go: () => router.push({ pathname: '/leaderboard', params: { kind: '500m' } }) },
-    { key: 'route_week', title: t('BEST ROUTE THIS WEEK'), icon: 'map' as const, t: by('route_week'),
-      value: (t: Trending) => `${formatKm(t.distanceM ?? 0)} km`, go: (t?: Trending) => t && router.push(`/drive/${t.driveId}`) },
-  ];
+/** Catégorie du fil qui correspond à une tendance. */
+const trendCategory = (key: string): FeedCategory => (key === 'sprint' ? 'performance' : key === 'open_road' ? 'road_trip' : 'laps');
+const trendLabel = (key: string) =>
+  key === 'sprint' ? t('Sprint') : key === 'open_road' ? t('Open road') : categoryOf(key.replace(/^circuit_/, '')).label;
+const trendIcon = (key: string) => (key === 'sprint' ? 'drag' : key === 'open_road' ? 'drive' : key.replace(/^circuit_/, ''));
+
+/**
+ * Bandeau des tendances : les types de drive les plus faits en ce moment (Sprint, route ouverte,
+ * catégories de circuit), illustrés par la photo du drive le plus aimé et commenté. Toucher une
+ * tendance filtre le fil sur sa catégorie. Puis les crews.
+ */
+function TrendingRow({ items, onPick }: { items: Trend[]; onPick: (c: FeedCategory) => void }) {
   return (
     <View style={{ gap: spacing.sm }}>
       <Text style={styles.overline}>{t('TRENDING')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -spacing.lg }}
         contentContainerStyle={{ gap: spacing.md, paddingHorizontal: spacing.lg }}>
-        {cards.map((c) => (
-          <Pressable key={c.key} style={styles.trend} onPress={() => c.go(c.t)}>
-            <View style={styles.trendHead}>
-              <Ionicons name={c.icon} size={14} color={colors.accent} />
-              <Text style={styles.trendTitle} numberOfLines={1}>{c.title}</Text>
-            </View>
-            {c.t ? (
-              <>
-                <Text style={styles.trendValue}>{c.value(c.t)}</Text>
-                <View style={styles.trendWho}>
-                  <Avatar url={c.t.avatarUrl} name={c.t.name} size={20} />
-                  <Text style={styles.trendName} numberOfLines={1}>{c.t.name}{c.t.car ? ` · ${c.t.car}` : ''}</Text>
-                </View>
-                {!c.t.thisWeek && <Text style={styles.trendNote}>{t('All-time')}</Text>}
-              </>
+        {items.length === 0 && (
+          <View style={styles.trend}>
+            <Text style={styles.trendEmpty}>{t('Nobody yet. Be the first.')}</Text>
+          </View>
+        )}
+        {items.map((c) => (
+          <Pressable key={c.key} style={[styles.trend, styles.trendPhoto]} onPress={() => onPick(trendCategory(c.key))}
+            accessibilityRole="button" accessibilityLabel={t('{0}, {1} drives', trendLabel(c.key), c.count)}>
+            {c.photoUrl ? (
+              <Image source={{ uri: c.photoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             ) : (
-              <Text style={styles.trendEmpty}>{t('Nobody yet. Be the first.')}</Text>
+              <View style={styles.trendIconBg}><TrackIcon category={trendIcon(c.key)} size={56} style={{ opacity: 0.5 }} /></View>
             )}
+            <View style={styles.trendShade} />
+            <View style={styles.trendHead}>
+              <TrackIcon category={trendIcon(c.key)} size={18} />
+              <Text style={styles.trendTitle} numberOfLines={1}>{trendLabel(c.key).toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }} />
+            <Text style={styles.trendValue}>{c.count === 1 ? t('1 drive') : t('{0} drives', c.count)}</Text>
+            {c.name ? (
+              <View style={styles.trendWho}>
+                <Avatar url={c.avatarUrl} name={c.name} size={20} />
+                <Text style={styles.trendName} numberOfLines={1}>{c.name}{c.title ? ` · ${c.title}` : ''}</Text>
+              </View>
+            ) : null}
           </Pressable>
         ))}
         <Pressable style={styles.trend} onPress={() => router.push('/crews')}>
@@ -289,12 +298,14 @@ const styles = StyleSheet.create({
     width: 168, minHeight: 118, borderRadius: radius.lg, padding: 12, gap: 6,
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
   },
+  trendPhoto: { overflow: 'hidden', minHeight: 140 },
+  trendIconBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'flex-end', justifyContent: 'center', paddingRight: 10 },
+  trendShade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.38)' },
   trendHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  trendTitle: { flex: 1, color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 0.8 },
+  trendTitle: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 0.8 },
   trendValue: { ...type.stat, color: colors.text, fontSize: 24, lineHeight: 30 },
   trendWho: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  trendName: { flex: 1, color: colors.textMuted, fontFamily: fonts.regular, fontSize: 11 },
-  trendNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 10 },
+  trendName: { flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 11 },
   trendEmpty: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12 },
   cat: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill,

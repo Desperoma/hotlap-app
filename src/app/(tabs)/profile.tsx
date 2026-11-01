@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar';
 import { GarageCarCard } from '@/components/GarageCarCard';
 import { LevelCard } from '@/components/LevelCard';
 import { driverXp, type DriverXp } from '@/features/levels/api';
+import { syncAchievements, useToCollect } from '@/features/achievements/api';
 import { DriveLogRow } from '@/components/DriveLogRow';
 import { Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -30,6 +31,7 @@ export default function ProfileScreen() {
   const [crews, setCrews] = useState<MyCrew[]>([]);
   const [xp, setXp] = useState<DriverXp | null>(null);
   const userId = session?.user.id;
+  const toCollect = useToCollect();
 
   // Rechargé à chaque retour sur l'onglet (ex. après avoir sauvegardé un drive).
   useFocusEffect(
@@ -41,6 +43,7 @@ export default function ProfileScreen() {
       listMyCrews(userId).then((c) => setCrews(c.filter((x) => x.myStatus === 'active'))).catch(() => {});
       myVehicleStats().then(setCarStats).catch(() => {});
       driverXp(userId).then(setXp).catch(() => {});
+      syncAchievements().catch(() => {});
     }, [userId]),
   );
   const name = profile?.display_name ?? profile?.username ?? 'Driver';
@@ -83,7 +86,7 @@ export default function ProfileScreen() {
         <CheckInBar userId={userId} completion={completion} />
       </Card>
 
-      {xp && <LevelCard data={xp} />}
+      {xp && <LevelCard data={xp} toCollect={toCollect} />}
 
       <Card style={styles.counters}>
         <Counter value={counters?.drives ?? 0} label={t('DRIVES')} onPress={() => setTab('log')} />
@@ -184,8 +187,7 @@ function TabLink({ icon, label, active, onPress }: {
 
 const styles = StyleSheet.create({
   place: { color: colors.textMuted, fontFamily: fonts.regular, fontSize: 13 },
-  // paddingRight : place pour la cloche (NotificationBell)
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 52 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   overline: { ...type.overline, color: colors.textMuted, fontSize: 10 },
   handle: { ...type.h1, color: colors.text, fontSize: 20 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },

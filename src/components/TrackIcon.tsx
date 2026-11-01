@@ -19,3 +19,17 @@ export function TrackIcon({ category, size = 28, style }: {
   const src = ICONS[(category && category in ICONS ? category : 'racing') as CircuitCategory];
   return <Image source={src} style={[{ width: size, height: size }, style]} fadeDuration={0} />;
 }
+
+/**
+ * Petites icônes (30 pt, @2x/@3x) pour les repères de la carte : passées en `image` au Marker,
+ * elles sont dessinées par la carte native, sans vue React à photographier (bien plus fluide).
+ */
+export const TRACK_PINS: Record<CircuitCategory, number> = {
+  racing: require('../../assets/tracks/pin/racing.png'),
+  dirt: require('../../assets/tracks/pin/dirt.png'),
+  offroad: require('../../assets/tracks/pin/offroad.png'),
+  drag: require('../../assets/tracks/pin/drag.png'),
+  karting: require('../../assets/tracks/pin/karting.png'),
+  drift: require('../../assets/tracks/pin/drift.png'),
+};
+
