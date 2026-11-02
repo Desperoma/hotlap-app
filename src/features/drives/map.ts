@@ -68,12 +68,12 @@ const toMapCircuit = (c: CircuitRow): MapCircuit => ({
 
 /**
  * Circuits autour d'un point (centre de l'écran), les plus proches d'abord : rayon plafonné à
- * 2 000 km et 200 repères au plus (migration 0033). Repli sur l'ancienne recherche par zone.
+ * 2 000 km et 150 repères au plus (migration 0033). Repli sur l'ancienne recherche par zone.
  */
 export async function fetchCircuitsNear(center: LatLng, radiusM: number): Promise<MapCircuit[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase.rpc('map_circuits_near', {
-    p_lat: center.latitude, p_lng: center.longitude, p_radius_m: Math.round(radiusM), p_limit: 200,
+    p_lat: center.latitude, p_lng: center.longitude, p_radius_m: Math.round(radiusM), p_limit: 150,
   });
   if (!error) return ((data ?? []) as CircuitRow[]).map(toMapCircuit);
   const dLat = radiusM / 111_000, dLng = dLat / Math.max(0.2, Math.cos((center.latitude * Math.PI) / 180));
